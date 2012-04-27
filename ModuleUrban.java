@@ -4,6 +4,7 @@ import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 import pl.shockah.HTTPQuery;
 import pl.shockah.JSONObject;
+import pl.shockah.StringTools;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.cmds.Command;
@@ -74,7 +75,8 @@ public class ModuleUrban extends Module {
 				result.append(" Example: ");
 				result.append(example);
 			}
-			Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,result.toString());
+			String output = result.toString().replaceAll("\\\\r", "").replaceAll("\\\\n", "").replaceAll("\\\\\"", "\"");
+			Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,output);
 		}
 	}
 }
