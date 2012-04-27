@@ -75,7 +75,7 @@ public class ModuleUrban extends Module {
 				result.append(" Example: ");
 				result.append(example);
 			}
-			String output = result.toString().replaceAll("\\\\r", "").replaceAll("\\\\n", "").replaceAll("\\\\\"", "\"");
+			String output = result.toString().replaceAll("\\\\r\\\\n", " ").replaceAll("\\\\\"", "\"");
 			Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,output);
 		}
 	}
