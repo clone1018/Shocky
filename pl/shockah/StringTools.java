@@ -1,5 +1,6 @@
 package pl.shockah;
 
+
 import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -148,6 +149,10 @@ public class StringTools {
 			Integer.parseInt(s);
 		} catch (NumberFormatException e) {return false;}
 		return true;
+	}
+	
+	public static boolean isBoolean(String s) {
+		return (s.equalsIgnoreCase("true")||s.equalsIgnoreCase("false"));
 	}
 	
 	public static String implode(String[] spl, String separator) {return implode(spl,0,spl.length-1,separator);}

@@ -1,5 +1,6 @@
 package pl.shockah;
 
+
 import java.util.Collections;
 import java.util.Map;
 import java.util.TreeMap;
@@ -36,14 +37,15 @@ public class JSONObject {
 				StringBuilder value = new StringBuilder();
 				if (c == '"') {
 					while ((c = text.charAt(i++)) != '"' || (value.length() != 0 && value.charAt(value.length()-1) == '\\')) value.append(c);
-					if (value.charAt(value.length()-1) == '\\') value.deleteCharAt(value.length()-1);
+					if (value.length()>0&&value.charAt(value.length()-1) == '\\') value.deleteCharAt(value.length()-1);
 					j.elements.put(key.toString(),value.toString());
 				} else {
 					i--;
 					while ((c = text.charAt(i++)) != ',' && c != '}' && c != ']' && c != ' ') value.append(c);
 					i--;
 					String s = value.toString();
-					j.elements.put(key.toString(),StringTools.isNumber(s) ? new JSONInt(Integer.parseInt(s)) : new JSONDouble(Double.parseDouble(s)));
+					if (s.length()>0)
+						j.elements.put(key.toString(),StringTools.isBoolean(s) ? new JSONBoolean(Boolean.parseBoolean(s)) : (StringTools.isNumber(s) ? new JSONInt(Integer.parseInt(s)) : new JSONDouble(Double.parseDouble(s))));
 				}
 			}
 			
@@ -76,6 +78,7 @@ public class JSONObject {
 	public String getString(String key) {Object o = get(key); if (o instanceof String) return (String)o; return null;}
 	public int getInt(String key) {Object o = get(key); if (o instanceof JSONInt) return ((JSONInt)o).value; throw new RuntimeException("Wrong type (int) for "+key);}
 	public double getDouble(String key) {Object o = get(key); if (o instanceof JSONDouble) return ((JSONDouble)o).value; throw new RuntimeException("Wrong type (double) for "+key);}
+	public boolean getBoolean(String key) {Object o = get(key); if (o instanceof JSONBoolean) return ((JSONBoolean)o).value; throw new RuntimeException("Wrong type (boolean) for "+key);}
 	public Object[] getArray(String key) {
 		JSONObject o = getJSONObject(key);
 		if (o == null) return null;
@@ -116,6 +119,14 @@ public class JSONObject {
 		for (String k : o.elements.keySet()) a[i++] = o.getDouble(k);
 		return a;
 	}
+	public boolean[] getBooleanArray(String key) {
+		JSONObject o = getJSONObject(key);
+		if (o == null) return null;
+		boolean[] a = new boolean[o.elements.size()];
+		int i = 0;
+		for (String k : o.elements.keySet()) a[i++] = o.getBoolean(k);
+		return a;
+	}
 	
 	public void print() {
 		print(0);
@@ -147,6 +158,7 @@ public class JSONObject {
 			else if (e instanceof String) sb.append("\""+((String)e).replace("\"","\\\"")+"\"");
 			else if (e instanceof JSONInt) sb.append(((JSONInt)e).toString());
 			else if (e instanceof JSONDouble) sb.append(((JSONDouble)e).toString());
+			else if (e instanceof JSONBoolean) sb.append(((JSONBoolean)e).toString());
 		}
 		sb.append(isArray() ? "]" : "}");
 		return sb;
@@ -161,5 +173,10 @@ public class JSONObject {
 		private final double value;
 		private JSONDouble(double value) {this.value = value;}
 		public String toString() {return Double.toString(value);}
+	}
+	private static class JSONBoolean {
+		private final boolean value;
+		private JSONBoolean(boolean value) {this.value = value;}
+		public String toString() {return Boolean.toString(value);}
 	}
 }
