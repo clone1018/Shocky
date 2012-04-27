@@ -18,7 +18,30 @@ import pl.shockah.shocky.cmds.Command;
 public class ModuleYoutube extends Module {
 	protected Command cmd;
 	private ArrayList<Pattern> patternsAction = new ArrayList<Pattern>(), patternsMessage = new ArrayList<Pattern>();
+	private Pattern patternURL = Pattern.compile("https?://(?:(?:(?:www\\.)?youtube\\.com/watch\\?.*?v=([a-zA-Z0-9_\\-]+))|(?:(?:www\\.)?youtu\\.be/([a-zA-Z0-9_\\-]+)))");
 	
+	public String getVideoInfo(String vID) {
+		HTTPQuery q = null;
+		
+		try {
+			q = new HTTPQuery("http://gdata.youtube.com/feeds/api/videos/"+URLEncoder.encode(vID,"UTF8")+"?v=2&alt=jsonc","GET");
+			q.connect(true,false);
+		} catch (Exception e) {e.printStackTrace();}
+		
+		JSONObject jItem = JSONObject.deserialize(q.readWhole()).getJSONObject("data");
+		q.close();
+		
+		String vUploader = jItem.getString("uploader");
+		String vTitle = jItem.getString("title");
+		int vDuration = jItem.getInt("duration");
+		double vRating = jItem.exists("rating") ? jItem.getDouble("rating") : -1;
+		int vViewCount = jItem.getInt("viewCount");
+		
+		int iDh = vDuration/3600, iDm = (vDuration/60) % 60, iDs = vDuration % 60;
+		
+		return vTitle+" | length "+(vDuration >= 3600 ? iDh+"h " : "")+(vDuration >= 60 ? iDm+"m " : "")+iDs+"s | rated "
+			+(vRating != -1 ? String.format("%.2f",vRating).replace(",",".")+"/5.00 | " : "")+vViewCount+" view"+(vViewCount != 1 ? "s" : "") +" | by "+vUploader;
+	}
 	public String getVideoSearch(String query, boolean data, boolean url) {
 		HTTPQuery q = null;
 		
@@ -71,6 +94,15 @@ public class ModuleYoutube extends Module {
 				break;
 			}
 		}
+		
+		if (!Data.config.getBoolean("yt-otherbot")) {
+			Matcher m = patternURL.matcher(event.getMessage());
+			while (m.find()) {
+				String vID = m.group(1);
+				if (vID == null) vID = m.group(2);
+				Shocky.sendChannel(event.getBot(),event.getChannel(),event.getUser().getNick()+": "+getVideoInfo(vID));
+			}
+		}
 	}
 	public void onAction(ActionEvent<PircBotX> event) {
 		if (Data.getBlacklistNicks().contains(event.getUser().getNick().toLowerCase())) return;
@@ -91,11 +123,11 @@ public class ModuleYoutube extends Module {
 		public String command() {return "youtube";}
 		public String help(PircBotX bot, EType type, Channel channel, User sender) {
 			StringBuilder sb = new StringBuilder();
-			sb.append("youtube/yt/y");
+			sb.append("youtube/you/yt/y");
 			sb.append("\nyoutube {query} - returns the first YouTube search result");
 			return sb.toString();
 		}
-		public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command()) || cmd.equals("yt") || cmd.equals("y");}
+		public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command()) || cmd.equals("you") || cmd.equals("yt") || cmd.equals("y");}
 		
 		public void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message) {
 			String[] args = message.split(" ");

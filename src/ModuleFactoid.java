@@ -57,6 +57,19 @@ public class ModuleFactoid extends Module {
 			public String name() {return "munge";}
 			public String result(String arg) {return Utils.mungeNick(arg);}
 		});
+		functions.add(new Function(){
+			public String name() {return "escape";}
+			public String result(String arg) {return arg.replace(",","\\,").replace("(","\\(").replace(")","\\)").replace("\\","\\\\");}
+		});
+		functions.add(new FunctionMultiArg(){
+			public String name() {return "repeat";}
+			public String result(String[] arg) {
+				if (arg.length != 2) return "[Wrong number of arguments to function "+name()+", expected 2, got "+arg.length+"]";
+				StringBuilder sb = new StringBuilder();
+				for (int i = 0; i < Integer.parseInt(arg[1]); i++) sb.append(arg[0]);
+				return sb.toString();
+			}
+		});
 	}
 	public void unload() {
 		functions.clear();
@@ -114,7 +127,7 @@ public class ModuleFactoid extends Module {
 			}
 			
 			for (i = 0; i < charsraw.length(); i++) if (msg.charAt(0) == charsraw.charAt(i)) {
-				msg = new StringBuilder(msg).deleteCharAt(0).toString().split(" ")[0];
+				msg = new StringBuilder(msg).deleteCharAt(0).toString().split(" ")[0].toLowerCase();
 				Config cfg = config; if (cfg.existsConfig(channel.getName())) {
 					cfg = config.getConfig(channel.getName());
 					if (!cfg.exists("r_"+msg)) cfg = config;
@@ -125,7 +138,7 @@ public class ModuleFactoid extends Module {
 				return;
 			}
 			for (i = 0; i < charsby.length(); i++) if (msg.charAt(0) == charsby.charAt(i)) {
-				msg = new StringBuilder(msg).deleteCharAt(0).toString().split(" ")[0];
+				msg = new StringBuilder(msg).deleteCharAt(0).toString().split(" ")[0].toLowerCase();
 				Config cfg = config; if (cfg.existsConfig(channel.getName())) {
 					cfg = config.getConfig(channel.getName());
 					if (!cfg.exists("r_"+msg)) cfg = config;
@@ -138,12 +151,12 @@ public class ModuleFactoid extends Module {
 			
 			Config cfg = config; if (cfg.existsConfig(channel.getName())) {
 				cfg = config.getConfig(channel.getName());
-				if (!cfg.exists("r_"+msg.split(" ")[0])) cfg = config;
+				if (!cfg.exists("r_"+msg.split(" ")[0].toLowerCase())) cfg = config;
 			}
 			
 			ArrayList<String> checkRecursive = new ArrayList<String>();
 			while (true) {
-				String factoid = msg.split(" ")[0];
+				String factoid = msg.split(" ")[0].toLowerCase();
 				if (cfg.exists("r_"+factoid)) {
 					String raw = cfg.getString("r_"+factoid);
 					if (raw.startsWith("<alias>")) {
@@ -185,7 +198,7 @@ public class ModuleFactoid extends Module {
 			
 			code = sb.toString()+" "+code;
 			
-			HTTPQuery q = new HTTPQuery(Data.config.getString("factoid-phpurl")+"?"+HTTPQuery.parseArgs("code",code));
+			HTTPQuery q = new HTTPQuery(Data.config.getString("php-phpurl")+"?"+HTTPQuery.parseArgs("code",code));
 			q.connect(true,false);
 			
 			sb = new StringBuilder();
@@ -230,8 +243,9 @@ public class ModuleFactoid extends Module {
 				
 				int brackets = 0;
 l1:				for (int i = 0; i < inside.length(); i++) {
-					if (inside.charAt(i) == '(') brackets++;
-					else if (inside.charAt(i) == ')') {
+					boolean tmp = i-1 >= 2 ? inside.charAt(i-1) != '\\' : true;
+					if (inside.charAt(i) == '(' && tmp) brackets++;
+					else if (inside.charAt(i) == ')' && tmp) {
 						int oldb = brackets--;
 						if (brackets == 0 && oldb > 0) {
 							inside = inside.substring(1,i);
@@ -256,6 +270,23 @@ l1:				for (int i = 0; i < inside.length(); i++) {
 	public abstract class Function {
 		public abstract String name();
 		public abstract String result(String arg);
+	}
+	public abstract class FunctionMultiArg extends Function {
+		public final String result(String arg) {
+			ArrayList<String> spl = new ArrayList<String>(Arrays.asList(arg.split(",")));
+			for (int i = 0; i < spl.size(); i++) {
+				String s = spl.get(i);
+				spl.set(i,s.length() > 1 ? s.substring(0,s.length()-1).replace("\\\\",""+(char)6)+s.substring(s.length()-1) : s);
+			}
+			for (int i = 0; i < spl.size(); i++) if (spl.size()-1 > i && spl.get(i).endsWith("\\")) {
+				spl.set(i,spl.get(i).substring(0,spl.get(i).length()-1)+","+spl.get(i+1));
+				spl.remove(i+1);
+				i--;
+			}
+			
+			return result(spl.toArray(new String[spl.size()]));
+		}
+		public abstract String result(String[] arg);
 	}
 	
 	public class CmdRemember extends Command {
