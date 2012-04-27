@@ -31,7 +31,8 @@ public class MultiChannel {
 		try {
 			PircBotX bot = Shocky.getBotManager().createBot(Data.config.getString("main-server"));
 			bot.setVersion(Data.config.getString("main-version"));
-			bot.connect(Data.config.getString("main-server"));
+			String server = Data.config.getString("main-server");
+			bot.connect(server.contentEquals("localhost") ? null : server);
 			if (!Data.config.getString("main-nickservpass").isEmpty()) bot.identify(Data.config.getString("main-nickservpass"));
 			channelPrefixes = Reflection.getPrivateValue(PircBotX.class,"_channelPrefixes",bot);
 			join(channel);

@@ -114,13 +114,19 @@ public class StringTools {
 				int j = source.indexOf(";",i);
 				if (j > i) {
 					String entityToLookFor = source.substring(i,j+1);
-					String value = htmlEntities.get(entityToLookFor);
-					if (value != null) {
-						source = source.substring(0,i)+value+source.substring(j+1);
+					if (entityToLookFor.indexOf("#")==1) {
+						char chr = (char)Integer.parseInt(source.substring(i+2,j));
+						source = source.substring(0,i)+chr+source.substring(j+1);
 						continueLoop = true;
-					} else if (value == null) {
-						skip = i+1;
-						continueLoop = true;
+					} else {
+						String value = htmlEntities.get(entityToLookFor);
+						if (value != null) {
+							source = source.substring(0,i)+value+source.substring(j+1);
+							continueLoop = true;
+						} else if (value == null) {
+							skip = i+1;
+							continueLoop = true;
+						}
 					}
 				}
 			}
