@@ -1,0 +1,90 @@
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import org.pircbotx.PircBotX;
+import org.pircbotx.hooks.events.MessageEvent;
+import pl.shockah.Config;
+import pl.shockah.shocky.Data;
+import pl.shockah.shocky.Module;
+import pl.shockah.shocky.Shocky;
+
+public class ModuleHighFive extends Module {
+	private Config config = new Config();
+	private HashMap<String,String> started = new HashMap<String,String>();
+	private HashMap<String,Boolean> way = new HashMap<String,Boolean>();
+	
+	public int changeStat(String nick1, String nick2, int change) {
+		nick1 = nick1.toLowerCase();
+		nick2 = nick2.toLowerCase();
+		
+		ArrayList<String> nicks = new ArrayList<String>(Arrays.asList(new String[]{nick1,nick2}));
+		Collections.sort(nicks);
+		
+		nick1 = nicks.get(0); nick2 = nicks.get(1);
+		if (nick1.equals(nick2)) change = 0;
+		
+		config.setNotExists(nick1+" "+nick2,0);
+		int i = config.getInt(nick1+" "+nick2)+change;
+		config.set(nick1+" "+nick2,i);
+		return change == 0 ? 0 : i;
+	}
+	
+	public String name() {return "highfive";}
+	public void load() {
+		Data.config.setNotExists("hf-announce",true);
+		config.load(new File("data","highfive.cfg"));
+	}
+	public void unload() {}
+	
+	public void onDataSave() {
+		config.save(new File("data","highfive.cfg"));
+	}
+	
+	public void onMessage(MessageEvent<PircBotX> event) {
+		if (Data.getBlacklistNicks().contains(event.getUser().getNick().toLowerCase())) return;
+		List<String> list = Arrays.asList(event.getMessage().split(" "));
+		
+		String s = started.get(event.getChannel().getName());
+		if (s == null && (list.contains("o/") ^ list.contains("\\o"))) {
+			started.put(event.getChannel().getName(),event.getUser().getNick());
+			way.put(event.getChannel().getName(),list.contains("o/"));
+		}
+		if (s != null && (list.contains("\\o") ^ list.contains("o/"))) {
+			if (list.contains("o/") == way.get(event.getChannel().getName())) return;
+			
+			if (event.getUser().equals(s) && event.getBot().getUserBot().getChannelsOpIn().contains(event.getChannel())) {
+				event.getBot().kick(event.getChannel(),event.getUser(),"(ლﾟдﾟ)ლ");
+				started.remove(event.getChannel().getName());
+				return;
+			}
+			
+			int stat = changeStat(s,event.getUser().getNick(),1);
+			if (stat != 0) {
+				String msg = s+" o/*\\o "+event.getUser().getNick()+" - "+getOrderNumber(stat)+" time";
+				if (Data.config.getBoolean("hf-announce")) Shocky.sendChannel(event.getBot(),event.getChannel(),msg);
+				else {
+					Shocky.sendNotice(event.getBot(),event.getUser(),msg);
+					Shocky.sendNotice(event.getBot(),event.getBot().getUser(s),msg);
+				}
+			}
+			
+			started.remove(event.getChannel().getName());
+			way.remove(event.getChannel().getName());
+		}
+	}
+	
+	public String getOrderNumber(int n) {
+		int n100 = n % 100, n10 = n % 10;
+		if (n100 == 1) return ""+n+"st";
+		if (n100 == 2) return ""+n+"nd";
+		if (n100 == 3) return ""+n+"rd";
+		if (n100 < 20) return ""+n+"th";
+		if (n10 == 1) return ""+n+"st";
+		if (n10 == 2) return ""+n+"nd";
+		if (n10 == 3) return ""+n+"rd";
+		return ""+n+"th";
+	}
+}
