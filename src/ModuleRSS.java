@@ -99,7 +99,6 @@ public class ModuleRSS extends Module {
 					
 					HTTPQuery q = new HTTPQuery(url,"GET");
 					q.connect(true,false);
-					System.out.println(url);
 					XMLObject xBase = XMLObject.deserialize(q.readWhole());
 					if (xBase.getAllElements().get(0).getName().equals("feed")) {
 						SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'"); sdf.setTimeZone(TimeZone.getTimeZone("GMT"));

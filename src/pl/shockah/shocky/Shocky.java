@@ -49,11 +49,11 @@ public class Shocky extends ListenerAdapter {
 		
 		timed = new TimedActions();
 		
-		for (String channel : Data.getChannels()) {
-			try {
-				MultiChannel.join(channel);
-			} catch (Exception e) {e.printStackTrace();}
-		}
+		try {
+			for (String channel : Data.getChannels()) MultiChannel.join(channel);
+			MultiChannel.join(null);
+		} catch (Exception e) {e.printStackTrace();}
+		
 		Module.loadNewModules();
 		new ThreadConsoleInput().start();
 	}
@@ -197,6 +197,8 @@ public class Shocky extends ListenerAdapter {
 		if (cmd != null) cmd.doCommand(event.getBot(),Command.EType.Notice,null,event.getUser(),event.getMessage());
 	}
 	public void onKick(KickEvent<PircBotX> event) {
-		if (event.getRecipient().getNick().equals(event.getBot().getNick())) Data.getChannels().remove(event.getChannel());
+		if (event.getRecipient().getNick().equals(event.getBot().getNick())) try {
+			MultiChannel.part(event.getChannel().getName());
+		} catch (Exception e) {e.printStackTrace();}
 	}
 }

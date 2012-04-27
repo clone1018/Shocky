@@ -60,14 +60,15 @@ public class ModuleHighFive extends Module implements ActionListener {
 			started.put(event.getChannel().getName(),event.getUser().getNick());
 			way.put(event.getChannel().getName(),list.contains("o/"));
 			TimerClear tc = new TimerClear(Data.config.getInt("hf-maxtime"),this,event.getChannel().getName());
-			timers.put(event.getChannel().getName(),tc);
+			timers.put(event.getChannel().getName(),tc); tc.start();
 		}
 		if (s != null && (list.contains("\\o") ^ list.contains("o/"))) {
 			if (list.contains("o/") == way.get(event.getChannel().getName())) return;
 			
 			if (event.getUser().equals(s) && event.getBot().getUserBot().getChannelsOpIn().contains(event.getChannel())) {
-				event.getBot().kick(event.getChannel(),event.getUser(),"(ლﾟдﾟ)ლ");
+				event.getBot().kick(event.getChannel(),event.getUser());
 				started.remove(event.getChannel().getName());
+				way.remove(event.getChannel().getName());
 				timers.get(event.getChannel().getName()).stop(); timers.remove(event.getChannel().getName());
 				return;
 			}
@@ -102,6 +103,7 @@ public class ModuleHighFive extends Module implements ActionListener {
 
 	public void actionPerformed(ActionEvent e) {
 		TimerClear tc = (TimerClear)e.getSource();
+		tc.stop();
 		started.remove(tc.channel);
 		way.remove(tc.channel);
 		timers.remove(tc.channel);

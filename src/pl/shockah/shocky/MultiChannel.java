@@ -16,15 +16,17 @@ public class MultiChannel {
 	}
 	
 	public static void join(String channel) throws Exception {
-		channel = channel.toLowerCase();
-		for (PircBotX bot : Shocky.getBots()) {
-			if (bot.channelExists(channel)) throw new Exception("Already in channel "+channel);
-		}
-		for (PircBotX bot : Shocky.getBots()) {
-			if (bot.getChannelsNames().size() < Data.config.getInt("main-maxchannels")) {
-				bot.joinChannel(channel);
-				if (!Data.getChannels().contains(channel)) Data.getChannels().add(channel);
-				return;
+		if (channel != null) {
+			channel = channel.toLowerCase();
+			for (PircBotX bot : Shocky.getBots()) {
+				if (bot.channelExists(channel)) throw new Exception("Already in channel "+channel);
+			}
+			for (PircBotX bot : Shocky.getBots()) {
+				if (bot.getChannelsNames().size() < Data.config.getInt("main-maxchannels")) {
+					bot.joinChannel(channel);
+					if (!Data.getChannels().contains(channel)) Data.getChannels().add(channel);
+					return;
+				}
 			}
 		}
 		
@@ -35,7 +37,7 @@ public class MultiChannel {
 			bot.connect(server.contentEquals("localhost") ? null : server);
 			if (!Data.config.getString("main-nickservpass").isEmpty()) bot.identify(Data.config.getString("main-nickservpass"));
 			channelPrefixes = Reflection.getPrivateValue(PircBotX.class,"_channelPrefixes",bot);
-			join(channel);
+			if (channel != null) join(channel);
 		} catch (Exception e) {e.printStackTrace();}
 	}
 	

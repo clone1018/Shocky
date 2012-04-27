@@ -418,7 +418,6 @@ l1:				for (int i = 0; i < fcmds.size(); i++) {
 		public CmdFactoid(String command, String factoid) {
 			super();
 			cmds.addAll(Arrays.asList(command.split(Pattern.quote(";"))));
-			System.out.println(cmds.size());
 			this.factoid = factoid;
 		}
 		

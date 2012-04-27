@@ -73,6 +73,7 @@ public class ModuleAutoKick extends Module {
 			timers.clear();
 		}
 		public synchronized void actionPerformed(java.awt.event.ActionEvent e) {
+			((Timer)e.getSource()).stop();
 			timers.remove(e.getSource());
 			counter++;
 		}
