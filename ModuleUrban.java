@@ -7,6 +7,7 @@ import pl.shockah.JSONObject;
 import pl.shockah.StringTools;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Shocky;
+import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 
 public class ModuleUrban extends Module {
@@ -67,7 +68,9 @@ public class ModuleUrban extends Module {
 			String word = entry.getString("word");
 			String definition = entry.getString("definition");
 			String example = entry.getString("example");
-			result.append("\u0002");
+			String permalink = entry.getString("permalink");
+			result.append(Utils.shortenUrl(permalink));
+			result.append(" \u0002");
 			result.append(word);
 			result.append("\u0002: ");
 			result.append(definition);
@@ -75,7 +78,7 @@ public class ModuleUrban extends Module {
 				result.append(" Example: ");
 				result.append(example);
 			}
-			String output = result.toString().replaceAll("\\\\r\\\\n", " ").replaceAll("\\\\\"", "\"");
+			String output = StringTools.unicodeParse(result.toString().replaceAll("\\s*\\\\[rn]\\\\[n]\\s*", " ").replaceAll("\\\\\"", "\""));
 			Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,output);
 		}
 	}
