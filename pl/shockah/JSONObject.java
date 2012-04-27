@@ -43,8 +43,18 @@ public class JSONObject {
 					while ((c = text.charAt(i++)) != ',' && c != '}' && c != ']' && c != ' ') value.append(c);
 					i--;
 					String s = value.toString();
-					if (s.length()>0)
-						j.elements.put(key.toString(),StringTools.isBoolean(s) ? new JSONBoolean(Boolean.parseBoolean(s)) : (StringTools.isNumber(s) ? new JSONInt(Integer.parseInt(s)) : new JSONDouble(Double.parseDouble(s))));
+					if (s.length()>0) {
+						Object valueObj;
+						if (s.equals("null"))
+							valueObj = null;
+						else if (StringTools.isBoolean(s))
+							valueObj = new JSONBoolean(Boolean.parseBoolean(s));
+						else if (StringTools.isNumber(s))
+							valueObj = new JSONInt(Integer.parseInt(s));
+						else
+							valueObj = new JSONDouble(Double.parseDouble(s));
+						j.elements.put(key.toString(),valueObj);
+					}
 				}
 			}
 			
