@@ -15,9 +15,10 @@ import pl.shockah.StringTools;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.cmds.Command;
+import pl.shockah.shocky.cmds.Command.EType;
 
 public class ModuleQuote extends Module {
-	protected Command cmd, cmdAdd;
+	protected Command cmd, cmdAdd, cmdRemove;
 	private HashMap<String,ArrayList<Quote>> quotes = new HashMap<String,ArrayList<Quote>>();
 	
 	public String name() {return "quote";}
@@ -37,10 +38,10 @@ public class ModuleQuote extends Module {
 			}
 		}
 		
-		Command.addCommands(cmd = new CmdQuote(),cmdAdd = new CmdQuoteAdd());
+		Command.addCommands(cmd = new CmdQuote(),cmdAdd = new CmdQuoteAdd(),cmdRemove = new CmdQuoteRemove());
 	}
 	public void unload() {
-		Command.removeCommands(cmd,cmdAdd);
+		Command.removeCommands(cmd,cmdAdd,cmdRemove);
 	}
 	
 	public void onDataSave() {
@@ -117,11 +118,11 @@ public class ModuleQuote extends Module {
 				return;
 			}
 			
-			if (aId == 0) aId = new Random().nextInt(list.size());
-			if (aId < 0) aId = list.size()-aId;
-			aId = Math.min(Math.max(aId,0),list.size()-1);
+			if (aId == 0) aId = new Random().nextInt(list.size()+1);
+			if (aId < 0) aId = list.size()-aId-1;
+			aId = Math.min(Math.max(aId,1),list.size()+1);
 			
-			Shocky.send(bot,type,channel,sender,"["+aChannel+": "+(aId+1)+"/"+(list.size())+"] "+list.get(aId).quote);
+			Shocky.send(bot,type,channel,sender,"["+aChannel+": "+(aId)+"/"+(list.size())+"] "+list.get(aId-1).quote);
 		}
 	}
 	public class CmdQuoteAdd extends Command {
@@ -149,6 +150,74 @@ public class ModuleQuote extends Module {
 			if (!quotes.containsKey(channel.getName())) quotes.put(channel.getName(),new ArrayList<Quote>());
 			quotes.get(channel.getName()).add(new Quote(nicks,quote));
 			Shocky.sendNotice(bot,sender,"Done.");
+		}
+	}
+	
+	public class CmdQuoteRemove extends Command {
+		public String command() {return "quoteremove";}
+		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+			StringBuilder sb = new StringBuilder();
+			sb.append("quoteremove/qdel");
+			sb.append("\nquotedel {nick1};{nick2};(...) {quote} - removes a quote");
+			return sb.toString();
+		}
+		public boolean matches(PircBotX bot, EType type, String cmd) {
+			if (type != EType.Channel) return false;
+			return cmd.equals(command()) || cmd.equals("qdel");
+		}
+		
+		public void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message) {
+			if (!canUseController(bot,type,sender)) return;
+			String[] args = message.split(" ");
+			if (args.length == 1 && type != EType.Channel) {
+				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,help(bot,type,channel,sender));
+				return;
+			}
+			
+			String aChannel = type == EType.Channel ? channel.getName() : null, aNick = null;
+			int aId = 0;
+			
+			if (args.length == 2) {
+				if (args[1].charAt(0) == '#') aChannel = args[1];
+				else if (StringTools.isNumber(args[1])) aId = Integer.parseInt(args[1]);
+				else aNick = args[1];
+			} else if (args.length == 3) {
+				if (args[1].charAt(0) == '#') {
+					aChannel = args[1];
+					if (StringTools.isNumber(args[2])) aId = Integer.parseInt(args[2]);
+					else aNick = args[2];
+				} else if (StringTools.isNumber(args[2])) {
+					aId = Integer.parseInt(args[2]);
+					aNick = args[1];
+				}
+			} else if (args.length == 4) {
+				aChannel = args[1];
+				aNick = args[2];
+				aId = Integer.parseInt(args[3]);
+			}
+			if (aChannel == null) {
+				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,help(bot,type,channel,sender));
+				return;
+			}
+			
+			if (aNick != null) aNick = aNick.toLowerCase();
+			ArrayList<Quote> list = new ArrayList<Quote>();
+			for (Quote quote : quotes.get(aChannel)) if (aNick == null || quote.nicks.contains(aNick)) list.add(quote);
+			if (list.isEmpty()) {
+				Shocky.send(bot,type,channel,sender,"No quotes found");
+				return;
+			}
+			
+			if (aId < 0) aId = list.size()-aId-1;
+			aId = Math.min(Math.max(aId,1),list.size()+1);
+			
+			Quote quote = list.remove(aId-1);
+			for (Iterator<Quote> quoteIter = quotes.get(aChannel).iterator(); quoteIter.hasNext();) {
+				Quote quote2 = quoteIter.next();
+				if (quote2.equals(quote))
+					quoteIter.remove();
+			}
+			Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,"Removed quote: "+quote.quote);
 		}
 	}
 	

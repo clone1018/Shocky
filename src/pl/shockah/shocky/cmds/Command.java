@@ -59,6 +59,7 @@ public abstract class Command implements Comparable<Command> {
 	public abstract void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message);
 	
 	public final boolean isController(PircBotX bot, EType type, User user) {
+		if (bot.getInetAddress().isLoopbackAddress()) return true;
 		if (type == EType.Console) return true;
 		if (Shocky.getLogin(user) == null) return false;
 		return Data.getControllers().contains(Shocky.getLogin(user));
