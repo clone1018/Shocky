@@ -57,19 +57,18 @@ public class ModuleGoogle extends Module {
 			Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,"No results.");
 			return;
 		}
-		String title = results[0].getString("titleNoFormatting");
-		String url = results[0].getString("unescapedUrl");
+		String title = StringTools.unicodeParse(results[0].getString("titleNoFormatting"));
+		String url = StringTools.unicodeParse(results[0].getString("unescapedUrl"));
 		String content = StringTools.unicodeParse(results[0].getString("content")).replaceAll("</?b>", "\u0002");
 		content = StringTools.unescapeHTML(content);
 		content = StringTools.stripHTMLTags(content);
-    result.append(url);
-    result.append(" -- ");
-    result.append(title);
-    result.append(": ");
-    if (!content.isEmpty())
-    	result.append(content);
-    else
-    	result.append("No description available.");
+		result.append(url);
+		result.append(" -- ");result.append(title);
+		result.append(": ");
+		if (!content.isEmpty())
+			result.append(content);
+		else
+			result.append("No description available.");
 		Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,result.toString());
 	}
 	
