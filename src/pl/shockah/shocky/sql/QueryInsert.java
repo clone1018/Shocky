@@ -54,6 +54,6 @@ public class QueryInsert extends Query {
 	public String getSQLQuery() {
 		String clauseColumns = getColumnsClause(columns);
 		String clauseValues = getValuesClause(values);
-		return "SELECT INTO "+table+" ("+clauseColumns+") VALUES("+clauseValues+")";
+		return "INSERT INTO "+table+" ("+clauseColumns+") VALUES("+clauseValues+")";
 	}
 }
