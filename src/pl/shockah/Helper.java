@@ -33,9 +33,8 @@ public class Helper {
 	public static String getFilenameExt(File file) {
 		String name = file.getName();
 		if (name.contains(".")) {
-			for (int i = name.length()-1; i > 0; i++) {
-				if (name.charAt(i) == '.') return name.substring(i+1).toLowerCase();
-			}
+			int index = name.lastIndexOf(".");
+			return name.substring(index+1).toLowerCase();
 		}
 		return "";
 	}

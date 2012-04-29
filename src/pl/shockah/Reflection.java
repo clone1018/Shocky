@@ -19,7 +19,7 @@ import java.lang.reflect.Method;
 		} catch (Exception e) {e.printStackTrace();}
 	}
 	
-	public static void setPrivateValue(Class<?> cls, String fieldName, Object instance, Object value) {
+	public static <T> void setPrivateValue(Class<? super T> cls, String fieldName, T instance, Object value) {
 		try {
 			getField(cls,fieldName).set(instance,value);
 		} catch (Exception e) {e.printStackTrace();}
@@ -46,9 +46,9 @@ import java.lang.reflect.Method;
 		return null;
 	}
 	
-	public static Constructor<?> getConstructor(Class<?> cls, Class<?>... argumentTypes) {
+	public static <T> Constructor<?> getConstructor(Class<T> cls, Class<?>... argumentTypes) {
 		try {
-			Constructor<?> constructor = cls.getConstructor(argumentTypes);
+			Constructor<T> constructor = cls.getConstructor(argumentTypes);
 			constructor.setAccessible(true);
 			return constructor;
 		} catch (Exception e) {e.printStackTrace();}
