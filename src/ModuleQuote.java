@@ -175,7 +175,7 @@ public class ModuleQuote extends Module {
 			}
 			
 			String aChannel = type == EType.Channel ? channel.getName() : null, aNick = null;
-			int aId = 0;
+			int aId = Integer.MIN_VALUE;
 			
 			if (args.length == 2) {
 				if (args[1].charAt(0) == '#') aChannel = args[1];
@@ -197,6 +197,11 @@ public class ModuleQuote extends Module {
 			}
 			if (aChannel == null) {
 				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,help(bot,type,channel,sender));
+				return;
+			}
+			
+			if (aId == Integer.MIN_VALUE) {
+				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,"Please specify a number.");
 				return;
 			}
 			
