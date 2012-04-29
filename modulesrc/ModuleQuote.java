@@ -15,7 +15,6 @@ import pl.shockah.StringTools;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.cmds.Command;
-import pl.shockah.shocky.cmds.Command.EType;
 
 public class ModuleQuote extends Module {
 	protected Command cmd, cmdAdd, cmdRemove;
