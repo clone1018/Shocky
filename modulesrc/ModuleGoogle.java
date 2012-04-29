@@ -57,11 +57,9 @@ public class ModuleGoogle extends Module {
 			Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,"No results.");
 			return;
 		}
-		String title = StringTools.unicodeParse(results[0].getString("titleNoFormatting"));
-		String url = StringTools.unicodeParse(results[0].getString("unescapedUrl"));
-		String content = StringTools.unicodeParse(results[0].getString("content")).replaceAll("</?b>", "\u0002");
-		content = StringTools.unescapeHTML(content);
-		content = StringTools.stripHTMLTags(content);
+		String title = results[0].getString("titleNoFormatting");
+		String url = results[0].getString("unescapedUrl");
+		String content = results[0].getString("content");
 		result.append(url);
 		result.append(" -- ");result.append(title);
 		result.append(": ");
@@ -69,7 +67,12 @@ public class ModuleGoogle extends Module {
 			result.append(content);
 		else
 			result.append("No description available.");
-		Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,result.toString());
+		String output = result.toString();
+		output = StringTools.unicodeParse(output);
+		output = output.replaceAll("</?b>", "\u0002");
+		output = StringTools.unescapeHTML(output);
+		output = StringTools.stripHTMLTags(output);
+		Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,output);
 	}
 	
 	public class CmdGoogle extends Command {
