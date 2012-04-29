@@ -46,7 +46,7 @@ import java.lang.reflect.Method;
 		return null;
 	}
 	
-	public static <T> Constructor<?> getConstructor(Class<T> cls, Class<?>... argumentTypes) {
+	public static <T> Constructor<T> getConstructor(Class<T> cls, Class<?>... argumentTypes) {
 		try {
 			Constructor<T> constructor = cls.getConstructor(argumentTypes);
 			constructor.setAccessible(true);
