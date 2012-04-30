@@ -157,7 +157,7 @@ public class ModuleQuote extends Module {
 		public String help(PircBotX bot, EType type, Channel channel, User sender) {
 			StringBuilder sb = new StringBuilder();
 			sb.append("quoteremove/qdel");
-			sb.append("\nquotedel {nick1};{nick2};(...) {quote} - removes a quote");
+			sb.append("\nquoteremove [channel] [nick] id - removes a quote");
 			return sb.toString();
 		}
 		public boolean matches(PircBotX bot, EType type, String cmd) {
