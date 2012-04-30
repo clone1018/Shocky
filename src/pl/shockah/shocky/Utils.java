@@ -62,7 +62,7 @@ l1:		for (int i = 0; i < spl.length; i++) {
 		return String.copyValueOf(chars);
 	}
 	private static Pattern regexNick(String nick) {
-		return Pattern.compile("^"+Pattern.quote(nick)+"(?!"+patternNick.pattern()+")");
+		return Pattern.compile("^<?[+@]?"+Pattern.quote(nick)+"(?!"+patternNick.pattern()+")>?");
 	}
 	
 	public static String timeAgo(Date date) {return timeAgo(date,new Date());}

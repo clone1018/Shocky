@@ -14,6 +14,7 @@ import pl.shockah.BinFile;
 import pl.shockah.StringTools;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Shocky;
+import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 
 public class ModuleQuote extends Module {
@@ -121,7 +122,8 @@ public class ModuleQuote extends Module {
 			if (aId < 0) aId = list.size()-aId-1;
 			aId = Math.min(Math.max(aId,1),list.size()+1);
 			
-			Shocky.send(bot,type,channel,sender,"["+aChannel+": "+(aId)+"/"+(list.size())+"] "+list.get(aId-1).quote);
+			String quote = Utils.mungeAllNicks(channel, list.get(aId-1).quote);
+			Shocky.send(bot,type,channel,sender,"["+aChannel+": "+(aId)+"/"+(list.size())+"] "+quote);
 		}
 	}
 	public class CmdQuoteAdd extends Command {
