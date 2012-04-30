@@ -75,7 +75,7 @@ public class ModuleHighFive extends Module implements ActionListener {
 			
 			int stat = changeStat(s,event.getUser().getNick(),1);
 			if (stat != 0) {
-				String msg = s+" o/*\\o "+event.getUser().getNick()+" - "+getOrderNumber(stat)+" time";
+				String msg = s+" o/ * \\o "+event.getUser().getNick()+" - "+getOrderNumber(stat)+" time";
 				if (Data.config.getBoolean("hf-announce")) Shocky.sendChannel(event.getBot(),event.getChannel(),msg);
 				else {
 					Shocky.sendNotice(event.getBot(),event.getUser(),msg);
