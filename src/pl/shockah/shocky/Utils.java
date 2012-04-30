@@ -15,8 +15,8 @@ public class Utils {
 		patternURL = Pattern.compile("[a-z]+://(www\\.)?[a-z0-9]+(\\.[a-z]+)+/([^/:]+/)*([^/]*)?"),
 		patternNick = Pattern.compile("[a-zA-Z0-9\\Q_-\\[]{}^`|\\E]+");
 	private static final String
-		mungeOriginal =	"acdefghijklnoprstuwxyzACDEGHIJKLORSTUWYZ",
-		mungeReplace =	"äċđëƒġħíĵķĺñöρŗšţüωχÿźÅÇĎĒĠĦÍĴĶĹÖŖŠŢŮŴỲŻ";
+		mungeOriginal =	"acdefghijklnoprstuwxyzACDEGHIJKLORSTUWYZ0123456789",
+		mungeReplace =	"äċđëƒġħíĵķĺñöρŗšţüωχÿźÅÇĎĒĠĦÍĴĶĹÖŖŠŢŮŴỲŻ０１２３４５６７８９";
 	
 	public static ArrayList<String> getAllUrls(String text) {
 		String[] spl = text.split(" ");
