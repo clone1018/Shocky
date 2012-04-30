@@ -36,6 +36,10 @@ public class Shocky extends ListenerAdapter {
 		Data.config.setNotExists("main-nickservpass","");
 		Data.config.setNotExists("main-cmdchar","`~");
 		Data.config.setNotExists("main-sqlurl","http://localhost/shocky/sql.php");
+		Data.config.setNotExists("main-sqlhost","localhost");
+		Data.config.setNotExists("main-sqluser","");
+		Data.config.setNotExists("main-sqlpass","");
+		Data.config.setNotExists("main-sqldb","shocky");
 		
 		multiBot = new MultiBotManager(Data.config.getString("main-botname"));
 		try {
