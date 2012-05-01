@@ -33,7 +33,9 @@ public class ModuleUrban extends Module {
 			sb.append("\nurban {query} - returns the first Urban dictionary search result");
 			return sb.toString();
 		}
-		public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command()) || cmd.equals("ur") || cmd.equals("u");}
+		public boolean matches(PircBotX bot, EType type, String cmd) {
+			return command().startsWith(cmd);
+		}
 		
 		public void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message) {
 			String[] args = message.split(" ");
