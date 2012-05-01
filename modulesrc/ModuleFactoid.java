@@ -216,6 +216,7 @@ public class ModuleFactoid extends Module {
 				raw = raw.replace("%ioru%",args.length > 1 ? StringTools.implode(args,1," ") : sender.getNick());
 				raw = raw.replace("%bot%",bot.getName());
 				raw = raw.replace("%chan%",channel.getName());
+				raw = raw.replace("%user%",sender.getNick());
 				for (int i = 1; i < args.length; i++) raw = raw.replace("%arg"+(i-1)+"%",args[i]);
 				cmd.doCommand(bot,EType.Channel,channel,sender,raw.substring(5));
 			}
@@ -226,6 +227,7 @@ public class ModuleFactoid extends Module {
 			raw = raw.replace("%ioru%",args.length > 1 ? StringTools.implode(args,1," ") : sender.getNick());
 			raw = raw.replace("%bot%",bot.getName());
 			raw = raw.replace("%chan%",channel.getName());
+			raw = raw.replace("%user%",sender.getNick());
 			for (int i = 1; i < args.length; i++) raw = raw.replace("%arg"+(i-1)+"%",args[i]);
 			return parseFunctions(raw);
 		}
