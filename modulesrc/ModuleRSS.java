@@ -203,11 +203,11 @@ public class ModuleRSS extends Module {
 		public String help(PircBotX bot, EType type, Channel channel, User sender) {
 			StringBuilder sb = new StringBuilder();
 			if (type == EType.Channel) {
-				sb.append("[r:op] rss [channel] - list feeds\n");
+				sb.append("rss [channel] - list feeds\n");
 				sb.append("[r:op] rss add [channel] {url} - add a new feed\n");
 				sb.append("[r:op] rss remove [channel] {url} - remove a feed");
 			} else {
-				sb.append("[r:op] rss {channel} - list feeds\n");
+				sb.append("rss {channel} - list feeds\n");
 				sb.append("[r:op] rss add {channel} {url} - add a new feed\n");
 				sb.append("[r:op] rss remove {channel} {url} - remove a feed");
 			}
@@ -251,7 +251,7 @@ public class ModuleRSS extends Module {
 					return;
 				}
 			}
-			if (!canUseOp(bot,type,c,sender)) return;
+			if (action != null && !canUseOp(bot,type,c,sender)) return;
 			
 			if (action == null) {
 				StringBuffer sb = new StringBuffer();
