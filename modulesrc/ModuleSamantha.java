@@ -39,7 +39,7 @@ public class ModuleSamantha extends Module  {
 	}
 
 	public void onMessage(MessageEvent<PircBotX> event) {
-		if (!canPerformAction(event.getChannel()) || rnd.nextInt(Data.config.getInt("samantha-chance")) == 0)
+		if (!canPerformAction(event.getChannel()) || rnd.nextInt(Data.config.getInt("samantha-chance")) > 0)
 			return;
 		boolean result = doAss(event);
 		if (!result) result = doNipples(event);
