@@ -40,6 +40,7 @@ public class Shocky extends ListenerAdapter {
 		Data.config.setNotExists("main-sqluser","");
 		Data.config.setNotExists("main-sqlpass","");
 		Data.config.setNotExists("main-sqldb","shocky");
+		Data.config.setNotExists("main-sqlprefix","");
 		
 		multiBot = new MultiBotManager(Data.config.getString("main-botname"));
 		try {

@@ -16,7 +16,7 @@ public class QuerySelect extends Query {
 		return sb.toString();
 	}
 	
-	private String table;
+	private String table, endQuery = "";
 	private ArrayList<String> columns = new ArrayList<String>();
 	private ArrayList<Criterion> criterions = new ArrayList<Criterion>();
 	private int limitOffset = 0, limitCount = 1;
@@ -39,10 +39,14 @@ public class QuerySelect extends Query {
 		setLimitCount(count);
 	}
 	
+	public void setEndQuery(String s) {
+		endQuery = s;
+	}
+	
 	public String getSQLQuery() {
 		String clauseColumns = getColumnsClause(columns);
 		String clauseWhere = Criterion.getWhereClause(criterions);
 		String clauseLimit = limitOffset == 0 && limitCount == 1 ? "" : "LIMIT "+(limitOffset != 0 ? ""+limitOffset+"," : "")+limitCount;
-		return "SELECT "+clauseColumns+" FROM "+table+(clauseWhere.isEmpty() ? "" : " "+clauseWhere)+(clauseLimit.isEmpty() ? "" : " "+clauseLimit);
+		return "SELECT "+clauseColumns+" FROM "+table+(clauseWhere.isEmpty() ? "" : " "+clauseWhere)+(clauseLimit.isEmpty() ? "" : " "+clauseLimit)+(endQuery.isEmpty() ? "" : " "+endQuery);
 	}
 }

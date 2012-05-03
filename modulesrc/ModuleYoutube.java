@@ -72,7 +72,7 @@ public class ModuleYoutube extends Module {
 		Data.config.setNotExists("yt-otherbot",false);
 		Command.addCommands(cmd = new CmdYoutube());
 		
-		patternsAction.add(Pattern.compile("^.*(?:(?:playing)|(?:listening))(?: to)?:? (.*)$"));
+		patternsAction.add(Pattern.compile("^.*?(?:(?:playing)|(?:listening))(?: to)?:? (.*)$"));
 		patternsMessage.add(Pattern.compile("^np: (.*)$"));
 	}
 	public void unload() {

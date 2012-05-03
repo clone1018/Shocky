@@ -53,7 +53,7 @@ public class ModuleSeen extends Module {
 			else {
 				if (config.exists("t_"+low)) {
 					Shocky.send(bot,type,channel,sender,args[1]+" was last active "+Utils.timeAgo(new Date(config.getLong("t_"+low)))+" in "+config.getString("c_"+low)+" and said: "+config.getString("m_"+low));
-				} else Shocky.send(bot,type,channel,sender,"I never saw "+args[1]);
+				} else Shocky.send(bot,type,channel,sender,"I've never seen "+args[1]);
 			}
 		}
 	}
