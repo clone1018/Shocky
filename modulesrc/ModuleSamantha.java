@@ -31,7 +31,11 @@ public class ModuleSamantha extends Module  {
 		if (!nextAction.containsKey(chan))
 			return true;
 		long time = nextAction.get(chan);
-		return (System.currentTimeMillis() >= time);
+		if (System.currentTimeMillis() >= time) {
+			nextAction.remove(chan);
+			return true;
+		}
+		return false;
 	}
 	
 	private void performedAction(Channel chan) {
