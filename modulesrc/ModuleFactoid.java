@@ -156,40 +156,40 @@ public class ModuleFactoid extends Module {
 			
 			if (target != null) Shocky.overrideTarget.put(Thread.currentThread(),new Pair<Command.EType,Command.EType>(Command.EType.Channel,Command.EType.Notice));
 			String postparse = parseWithRecurse(bot,channel,sender,msg,new ArrayList<String>());
-            if (result != null) Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),postparse);
+			if (result != null) Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),postparse);
 			if (target != null) Shocky.overrideTarget.remove(Thread.currentThread());
 		}
 	}
 	
-    public String parseWithRecurse(PircBotX bot, Channel channel, User sender, String message, ArrayList checkRecursive)
-    {
-    	String factoid = message.split(" ")[0].toLowerCase();
-    	if (cfg.exists("r_"+factoid)) {
-    		String raw = cfg.getString("r_"+factoid);
-    		if (raw.startsWith("<alias>")) // Alias check
+	public String parseWithRecurse(PircBotX bot, Channel channel, User sender, String message, ArrayList checkRecursive)
+	{
+		String factoid = message.split(" ")[0].toLowerCase();
+		if (cfg.exists("r_"+factoid)) {
+			String raw = cfg.getString("r_"+factoid);
+			if (raw.startsWith("<alias>")) // Alias check
 			{
-    			msg = raw.substring(7);
-    			if (checkRecursive.contains(msg))
+				msg = raw.substring(7);
+				if (checkRecursive.contains(msg))
 				{
 					return "Recursive loop detected. Factoid retreival aborted.";
 				}
-                checkRecursive.add(msg);
-    		}
+				checkRecursive.add(msg);
+			}
 			String result = parse(bot,channel,sender,message,raw);
 			if (result.startsWith("<alias>"))
 			{
-		        return parseWithRecursive(bot,channel,sender,result,raw,checkRecursive);
-		        // The recursive part
+				return parseWithRecursive(bot,channel,sender,result,raw,checkRecursive);
+				// The recursive part
 			}
 			else return result; // Normal exit point
-        } else { // No factoid found
-            if (!checkRecursive.isEmpty())
-            {
-                return "ALIAS_NOT_FOUND"; // Designed for both factoid debugging and catching
-            }
-            return null; // Don't return anything for 
-        }
-    }
+		} else { // No factoid found
+			if (!checkRecursive.isEmpty())
+			{
+				return "ALIAS_NOT_FOUND"; // Designed for both factoid debugging and catching
+			}
+			return null; // Don't return anything for non-alias calls
+		}
+	}
     
 	public String parse(PircBotX bot, Channel channel, User sender, String message, String raw) {
 		if (raw.startsWith("<noreply>")) {
