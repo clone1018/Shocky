@@ -33,7 +33,7 @@ public class CmdPart extends Command {
 			if (!canUseController(bot,type,sender)) return;
 			
 			try {
-				MultiChannel.part(null);
+				MultiChannel.part(new String[0]);
 			} catch (Exception e) {}
 			return;
 		} else if (args.length == 2) {
