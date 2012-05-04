@@ -23,9 +23,9 @@ public class CmdBlacklist extends Command {
 		
 		if (args.length == 1) {
 			StringBuilder sb = new StringBuilder();
-			for (String controller : Data.getControllers()) {
+			for (String blacklisted : Data.getBlacklistNicks()) {
 				if (sb.length() != 0) sb.append(", ");
-				sb.append(controller);
+				sb.append(blacklisted);
 			}
 			Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,sb.toString());
 			return;
