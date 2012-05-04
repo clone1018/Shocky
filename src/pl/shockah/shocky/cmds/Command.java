@@ -33,7 +33,8 @@ public abstract class Command implements Comparable<Command> {
 		for (int i = 0; i < cmds.size(); i++) if (list.contains(cmds.get(i).command())) cmds.remove(i--);
 	}
 	public static Command getCommand(PircBotX bot, Command.EType type, String message) {
-		for (Command cmd : cmds) if (matches(cmd,bot,type,message.split(" ")[0])) return cmd;
+		String[] args = message.split(" ");
+		for (Command cmd : cmds) if (args.length>0&&args[0].length()>0&&matches(cmd,bot,type,args[0])) return cmd;
 		return null;
 	}
 	public static ArrayList<Command> getCommands() {

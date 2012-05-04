@@ -55,7 +55,10 @@ public class ModuleTell extends Module {
 		FileLine.write(new File("data","tell.cfg"),lines);
 	}
 	
-	public void onMessage(MessageEvent<PircBotX> event) {if (!Command.matches(cmd,event.getBot(),EType.Channel,event.getMessage().split(" ")[0])) sendTells(event.getBot(),event.getUser());}
+	public void onMessage(MessageEvent<PircBotX> event) {
+		String[] args = event.getMessage().split(" ");
+		if (args.length>0&&args[0].length()>0&&!Command.matches(cmd,event.getBot(),EType.Channel,args[0]))
+			sendTells(event.getBot(),event.getUser());}
 	public void onPrivateMessage(PrivateMessageEvent<PircBotX> event) {if (!Command.matches(cmd,event.getBot(),EType.Private,event.getMessage().split(" ")[0])) sendTells(event.getBot(),event.getUser());}
 	public void onNotice(NoticeEvent<PircBotX> event) {if (!Command.matches(cmd,event.getBot(),EType.Notice,event.getMessage().split(" ")[0])) sendTells(event.getBot(),event.getUser());}
 	public void onAction(ActionEvent<PircBotX> event) {sendTells(event.getBot(),event.getUser());}
