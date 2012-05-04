@@ -1,21 +1,9 @@
 package pl.shockah.shocky;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import org.pircbotx.Channel;
-import org.pircbotx.Colors;
-import org.pircbotx.MultiBotManager;
-import org.pircbotx.PircBotX;
-import org.pircbotx.User;
-import org.pircbotx.hooks.events.KickEvent;
-import org.pircbotx.hooks.events.MessageEvent;
-import org.pircbotx.hooks.events.NickChangeEvent;
-import org.pircbotx.hooks.events.NoticeEvent;
-import org.pircbotx.hooks.events.PartEvent;
-import org.pircbotx.hooks.events.PrivateMessageEvent;
-import org.pircbotx.hooks.events.QuitEvent;
+import java.util.*;
+import org.pircbotx.*;
+import org.pircbotx.hooks.events.*;
+
 import pl.shockah.Pair;
 import pl.shockah.shocky.cmds.Command;
 
@@ -40,6 +28,7 @@ public class Shocky extends ListenerAdapter {
 		Data.config.setNotExists("main-sqluser","");
 		Data.config.setNotExists("main-sqlpass","");
 		Data.config.setNotExists("main-sqldb","shocky");
+		Data.config.setNotExists("main-sqlprefix","");
 		
 		multiBot = new MultiBotManager(Data.config.getString("main-botname"));
 		try {
@@ -55,8 +44,7 @@ public class Shocky extends ListenerAdapter {
 		timed = new TimedActions();
 		
 		try {
-			for (String channel : Data.getChannels()) MultiChannel.join(channel);
-			MultiChannel.join(null);
+			MultiChannel.join(Data.getChannels().toArray(new String[0]));
 		} catch (Exception e) {e.printStackTrace();}
 		
 		Module.loadNewModules();
@@ -203,7 +191,22 @@ public class Shocky extends ListenerAdapter {
 	}
 	public void onKick(KickEvent<PircBotX> event) {
 		if (event.getRecipient().getNick().equals(event.getBot().getNick())) try {
-			MultiChannel.part(event.getChannel().getName());
+			MultiChannel.lostChannel(event.getBot(), event.getChannel().getName());
 		} catch (Exception e) {e.printStackTrace();}
+	}
+
+	@Override
+	public void onServerResponse(ServerResponseEvent<PircBotX> event)
+			throws Exception {
+		switch(event.getCode()) {
+		case 471://Cannot join channel (+l)
+		case 473://Cannot join channel (+i)
+		case 474://Cannot join channel (+b)
+		case 475://Cannot join channel (+k)
+		case 477://You need a registered nick to join that channel.
+		case 485://Cannot join channel (reason)
+			MultiChannel.lostChannel(event.getBot(), event.getResponse().split(" ")[1]);
+			break;
+		}
 	}
 }

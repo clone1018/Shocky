@@ -32,6 +32,10 @@ public class SQL {
 		return j;
 	}
 	
+	public static String getTable(String name) {
+		return Data.config.getString("main-sqlprefix")+name;
+	}
+	
 	private static String getEval() {
 		String host = Data.config.getString("main-sqlhost").replace("\"","\\\"");
 		String user = Data.config.getString("main-sqluser").replace("\"","\\\"");

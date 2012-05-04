@@ -85,7 +85,8 @@ public class JSONObject {
 	public Object get(String key) {return elements.get(key);}
 	public JSONObject getJSONObject(String key) {Object o = get(key); if (o instanceof JSONObject) return (JSONObject)o; return null;}
 	public String getString(String key) {Object o = get(key); if (o instanceof String) return (String)o; return null;}
-	public int getInt(String key) {Object o = get(key); if (o instanceof JSONInt) return ((JSONInt)o).value; throw new RuntimeException("Wrong type (int) for "+key);}
+	public int getInt(String key) {return (int)getLong(key);}
+	public long getLong(String key) {Object o = get(key); if (o instanceof JSONInt) return ((JSONInt)o).value; throw new RuntimeException("Wrong type (long) for "+key);}
 	public double getDouble(String key) {Object o = get(key); if (o instanceof JSONDouble) return ((JSONDouble)o).value; throw new RuntimeException("Wrong type (double) for "+key);}
 	public boolean getBoolean(String key) {Object o = get(key); if (o instanceof JSONBoolean) return ((JSONBoolean)o).value; throw new RuntimeException("Wrong type (boolean) for "+key);}
 	public Object[] getArray(String key) {
@@ -118,6 +119,14 @@ public class JSONObject {
 		int[] a = new int[o.elements.size()];
 		int i = 0;
 		for (String k : o.elements.keySet()) a[i++] = o.getInt(k);
+		return a;
+	}
+	public long[] getLongArray(String key) {
+		JSONObject o = getJSONObject(key);
+		if (o == null) return null;
+		long[] a = new long[o.elements.size()];
+		int i = 0;
+		for (String k : o.elements.keySet()) a[i++] = o.getLong(k);
 		return a;
 	}
 	public double[] getDoubleArray(String key) {
@@ -174,9 +183,9 @@ public class JSONObject {
 	}
 	
 	private static class JSONInt {
-		private final int value;
-		private JSONInt(int value) {this.value = value;}
-		public String toString() {return Integer.toString(value);}
+		private final long value;
+		private JSONInt(long value) {this.value = value;}
+		public String toString() {return Long.toString(value);}
 	}
 	private static class JSONDouble {
 		private final double value;

@@ -15,11 +15,11 @@ public class CmdModule extends Command {
 	public String command() {return "module";}
 	public String help(PircBotX bot, EType type, Channel channel, User sender) {
 		StringBuilder sb = new StringBuilder();
-		sb.append("[r:controller] module - list modules\n");
+		sb.append("module - list modules\n");
+		sb.append("module on/off - list enabled/disabled modules\n");
 		sb.append("[r:controller] module loadnew - loads new modules\n");
 		sb.append("[r:controller] module loadhttp {url} - loads a module from URL\n");
-		sb.append("[r:controller] module on {module} - enables module\n");
-		sb.append("[r:controller] module off {module} - disables module\n");
+		sb.append("[r:controller] module on/off {module} - enables/disables module\n");
 		sb.append("[r:controller] module unload {module} - unloads module\n");
 		sb.append("[r:controller] module reload {module} - reloads module\n");
 		sb.append("[r:controller] module reloadall - reloads all modules");
@@ -28,7 +28,6 @@ public class CmdModule extends Command {
 	public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command());}
 	
 	public void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message) {
-		if (!canUseController(bot,type,sender)) return;
 		String[] args = message.split(" ");
 		
 		if (args.length == 1) {
@@ -45,7 +44,18 @@ public class CmdModule extends Command {
 		}
 		
 		if (args.length == 2) {
-			if (args[1].toLowerCase().equals("loadnew")) {
+			if (args[1].toLowerCase().equals("on") || args[1].toLowerCase().equals("off")) {
+				boolean state = args[1].toLowerCase().equals("on");
+				ArrayList<Module> modules = Module.getModules(true);
+				StringBuilder sb = new StringBuilder();
+				for (Module module : modules) if (module.isOn() == state) {
+					if (sb.length() != 0) sb.append(", ");
+					sb.append(module.name());
+				}
+				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,sb.toString());
+				return;
+			} else if (args[1].toLowerCase().equals("loadnew")) {
+				if (!canUseController(bot,type,sender)) return;
 				ArrayList<Module> modules = Module.loadNewModules();
 				if (modules.isEmpty()) {
 					Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,"No new modules found");
@@ -60,12 +70,15 @@ public class CmdModule extends Command {
 				}
 				return;
 			} else if (args[1].toLowerCase().equals("reloadall")) {
+				if (!canUseController(bot,type,sender)) return;
 				ArrayList<Module> modules = Module.getModules(true);
 				for (Module module : modules) Module.reload(module);
 				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,"Reloaded all modules");
 				return;
 			}
 		}
+		
+		if (!canUseController(bot,type,sender)) return;
 		
 		if (args.length == 3) {
 			Module module = Module.getModule(args[2]);

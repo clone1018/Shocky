@@ -33,7 +33,7 @@ public class ModuleReconnect extends Module implements ActionListener {
 	public void actionPerformed(ActionEvent event) {
 		timers.remove(0);
 		PircBotX bot = bots.remove(0);
-		Channel[] channels = bot.getChannels().toArray(new Channel[bot.getChannels().size()]);
+		Channel[] channels = bot.getChannels().toArray(new Channel[0]);
 		try {
 			bot.connect(bot.getServer());
 			for (Channel channel : channels) bot.joinChannel(channel.getName());

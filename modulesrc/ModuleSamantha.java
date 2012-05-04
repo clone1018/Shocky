@@ -45,15 +45,16 @@ public class ModuleSamantha extends Module  {
 	public void onMessage(MessageEvent<PircBotX> event) {
 		if (!canPerformAction(event.getChannel()) || rnd.nextInt(Data.config.getInt("samantha-chance")) > 0)
 			return;
-		boolean result = doAss(event);
-		if (!result) result = doNipples(event);
+		
+		String[] args = event.getMessage().split(" ");
+		boolean result = doAss(event, args);
+		if (!result) result = doNipples(event, args);
 		
 		if (result)
 			performedAction(event.getChannel());
 	}
 	
-	public boolean doAss(MessageEvent<PircBotX> event) {
-		String[] args = event.getMessage().split(" ");
+	public boolean doAss(MessageEvent<PircBotX> event, String... args) {
 		if (args.length < 3)
 			return false;
 		for (int i = 1; i < args.length - 1; i++) {
@@ -65,8 +66,7 @@ public class ModuleSamantha extends Module  {
 		return false;
 	}
 	
-	public boolean doNipples(MessageEvent<PircBotX> event) {
-		String[] args = event.getMessage().split(" ");
+	public boolean doNipples(MessageEvent<PircBotX> event, String... args) {
 		if (args.length != 2)
 			return false;
 		if (args[0].equalsIgnoreCase("i'm")||args[0].equalsIgnoreCase("im")) {
