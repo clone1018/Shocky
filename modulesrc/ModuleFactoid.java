@@ -61,6 +61,10 @@ public class ModuleFactoid extends Module {
 			public String name() {return "escape";}
 			public String result(String arg) {return arg.replace(",","\\,").replace("(","\\(").replace(")","\\)").replace("\\","\\\\");}
 		});
+		functions.add(new Function() {
+			public String name() {return "#subst";}
+			public String result(String arg) {return parseWithRecurse("<alias>"+arg[0]); }
+		});
 		functions.add(new FunctionMultiArg(){
 			public String name() {return "repeat";}
 			public String result(String[] arg) {
@@ -68,6 +72,22 @@ public class ModuleFactoid extends Module {
 				StringBuilder sb = new StringBuilder();
 				for (int i = 0; i < Integer.parseInt(arg[1]); i++) sb.append(arg[0]);
 				return sb.toString();
+			}
+		});
+		functions.add(new FunctionMultiArg() {
+			public String name() {return "#ifalias";}
+			public String result(String[] arg) {
+				if (arg.length > 3) return "[Wrong number of arguments to #if. expected 2-4, got "+arg.length+"]";
+				String response = parseWithRecurse("<alias>"+arg[0]+(arg.length==4 ? ' '+arg[3]: "");
+				boolean truth=false;
+				if(response.trim().equalsIgnoreCase("true")) truth=true;
+				try {
+					if(Float.parseFloat(response) > 0) truth=true;
+				catch(NumberFormatException e) {}
+
+				if(truth) return arg[2];
+				else if(arg.length < 3) return "";
+				else return arg[3];
 			}
 		});
 	}
