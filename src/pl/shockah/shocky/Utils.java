@@ -17,6 +17,9 @@ public class Utils {
 	private static final String
 		mungeOriginal =	"acdefghijklnoprstuwxyzACDEGHIJKLORSTUWYZ0123456789",
 		mungeReplace =	"äċđëƒġħíĵķĺñöρŗšţüωχÿźÅÇĎĒĠĦÍĴĶĹÖŖŠŢŮŴỲŻ０１２３４５６７８９";
+	private static final String
+		flipOriginal =	"!().12345679<>?ABCDEFGJKLMPQRTUVWY[]_abcdefghijklmnpqrtuvwy{},'\"",
+		flipReplace =	"¡)(˙⇂ᄅƐㄣϛ9Ɫ6><¿∀ℇƆ◖ƎℲפſ丬˥WԀΌᴚ⊥∩ΛMλ][‾ɐqɔpǝɟɓɥıɾʞlɯudbɹʇnʌʍʎ}{',„";
 	
 	public static ArrayList<String> getAllUrls(String text) {
 		String[] spl = text.split(" ");
@@ -63,6 +66,20 @@ l1:		for (int i = 0; i < spl.length; i++) {
 	}
 	private static Pattern regexNick(String nick) {
 		return Pattern.compile("^<?[+@]?"+Pattern.quote(nick)+"(?!"+patternNick.pattern()+")>?");
+	}
+	
+	public static String flip(String str) {
+		char[] chars = str.toCharArray();
+		for (int i = 0; i < chars.length; i++) {
+			int iof1 = flipOriginal.indexOf(chars[i]);
+			int iof2 = flipReplace.indexOf(chars[i]);
+			if (iof1 == -1 && iof2 == -1) continue;
+			if (iof1 != -1)
+				chars[i] = flipReplace.charAt(iof1);
+			else if (iof2 != -1)
+				chars[i] = flipOriginal.charAt(iof2);
+		}
+		return String.copyValueOf(chars);
 	}
 	
 	public static String timeAgo(Date date) {return timeAgo(date,new Date());}

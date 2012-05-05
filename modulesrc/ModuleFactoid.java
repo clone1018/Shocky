@@ -70,6 +70,10 @@ public class ModuleFactoid extends Module {
 				return sb.toString();
 			}
 		});
+		functions.add(new Function(){
+			public String name() {return "flip";}
+			public String result(String arg) {return Utils.flip(arg);}
+		});
 	}
 	public void unload() {
 		functions.clear();
