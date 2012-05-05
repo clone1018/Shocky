@@ -61,6 +61,10 @@ public class ModuleFactoid extends Module {
 			public String name() {return "escape";}
 			public String result(String arg) {return arg.replace(",","\\,").replace("(","\\(").replace(")","\\)").replace("\\","\\\\");}
 		});
+		functions.add(new Function() {
+			public String name() {return "#subst";}
+			public String result(String arg) {return parseWithRecurse("<alias>"+arg[0]); }
+		});
 		functions.add(new FunctionMultiArg(){
 			public String name() {return "repeat";}
 			public String result(String[] arg) {
@@ -68,6 +72,22 @@ public class ModuleFactoid extends Module {
 				StringBuilder sb = new StringBuilder();
 				for (int i = 0; i < Integer.parseInt(arg[1]); i++) sb.append(arg[0]);
 				return sb.toString();
+			}
+		});
+		functions.add(new FunctionMultiArg() {
+			public String name() {return "#ifalias";}
+			public String result(String[] arg) {
+				if (arg.length > 3) return "[Wrong number of arguments to #if. expected 2-4, got "+arg.length+"]";
+				String response = parseWithRecurse("<alias>"+arg[0]+(arg.length==4 ? ' '+arg[3]: "");
+				boolean truth=false;
+				if(response.trim().equalsIgnoreCase("true")) truth=true;
+				try {
+					if(Float.parseFloat(response) > 0) truth=true;
+				catch(NumberFormatException e) {}
+
+				if(truth) return arg[2];
+				else if(arg.length < 3) return "";
+				else return arg[3];
 			}
 		});
 	}
@@ -154,27 +174,43 @@ public class ModuleFactoid extends Module {
 				if (!cfg.exists("r_"+msg.split(" ")[0].toLowerCase())) cfg = config;
 			}
 			
-			ArrayList<String> checkRecursive = new ArrayList<String>();
-			while (true) {
-				String factoid = msg.split(" ")[0].toLowerCase();
-				if (cfg.exists("r_"+factoid)) {
-					String raw = cfg.getString("r_"+factoid);
-					if (raw.startsWith("<alias>")) {
-						msg = raw.substring(7);
-						if (checkRecursive.contains(msg)) return;
-						checkRecursive.add(msg);
-						continue;
-					} else {
-						if (target != null) Shocky.overrideTarget.put(Thread.currentThread(),new Pair<Command.EType,Command.EType>(Command.EType.Channel,Command.EType.Notice));
-						Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),parse(bot,channel,sender,msg,raw));
-						if (target != null) Shocky.overrideTarget.remove(Thread.currentThread());
-						break;
-					}
-				} else return;
-			}
+			if (target != null) Shocky.overrideTarget.put(Thread.currentThread(),new Pair<Command.EType,Command.EType>(Command.EType.Channel,Command.EType.Notice));
+			String postparse = parseWithRecurse(bot,channel,sender,msg,new ArrayList<String>());
+			if (result != null) Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),postparse);
+			if (target != null) Shocky.overrideTarget.remove(Thread.currentThread());
 		}
 	}
 	
+	public String parseWithRecurse(PircBotX bot, Channel channel, User sender, String message, ArrayList checkRecursive)
+	{
+		String factoid = message.split(" ")[0].toLowerCase();
+		if (cfg.exists("r_"+factoid)) {
+			String raw = cfg.getString("r_"+factoid);
+			if (raw.startsWith("<alias>")) // Alias check
+			{
+				msg = raw.substring(7);
+				if (checkRecursive.contains(msg))
+				{
+					return "Recursive loop detected. Factoid retreival aborted.";
+				}
+				checkRecursive.add(msg);
+			}
+			String result = parse(bot,channel,sender,message,raw);
+			if (result.startsWith("<alias>"))
+			{
+				return parseWithRecursive(bot,channel,sender,result,raw,checkRecursive);
+				// The recursive part
+			}
+			else return result; // Normal exit point
+		} else { // No factoid found
+			if (!checkRecursive.isEmpty())
+			{
+				return "ALIAS_NOT_FOUND"; // Designed for both factoid debugging and catching
+			}
+			return null; // Don't return anything for non-alias calls
+		}
+	}
+    
 	public String parse(PircBotX bot, Channel channel, User sender, String message, String raw) {
 		if (raw.startsWith("<noreply>")) {
 			return "";
