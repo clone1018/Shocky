@@ -9,6 +9,7 @@ import org.pircbotx.hooks.events.ActionEvent;
 import org.pircbotx.hooks.events.MessageEvent;
 import pl.shockah.HTTPQuery;
 import pl.shockah.JSONObject;
+import pl.shockah.StringTools;
 import pl.shockah.shocky.Data;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Shocky;
@@ -32,7 +33,7 @@ public class ModuleYoutube extends Module {
 		q.close();
 		
 		String vUploader = jItem.getString("uploader");
-		String vTitle = jItem.getString("title");
+		String vTitle = StringTools.unicodeParse(jItem.getString("title"));
 		int vDuration = jItem.getInt("duration");
 		double vRating = jItem.exists("rating") ? jItem.getDouble("rating") : -1;
 		int vViewCount = jItem.getInt("viewCount");
