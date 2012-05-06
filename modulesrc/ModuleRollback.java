@@ -289,6 +289,7 @@ public class ModuleRollback extends Module {
 					if (aLines.toLowerCase().endsWith("s")) list = getRollbackLines(aChannel,aUser,regex,aLines.charAt(0) != '-',0,Math.abs(Integer.parseInt(aLines.substring(0,aLines.length()-1))));
 					else if (aLines.toLowerCase().endsWith("m")) list = getRollbackLines(aChannel,aUser,regex,aLines.charAt(0) != '-',0,Math.abs(60*Integer.parseInt(aLines.substring(0,aLines.length()-1))));
 					else if (aLines.toLowerCase().endsWith("h")) list = getRollbackLines(aChannel,aUser,regex,aLines.charAt(0) != '-',0,Math.abs(3600*Integer.parseInt(aLines.substring(0,aLines.length()-1))));
+					else if (aLines.toLowerCase().endsWith("d")) list = getRollbackLines(aChannel,aUser,regex,aLines.charAt(0) != '-',0,Math.abs(86400*Integer.parseInt(aLines.substring(0,aLines.length()-1))));
 					else list = getRollbackLines(aChannel,aUser,regex,aLines.charAt(0) != '-',Math.abs(Integer.parseInt(aLines)),0);
 					
 					if (list.isEmpty()) {
