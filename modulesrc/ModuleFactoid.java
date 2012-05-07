@@ -245,26 +245,22 @@ public class ModuleFactoid extends Module {
 	}
 	public void parseFunctions(String input, StringBuilder output) {
 		Matcher m = functionPattern.matcher(input);
-		Function func = null;
 		int pos = 0;
 		while (m.find(pos)) {
 			output.append(input.substring(pos,m.start()));
 			String fName = m.group(1);
+			Function func = null;
 			if (functions.containsKey(fName))
 				func = functions.get(fName);
 			if (func != null) {
 				int start = m.end(1)+1;
 				int end = Integer.MIN_VALUE;
 				int expected = 1;
-				int funcPos = start;
-				Matcher funcMatch = functionPattern.matcher(input);
-				while (funcMatch.find(funcPos)) {
-					expected++;
-					funcPos = funcMatch.end(1);
-				}
 				for (int i = start; i < input.length(); i++) {
 					char c = input.charAt(i);
-					if (c == ')')
+					if (c == '(')
+						expected++;
+					else if (c == ')')
 						expected--;
 					if (expected == 0)
 					{
@@ -274,8 +270,7 @@ public class ModuleFactoid extends Module {
 					}
 				}
 				if (end == Integer.MIN_VALUE) {
-					output.append(m.group());
-					pos = m.end();
+					return;
 				}
 				else {
 					String inside = input.substring(start, end);
