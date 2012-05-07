@@ -18,8 +18,8 @@ public class Utils {
 		mungeOriginal =	"acdefghijklnoprstuwxyzACDEGHIJKLORSTUWYZ0123456789",
 		mungeReplace =	"äċđëƒġħíĵķĺñöρŗšţüωχÿźÅÇĎĒĠĦÍĴĶĹÖŖŠŢŮŴỲŻ０１２３４５６７８９";
 	private static final String
-		flipOriginal =	"!().12345679<>?ABCDEFGJKLMPQRTUVWY[]_abcdefghijklmnpqrtuvwy{},'\"",
-		flipReplace =	"¡)(˙⇂ᄅƐㄣϛ9Ɫ6><¿∀ℇƆ◖ƎℲפſ丬˥WԀΌᴚ⊥∩ΛMλ][‾ɐqɔpǝɟɓɥıɾʞlɯudbɹʇnʌʍʎ}{',„";
+		flipOriginal =	"!().12345679<>?ABCDEFGJKLMPQRTUVWY[]_abcdefghijklmnpqrtuvwy{},'\"┳",
+		flipReplace =	"¡)(˙⇂ᄅƐㄣϛ9Ɫ6><¿∀ℇƆ◖ƎℲפſ丬˥WԀΌᴚ⊥∩ΛMλ][‾ɐqɔpǝɟɓɥıɾʞlɯudbɹʇnʌʍʎ}{',„┻";
 	
 	public static ArrayList<String> getAllUrls(String text) {
 		String[] spl = text.split(" ");

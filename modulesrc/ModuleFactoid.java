@@ -1,21 +1,10 @@
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Random;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import org.pircbotx.Channel;
-import org.pircbotx.PircBotX;
-import org.pircbotx.User;
+import java.util.*;
+import java.util.regex.*;
+import org.pircbotx.*;
 import org.pircbotx.hooks.events.MessageEvent;
-import pl.shockah.Config;
-import pl.shockah.FileLine;
-import pl.shockah.HTTPQuery;
-import pl.shockah.Pair;
-import pl.shockah.StringTools;
-import pl.shockah.shocky.Data;
-import pl.shockah.shocky.Module;
-import pl.shockah.shocky.Shocky;
+import pl.shockah.*;
+import pl.shockah.shocky.*;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.Command.EType;
@@ -24,7 +13,8 @@ public class ModuleFactoid extends Module {
 	protected Command cmdR, cmdF, cmdFCMD, cmdManage;
 	private ArrayList<CmdFactoid> fcmds = new ArrayList<CmdFactoid>();
 	private Config config = new Config();
-	private ArrayList<Function> functions = new ArrayList<Function>();
+	private HashMap<String,Function> functions = new HashMap<String,Function>();
+	private static Pattern functionPattern = Pattern.compile("([a-zA-Z_][a-zA-Z0-9_]*)\\(.*?\\)");
 	
 	public String name() {return "factoid";}
 	public void load() {
@@ -40,28 +30,40 @@ public class ModuleFactoid extends Module {
 		
 		Command.addCommands(cmdR = new CmdRemember(),cmdF = new CmdForget(),cmdFCMD = new CmdFactoidCmd(),cmdManage = new CmdManage());
 		Command.addCommands(fcmds.toArray(new Command[fcmds.size()]));
+
+		Function func;
 		
-		functions.add(new Function(){
+		func = new Function(){
 			public String name() {return "ucase";}
 			public String result(String arg) {return arg.toUpperCase();}
-		});
-		functions.add(new Function(){
+		};
+		functions.put(func.name(), func);
+		
+		func = new Function(){
 			public String name() {return "lcase";}
 			public String result(String arg) {return arg.toLowerCase();}
-		});
-		functions.add(new Function(){
+		};
+		functions.put(func.name(), func);
+		
+		func = new Function(){
 			public String name() {return "reverse";}
 			public String result(String arg) {return new StringBuilder(arg).reverse().toString();}
-		});
-		functions.add(new Function(){
+		};
+		functions.put(func.name(), func);
+		
+		func = new Function(){
 			public String name() {return "munge";}
 			public String result(String arg) {return Utils.mungeNick(arg);}
-		});
-		functions.add(new Function(){
+		};
+		functions.put(func.name(), func);
+		
+		func = new Function(){
 			public String name() {return "escape";}
 			public String result(String arg) {return arg.replace(",","\\,").replace("(","\\(").replace(")","\\)").replace("\\","\\\\");}
-		});
-		functions.add(new FunctionMultiArg(){
+		};
+		functions.put(func.name(), func);
+		
+		func = new FunctionMultiArg(){
 			public String name() {return "repeat";}
 			public String result(String[] arg) {
 				if (arg.length != 2) return "[Wrong number of arguments to function "+name()+", expected 2, got "+arg.length+"]";
@@ -69,11 +71,14 @@ public class ModuleFactoid extends Module {
 				for (int i = 0; i < Integer.parseInt(arg[1]); i++) sb.append(arg[0]);
 				return sb.toString();
 			}
-		});
-		functions.add(new Function(){
+		};
+		functions.put(func.name(), func);
+		
+		func = new Function(){
 			public String name() {return "flip";}
 			public String result(String arg) {return Utils.flip(arg);}
-		});
+		};
+		functions.put(func.name(), func);
 	}
 	public void unload() {
 		functions.clear();
@@ -233,44 +238,58 @@ public class ModuleFactoid extends Module {
 			raw = raw.replace("%chan%",channel.getName());
 			raw = raw.replace("%user%",sender.getNick());
 			for (int i = 1; i < args.length; i++) raw = raw.replace("%arg"+(i-1)+"%",args[i]);
-			return parseFunctions(raw);
+			StringBuilder output = new StringBuilder();
+			parseFunctions(raw,output);
+			return output.toString();
 		}
 	}
-	public String parseFunctions(String message) {
-		Pattern p = Pattern.compile("([a-zA-Z_][a-zA-Z0-9_]*)\\(.*?\\)");
-		
-		while (true) {
-			Matcher m = p.matcher(message);
-			if (m.find()) {
-				int pos = m.start();
-				String inside = message.substring(pos);
-				String fName = inside.substring(0,inside.indexOf("("));
-				inside = inside.substring(fName.length());
-				
-				int brackets = 0;
-l1:				for (int i = 0; i < inside.length(); i++) {
-					boolean tmp = i-1 >= 2 ? inside.charAt(i-1) != '\\' : true;
-					if (inside.charAt(i) == '(' && tmp) brackets++;
-					else if (inside.charAt(i) == ')' && tmp) {
-						int oldb = brackets--;
-						if (brackets == 0 && oldb > 0) {
-							inside = inside.substring(1,i);
-							
-							for (Function f : functions) {
-								if (f.name().equals(fName)) {
-									message = new StringBuilder(message).replace(pos,pos+fName.length()+inside.length()+2,f.result(parseFunctions(inside))).toString();
-									break l1;
-								}
-							}
-							StringBuilder sb = new StringBuilder(message);
-							sb.replace(pos+fName.length(),pos+fName.length()+1,""+(char)3);
-							sb.replace(pos+fName.length()+inside.length()+1,pos+fName.length()+inside.length()+2,""+(char)4);
-							message = sb.toString();
-						}
+	public void parseFunctions(String input, StringBuilder output) {
+		Matcher m = functionPattern.matcher(input);
+		Function func = null;
+		int pos = 0;
+		while (m.find(pos)) {
+			output.append(input.substring(pos,m.start()));
+			String fName = m.group(1);
+			if (functions.containsKey(fName))
+				func = functions.get(fName);
+			if (func != null) {
+				int start = m.end(1)+1;
+				int end = Integer.MIN_VALUE;
+				int expected = 1;
+				int funcPos = start;
+				Matcher funcMatch = functionPattern.matcher(input);
+				while (funcMatch.find(funcPos)) {
+					expected++;
+					funcPos = funcMatch.end(1);
+				}
+				for (int i = start; i < input.length(); i++) {
+					char c = input.charAt(i);
+					if (c == ')')
+						expected--;
+					if (expected == 0)
+					{
+						end = i;
+						pos = end + 1;
+						break;
 					}
 				}
-			} else return message.replace((char)3,'(').replace((char)4,')');
+				if (end == Integer.MIN_VALUE) {
+					output.append(m.group());
+					pos = m.end();
+				}
+				else {
+					String inside = input.substring(start, end);
+					StringBuilder funcOutput = new StringBuilder();
+					parseFunctions(inside,funcOutput);
+					output.append(func.result(funcOutput.toString()));
+				}
+			}
+			else {
+				output.append(m.group());
+				pos = m.end();
+			}
 		}
+		output.append(input.substring(pos));
 	}
 	
 	public abstract class Function {
