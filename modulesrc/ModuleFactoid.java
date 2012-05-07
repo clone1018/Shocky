@@ -169,7 +169,8 @@ public class ModuleFactoid extends Module {
 				if (cfg.exists("r_"+factoid)) {
 					String raw = cfg.getString("r_"+factoid);
 					if (raw.startsWith("<alias>")) {
-						msg = raw.substring(7);
+						msg = parseVariables(bot, channel, sender, msg, raw);
+						msg = msg.substring(7);
 						if (checkRecursive.contains(msg)) return;
 						checkRecursive.add(msg);
 						continue;
@@ -220,29 +221,29 @@ public class ModuleFactoid extends Module {
 		} else if (raw.startsWith("<cmd>")) {
 			Command cmd = Command.getCommand(bot,EType.Channel,""+Data.config.getString("main-cmdchar").charAt(0)+raw.substring(5));
 			if (cmd != null && !(cmd instanceof CmdFactoid)) {
-				String[] args = message.split(" ");
-				raw = raw.replace("%inp%",StringTools.implode(args,1," "));
-				raw = raw.replace("%ioru%",args.length > 1 ? StringTools.implode(args,1," ") : sender.getNick());
-				raw = raw.replace("%bot%",bot.getName());
-				raw = raw.replace("%chan%",channel.getName());
-				raw = raw.replace("%user%",sender.getNick());
-				for (int i = 1; i < args.length; i++) raw = raw.replace("%arg"+(i-1)+"%",args[i]);
+				raw = parseVariables(bot, channel, sender, message, raw);
 				cmd.doCommand(bot,EType.Channel,channel,sender,raw.substring(5));
 			}
 			return "";
 		} else {
-			String[] args = message.split(" ");
-			raw = raw.replace("%inp%",StringTools.implode(args,1," "));
-			raw = raw.replace("%ioru%",args.length > 1 ? StringTools.implode(args,1," ") : sender.getNick());
-			raw = raw.replace("%bot%",bot.getName());
-			raw = raw.replace("%chan%",channel.getName());
-			raw = raw.replace("%user%",sender.getNick());
-			for (int i = 1; i < args.length; i++) raw = raw.replace("%arg"+(i-1)+"%",args[i]);
+			raw = parseVariables(bot, channel, sender, message, raw);
 			StringBuilder output = new StringBuilder();
 			parseFunctions(raw,output);
 			return output.toString();
 		}
 	}
+	
+	public String parseVariables(PircBotX bot, Channel channel, User sender, String message, String raw) {
+		String[] args = message.split(" ");
+		raw = raw.replace("%inp%",StringTools.implode(args,1," "));
+		raw = raw.replace("%ioru%",args.length > 1 ? StringTools.implode(args,1," ") : sender.getNick());
+		raw = raw.replace("%bot%",bot.getName());
+		raw = raw.replace("%chan%",channel.getName());
+		raw = raw.replace("%user%",sender.getNick());
+		for (int i = 1; i < args.length; i++) raw = raw.replace("%arg"+(i-1)+"%",args[i]);
+		return raw;
+	}
+	
 	public void parseFunctions(String input, StringBuilder output) {
 		Matcher m = functionPattern.matcher(input);
 		int pos = 0;
