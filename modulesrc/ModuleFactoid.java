@@ -141,10 +141,7 @@ public class ModuleFactoid extends Module {
 			for (i = 0; i < charsraw.length(); i++) if (msg.charAt(0) == charsraw.charAt(i)) {
 				msg = new StringBuilder(msg).deleteCharAt(0).toString().split(" ")[0].toLowerCase();
 				// Local check
-				Config cfg = config; if (cfg.existsConfig(channel.getName())) {
-					cfg = config.getConfig(channel.getName());
-					if (!cfg.exists("r_"+msg)) cfg = config;
-				}
+				Config cfg = checkLocalCfg(config,channel.getName(),msg);
 				if (target != null) Shocky.overrideTarget.put(Thread.currentThread(),new Pair<Command.EType,Command.EType>(Command.EType.Channel,Command.EType.Notice));
 				if (cfg.exists("r_"+msg)) Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),msg+": "+cfg.getString("r_"+msg));
 				if (target != null) Shocky.overrideTarget.remove(Thread.currentThread());
@@ -169,6 +166,7 @@ public class ModuleFactoid extends Module {
 				if (!cfg.exists("r_"+msg.split(" ")[0].toLowerCase())) cfg = config;
 			}
 			
+			// Alias processing
 			ArrayList<String> checkRecursive = new ArrayList<String>();
 			while (true) {
 				String factoid = msg.split(" ")[0].toLowerCase();
@@ -239,6 +237,12 @@ public class ModuleFactoid extends Module {
 		}
 	}
 	
+	private Config checkLocalCfg(
+				Config cfg = config; if (cfg.existsConfig(channel.getName())) {
+					cfg = config.getConfig(channel.getName());
+					if (!cfg.exists("r_"+msg)) cfg = config;
+				}
+
 	private static final Pattern argPattern = Pattern.compile("%([A-Za-z\\+]+)([0-9]+)?%");
 	public String parseVariables(PircBotX bot, Channel channel, User sender, String message, String raw) {
 		message = message.replaceAll("\\\\", "\\\\\\\\").replaceAll("\\$", "\\\\\\$");
