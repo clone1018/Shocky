@@ -1,11 +1,9 @@
 package pl.shockah;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.Random;
+import java.util.*;
 
 public class WeightedRandom<T> {
-	protected ArrayList<Pair<T,Double>> list = new ArrayList<Pair<T,Double>>();
+	protected LinkedList<Pair<T,Double>> list = new LinkedList<Pair<T,Double>>();
 	protected final Random rnd;
 	
 	public WeightedRandom() {

@@ -33,6 +33,7 @@ public class StringTools {
 		htmlEntities.put("&copy;","\u00a9");
 		htmlEntities.put("&reg;","\u00ae");
 		htmlEntities.put("&euro;","\u20a0");
+		htmlEntities.put("&bull;","•");
 	}
 	
 	public static String getFilenameStrippedWindows(String fname) {
