@@ -118,12 +118,16 @@ public class ModuleFactoid extends Module {
 			
 			String[] args = msg.split(" ");
 			String target = null;
+			String ping = null;
 			if (args.length >= 2 && args[args.length-2].equals(">")) {
 				target = args[args.length-1];
 				msg = StringTools.implode(args,0,args.length-3," ");
 			} else if (args.length >= 1 && args[args.length-1].equals("<")) {
 				target = sender.getNick();
 				msg = StringTools.implode(args,0,args.length-2," ");
+			} else if (args.length >= 2 && args[args.length-2].equals("|")) {
+				ping = args[args.length-1];
+				msg = StringTools.implode(args,0,args.length-3," ");
 			}
 			
 			if (target != null) {
@@ -163,7 +167,7 @@ public class ModuleFactoid extends Module {
 				if (!cfg.exists("r_"+msg.split(" ")[0].toLowerCase())) cfg = config;
 			}
 			
-			ArrayList<String> checkRecursive = new ArrayList<String>();
+			LinkedList<String> checkRecursive = new LinkedList<String>();
 			while (true) {
 				String factoid = msg.split(" ")[0].toLowerCase();
 				if (cfg.exists("r_"+factoid)) {
@@ -176,7 +180,17 @@ public class ModuleFactoid extends Module {
 						continue;
 					} else {
 						if (target != null) Shocky.overrideTarget.put(Thread.currentThread(),new Pair<Command.EType,Command.EType>(Command.EType.Channel,Command.EType.Notice));
-						Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),parse(bot,channel,sender,msg,raw));
+						String message = parse(bot,channel,sender,msg,raw);
+						if (message != null && message.length() > 0) {
+							if (target == null && ping != null) {
+								StringBuilder sb = new StringBuilder();
+								sb.append(ping);
+								sb.append(": ");
+								sb.append(message);
+								message = sb.toString();
+							}
+							Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),message);
+						}
 						if (target != null) Shocky.overrideTarget.remove(Thread.currentThread());
 						break;
 					}
@@ -233,27 +247,54 @@ public class ModuleFactoid extends Module {
 		}
 	}
 	
-	private static final Pattern argPattern = Pattern.compile("%([A-Za-z\\+]+)([0-9]+)?%");
+	private static final Pattern argPattern = Pattern.compile("%([A-Za-z\\+]+)([0-9]+)?(-)?([0-9]+)?%");
 	public String parseVariables(PircBotX bot, Channel channel, User sender, String message, String raw) {
-		message = message.replaceAll("\\\\", "\\\\\\\\").replaceAll("\\$", "\\\\\\$");
+		StringBuilder escapedMsg = new StringBuilder(message);
+		for (int i = 0; i < escapedMsg.length(); i++) {
+			switch (escapedMsg.charAt(i)) {
+			case '\\':
+			case '$':
+				escapedMsg.insert(i++, '\\');
+			}
+		}
+		message = escapedMsg.toString();
 		String[] args = message.split(" ");
+		
+		Random rnd = null;
+		User[] users = null;
+		
 		Matcher m = argPattern.matcher(raw);
 		StringBuffer ret = new StringBuffer();
 		while (m.find()) {
 			String tag = m.group(1);
-			if (m.group(2) != null) {
-				int i = Integer.parseInt(m.group(2))+1;
-				if (tag.contentEquals("arg")) {
-					if (i < args.length)
-						m.appendReplacement(ret, args[i]);
-				} else if (tag.contentEquals("arg+")) {
-					if (i < args.length)
-						m.appendReplacement(ret, StringTools.implode(args,i," "));
-				} else if (tag.contentEquals("req")) {
-					if (args.length <= i)
-						return String.format("This factoid requires at least %d args",i);
-					m.appendReplacement(ret, "");
-				}
+			String num1str = m.group(2);
+			String num2str = m.group(4);
+			
+			int num1 = Integer.MIN_VALUE;
+			int num2 = Integer.MIN_VALUE;
+			if (num1str != null)
+				num1 = Integer.parseInt(num1str)+1;
+			if (num2str != null)
+				num2 = Integer.parseInt(num2str)+1;
+			
+			boolean range = m.group(3) != null;
+			
+			if (tag.contentEquals("arg") && num1 < args.length && num2 < args.length) {
+					if (range) {
+						if (num1 != Integer.MIN_VALUE && num2 != Integer.MIN_VALUE)
+							m.appendReplacement(ret, StringTools.implode(args, num1, num2, " "));
+						else if (num1 != Integer.MIN_VALUE)
+							m.appendReplacement(ret, StringTools.implode(args, num1, " "));
+						else if (num2 != Integer.MIN_VALUE)
+							m.appendReplacement(ret, StringTools.implode(args, 1, num2, " "));
+						else
+							m.appendReplacement(ret, StringTools.implode(args, 1, " "));
+					}
+					else m.appendReplacement(ret, args[num1]);
+			} else if (tag.contentEquals("req") && num1 != Integer.MIN_VALUE) {
+				if (args.length <= num1)
+					return String.format("This factoid requires at least %d args",num1);
+				m.appendReplacement(ret, "");
 			}
 			else if (tag.contentEquals("inp"))
 				m.appendReplacement(ret, StringTools.implode(args,1," "));
@@ -265,6 +306,13 @@ public class ModuleFactoid extends Module {
 				m.appendReplacement(ret, channel.getName());
 			else if (tag.contentEquals("user"))
 				m.appendReplacement(ret, sender.getNick());
+			else if (tag.contentEquals("rndn")) {
+				if (rnd == null)
+					rnd = new Random();
+				if (users == null)
+					users = channel.getUsers().toArray(new User[0]);
+				m.appendReplacement(ret, users[rnd.nextInt(users.length)].getNick());
+			}
 		}
 		m.appendTail(ret);
 		return ret.toString();
