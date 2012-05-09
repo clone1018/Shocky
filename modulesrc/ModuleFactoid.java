@@ -111,6 +111,7 @@ public class ModuleFactoid extends Module {
 		if (msg.length() < 2) return;
 		String chars = Data.config.getString("factoid-char");
 		
+		// Factoid processing
 		for (int i = 0; i < chars.length(); i++) if (msg.charAt(0) == chars.charAt(i)) {
 			msg = new StringBuilder(msg).deleteCharAt(0).toString();
 			String charsraw = Data.config.getString("factoid-charraw");
@@ -119,6 +120,8 @@ public class ModuleFactoid extends Module {
 			String[] args = msg.split(" ");
 			String target = null;
 			String ping = null;
+
+			// Target processing
 			if (args.length >= 2 && args[args.length-2].equals(">")) {
 				target = args[args.length-1];
 				msg = StringTools.implode(args,0,args.length-3," ");
@@ -139,34 +142,49 @@ public class ModuleFactoid extends Module {
 				if (!found) return;
 			}
 			
+			// Raw-send flag processing
 			for (i = 0; i < charsraw.length(); i++) if (msg.charAt(0) == charsraw.charAt(i)) {
 				msg = new StringBuilder(msg).deleteCharAt(0).toString().split(" ")[0].toLowerCase();
-				Config cfg = config; if (cfg.existsConfig(channel.getName())) {
-					cfg = config.getConfig(channel.getName());
-					if (!cfg.exists("r_"+msg)) cfg = config;
-				}
+				// Local check
+				Config cfg = factoidGetCfg(config,channel.getName(),msg);
 				if (target != null) Shocky.overrideTarget.put(Thread.currentThread(),new Pair<Command.EType,Command.EType>(Command.EType.Channel,Command.EType.Notice));
-				if (cfg.exists("r_"+msg)) Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),msg+": "+cfg.getString("r_"+msg));
+				if (cfg.exists("r_"+msg))
+				{
+					if (factoidHasLocal(config,channel.getName(),msg))
+					{
+						Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),"[local] "+msg+": "+cfg.getString("r_"+msg));
+						Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),"[global] "+msg+": "+config.getString("r_"+msg));
+					} else {
+						Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),msg+": "+cfg.getString("r_"+msg));
+					}
+				}
 				if (target != null) Shocky.overrideTarget.remove(Thread.currentThread());
 				return;
 			}
+			// Last-modified flag processing
 			for (i = 0; i < charsby.length(); i++) if (msg.charAt(0) == charsby.charAt(i)) {
 				msg = new StringBuilder(msg).deleteCharAt(0).toString().split(" ")[0].toLowerCase();
-				Config cfg = config; if (cfg.existsConfig(channel.getName())) {
-					cfg = config.getConfig(channel.getName());
-					if (!cfg.exists("r_"+msg)) cfg = config;
-				}
+				// Local check
+				Config cfg = factoidGetCfg(config,channel.getName(),msg);
 				if (target != null) Shocky.overrideTarget.put(Thread.currentThread(),new Pair<Command.EType,Command.EType>(Command.EType.Channel,Command.EType.Notice));
-				if (cfg.exists("b_"+msg)) Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),msg+", last edited by "+cfg.getString("b_"+msg));
+				if (cfg.exists("b_"+msg))
+				{
+					if (factoidHasLocal(config,channel.getName(),msg))
+					{
+						Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),"[local] "+msg+", last edited by "+cfg.getString("b_"+msg));
+						Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),"[global] "+msg+", last edited by "+cfg.getString("b_"+msg));
+					} else {
+						Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),msg+", last edited by "+cfg.getString("b_"+msg));
+					}
+				}
 				if (target != null) Shocky.overrideTarget.remove(Thread.currentThread());
 				return;
 			}
+
+			// Local check
+			Config cfg = factoidGetCfg(config,channel.getName(),msg);
 			
-			Config cfg = config; if (cfg.existsConfig(channel.getName())) {
-				cfg = config.getConfig(channel.getName());
-				if (!cfg.exists("r_"+msg.split(" ")[0].toLowerCase())) cfg = config;
-			}
-			
+			// Alias processing
 			LinkedList<String> checkRecursive = new LinkedList<String>();
 			while (true) {
 				String factoid = msg.split(" ")[0].toLowerCase();
@@ -247,7 +265,26 @@ public class ModuleFactoid extends Module {
 		}
 	}
 	
+	private Config factoidGetCfg(Config global, String chan, String factoid)
+	{
+			if (global.existsConfig(chan)) {
+				Config cfg = global.getConfig(chan);
+				if (cfg.exists("r_"+msg)) return cfg;
+			}
+			return global;
+	}
+	
+	// Used in factoid-raw and factoid-last-modified.
+	private boolean factoidHasLocal(Config global, String chan, String factoid)
+	{
+		if (global.existsConfig(chan)) {
+			if (global.getConfig(chan).exists("r_"+msg)) return true;
+		}
+		return false;
+	}
+
 	private static final Pattern argPattern = Pattern.compile("%([A-Za-z\\+]+)([0-9]+)?(-)?([0-9]+)?%");
+
 	public String parseVariables(PircBotX bot, Channel channel, User sender, String message, String raw) {
 		StringBuilder escapedMsg = new StringBuilder(message);
 		for (int i = 0; i < escapedMsg.length(); i++) {
