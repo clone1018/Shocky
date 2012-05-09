@@ -176,6 +176,7 @@ public class ModuleFactoid extends Module {
 					} else {
 						Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),msg+", last edited by "+cfg.getString("b_"+msg));
 					}
+				}
 				if (target != null) Shocky.overrideTarget.remove(Thread.currentThread());
 				return;
 			}
