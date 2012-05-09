@@ -233,15 +233,41 @@ public class ModuleFactoid extends Module {
 		}
 	}
 	
+	private static final Pattern argPattern = Pattern.compile("%([A-Za-z\\+]+)([0-9]+)?%");
 	public String parseVariables(PircBotX bot, Channel channel, User sender, String message, String raw) {
+		message = message.replaceAll("\\\\", "\\\\\\\\").replaceAll("\\$", "\\\\\\$");
 		String[] args = message.split(" ");
-		raw = raw.replace("%inp%",StringTools.implode(args,1," "));
-		raw = raw.replace("%ioru%",args.length > 1 ? StringTools.implode(args,1," ") : sender.getNick());
-		raw = raw.replace("%bot%",bot.getName());
-		raw = raw.replace("%chan%",channel.getName());
-		raw = raw.replace("%user%",sender.getNick());
-		for (int i = 1; i < args.length; i++) raw = raw.replace("%arg"+(i-1)+"%",args[i]);
-		return raw;
+		Matcher m = argPattern.matcher(raw);
+		StringBuffer ret = new StringBuffer();
+		while (m.find()) {
+			String tag = m.group(1);
+			if (m.group(2) != null) {
+				int i = Integer.parseInt(m.group(2))+1;
+				if (tag.contentEquals("arg")) {
+					if (i < args.length)
+						m.appendReplacement(ret, args[i]);
+				} else if (tag.contentEquals("arg+")) {
+					if (i < args.length)
+						m.appendReplacement(ret, StringTools.implode(args,i," "));
+				} else if (tag.contentEquals("req")) {
+					if (args.length <= i)
+						return String.format("This factoid requires at least %d args",i);
+					m.appendReplacement(ret, "");
+				}
+			}
+			else if (tag.contentEquals("inp"))
+				m.appendReplacement(ret, StringTools.implode(args,1," "));
+			else if (tag.contentEquals("ioru"))
+				m.appendReplacement(ret, args.length > 1 ? StringTools.implode(args,1," ") : sender.getNick());
+			else if (tag.contentEquals("bot"))
+				m.appendReplacement(ret, bot.getName());
+			else if (tag.contentEquals("chan"))
+				m.appendReplacement(ret, channel.getName());
+			else if (tag.contentEquals("user"))
+				m.appendReplacement(ret, sender.getNick());
+		}
+		m.appendTail(ret);
+		return ret.toString();
 	}
 	
 	public void parseFunctions(String input, StringBuilder output) {
