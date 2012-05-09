@@ -111,6 +111,7 @@ public class ModuleFactoid extends Module {
 		if (msg.length() < 2) return;
 		String chars = Data.config.getString("factoid-char");
 		
+		// Factoid processing
 		for (int i = 0; i < chars.length(); i++) if (msg.charAt(0) == chars.charAt(i)) {
 			msg = new StringBuilder(msg).deleteCharAt(0).toString();
 			String charsraw = Data.config.getString("factoid-charraw");
@@ -118,6 +119,7 @@ public class ModuleFactoid extends Module {
 			
 			String[] args = msg.split(" ");
 			String target = null;
+			// Target processing
 			if (args.length >= 2 && args[args.length-2].equals(">")) {
 				target = args[args.length-1];
 				msg = StringTools.implode(args,0,args.length-3," ");
@@ -135,8 +137,10 @@ public class ModuleFactoid extends Module {
 				if (!found) return;
 			}
 			
+			// Raw-send flag processing
 			for (i = 0; i < charsraw.length(); i++) if (msg.charAt(0) == charsraw.charAt(i)) {
 				msg = new StringBuilder(msg).deleteCharAt(0).toString().split(" ")[0].toLowerCase();
+				// Local check
 				Config cfg = config; if (cfg.existsConfig(channel.getName())) {
 					cfg = config.getConfig(channel.getName());
 					if (!cfg.exists("r_"+msg)) cfg = config;
@@ -146,8 +150,10 @@ public class ModuleFactoid extends Module {
 				if (target != null) Shocky.overrideTarget.remove(Thread.currentThread());
 				return;
 			}
+			// Last-modified flag processing
 			for (i = 0; i < charsby.length(); i++) if (msg.charAt(0) == charsby.charAt(i)) {
 				msg = new StringBuilder(msg).deleteCharAt(0).toString().split(" ")[0].toLowerCase();
+				// Local check
 				Config cfg = config; if (cfg.existsConfig(channel.getName())) {
 					cfg = config.getConfig(channel.getName());
 					if (!cfg.exists("r_"+msg)) cfg = config;
@@ -157,7 +163,7 @@ public class ModuleFactoid extends Module {
 				if (target != null) Shocky.overrideTarget.remove(Thread.currentThread());
 				return;
 			}
-			
+			// Local check
 			Config cfg = config; if (cfg.existsConfig(channel.getName())) {
 				cfg = config.getConfig(channel.getName());
 				if (!cfg.exists("r_"+msg.split(" ")[0].toLowerCase())) cfg = config;
