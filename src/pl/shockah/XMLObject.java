@@ -16,7 +16,7 @@ public class XMLObject {
 		text = StringTools.implode(lines,"");
 		
 		Pattern p = Pattern.compile("\\Q<![CDATA[\\E(.*?)\\Q]]>\\E");
-		Matcher m; while ((m = p.matcher(text)).find()) text = new StringBuilder(text).replace(m.start(),m.end(),xmlEscape(m.group(1))).toString();
+		Matcher m; while ((m = p.matcher(text)).find()) text = new StringBuilder(text).replace(m.start(),m.end(),StringTools.unescapeHTML(m.group(1))).toString();
 		
 		XMLObject x = new XMLObject();
 		return deserialize(x,text) ? x : null;
@@ -83,10 +83,10 @@ public class XMLObject {
 				
 				StringBuilder value = new StringBuilder(); char _start = arg.charAt(i2++);
 				while ((c = arg.charAt(i2++)) != _start) value.append(c);
-				newx.attributes.put(xmlUnescape(key.toString()),xmlUnescape(value.toString()));
+				newx.attributes.put(StringTools.unescapeHTML(key.toString()),StringTools.unescapeHTML(value.toString()));
 			}
 			
-			String _end = "</"+(newx.name = xmlUnescape(args[0]))+">";
+			String _end = "</"+(newx.name = StringTools.unescapeHTML(args[0]))+">";
 			if (!noClose) {
 				StringBuilder tagInside = new StringBuilder();
 				if (text.charAt(i) != '<' || text.charAt(i+1) != '/') {
@@ -105,20 +105,13 @@ public class XMLObject {
 				if (tagInside.length() != 0 && tagInside.charAt(0) == '<') {
 					deserialize(newx,tagInside.toString().trim());
 				} else {
-					newx.value = xmlUnescape(tagInside.toString());
+					newx.value = StringTools.unescapeHTML(tagInside.toString());
 					if (newx.value.isEmpty()) newx.value = null;
 				}
 			}
 		}
 		
 		return true;
-	}
-	
-	private static String xmlEscape(String text) {
-		return text.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace("\"","&quot;").replace("'","&apos;");
-	}
-	private static String xmlUnescape(String text) {
-		return text.replace("&apos;","'").replace("&quot;","\"").replace("&gt;",">").replace("&lt;","<").replace("&amp;","&");
 	}
 	
 	private String name = null, value = null;
@@ -152,23 +145,23 @@ public class XMLObject {
 		if (name == null) {
 			for (XMLObject e : elements) e.print(name == null ? 0 : spaces+2);
 		} else {
-			System.out.print(s+"<"+xmlEscape(name));
+			System.out.print(s+"<"+StringTools.escapeHTML(name));
 			for (String key : attributes.keySet()) {
 				String v = attributes.get(key); char c = v.contains("\"") ? '\'' : '"';
-				System.out.print(" "+key+"="+c+xmlEscape(attributes.get(key))+c);
+				System.out.print(" "+key+"="+c+StringTools.escapeHTML(attributes.get(key))+c);
 			}
 			if (countElements() != 0 || value != null) System.out.print(">");
 			
 			if (value != null) {
-				System.out.print(xmlEscape(value));
-				System.out.println("</"+xmlEscape(name)+">");
+				System.out.print(StringTools.escapeHTML(value));
+				System.out.println("</"+StringTools.escapeHTML(name)+">");
 			} else {
 				if (countElements() == 0) {
 					System.out.println(" />");
 				} else {
 					System.out.println();
 					for (XMLObject e : elements) e.print(name == null ? 0 : spaces+2);
-					System.out.println(s+"</"+xmlEscape(name)+">");
+					System.out.println(s+"</"+StringTools.escapeHTML(name)+">");
 				}
 			}
 		}

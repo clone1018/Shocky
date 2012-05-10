@@ -51,59 +51,12 @@ public class StringTools {
 	}
 	
 	public static String escapeHTML(String s) {
-		int length = s.length();
-		int newLength = length;
-		boolean someCharacterEscaped = false;
-		for (int i = 0; i < length; i++) {
-			char c = s.charAt(i);
-			int cint = 0xffff & c;
-			if (cint < 32) {
-				switch(c) {
-					case '\r': case '\n': case '\t': case '\f': break;
-					default: {
-						newLength -= 1;
-						someCharacterEscaped = true;
-					} break;
-				}
-			} else {
-				switch(c) {
-					case '\"': {
-						newLength += 5;
-						someCharacterEscaped = true;
-					} break;
-					case '&': case '\'': {
-						newLength += 4;
-						someCharacterEscaped = true;
-					} break;
-					case '<': case '>': {
-						newLength += 3;
-						someCharacterEscaped = true;
-					} break;
-				}
-			}
+		s = s.replace("&","&amp;");
+		for (String key : htmlEntities.keySet()) {
+			if (key.equals("&amp;")) continue;
+			s = s.replace(htmlEntities.get(key),key);
 		}
-		if (!someCharacterEscaped) return s;
-		StringBuffer sb = new StringBuffer(newLength);
-		for (int i = 0; i < length; i++) {
-			char c = s.charAt(i);
-			int cint = 0xffff & c;
-			if (cint < 32) {
-				switch(c) {
-					case '\r': case '\n': case '\t': case '\f': sb.append(c); break;
-					default: break;
-				}
-			} else {
-				switch(c) {
-					case '\"': sb.append("&quot;"); break;
-					case '\'': sb.append("&#39;"); break;
-					case '&': sb.append("&amp;"); break;
-					case '<': sb.append("&lt;"); break;
-					case '>': sb.append("&gt;"); break;
-					default: sb.append(c); break;
-				}
-			}
-		}
-		return sb.toString();
+		return s;
 	}
 	public static String unescapeHTML(String source) {
 		boolean continueLoop;
