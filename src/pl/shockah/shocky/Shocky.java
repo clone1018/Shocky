@@ -16,20 +16,6 @@ public class Shocky extends ListenerAdapter {
 	public static void main(String[] args) {
 		Data.load();
 		
-		Data.config.setNotExists("main-botname","Shocky");
-		Data.config.setNotExists("main-server","irc.esper.net");
-		Data.config.setNotExists("main-version","Shocky - PircBotX 1.6 - https://github.com/clone1018/Shocky - http://pircbotx.googlecode.com");
-		Data.config.setNotExists("main-verbose",false);
-		Data.config.setNotExists("main-maxchannels",10);
-		Data.config.setNotExists("main-nickservpass","");
-		Data.config.setNotExists("main-cmdchar","`~");
-		Data.config.setNotExists("main-sqlurl","http://localhost/shocky/sql.php");
-		Data.config.setNotExists("main-sqlhost","localhost");
-		Data.config.setNotExists("main-sqluser","");
-		Data.config.setNotExists("main-sqlpass","");
-		Data.config.setNotExists("main-sqldb","shocky");
-		Data.config.setNotExists("main-sqlprefix","");
-		
 		multiBot = new MultiBotManager(Data.config.getString("main-botname"));
 		try {
 			multiBot.setName(Data.config.getString("main-botname"));
@@ -44,6 +30,8 @@ public class Shocky extends ListenerAdapter {
 		timed = new TimedActions();
 		
 		Module.loadNewModules();
+		System.out.println("--- Shocky, the IRC bot, up and running! ---");
+		System.out.println("--- type \"help\" to list all available commands ---");
 		try {
 			MultiChannel.join(Data.channels.toArray(new String[0]));
 		} catch (Exception e) {e.printStackTrace();}
