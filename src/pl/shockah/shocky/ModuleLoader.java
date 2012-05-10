@@ -7,6 +7,10 @@ import java.util.Collections;
 import java.util.List;
 
 public abstract class ModuleLoader {
+	static {
+		Module.registerModuleLoader(new Java());
+	}
+	
 	protected List<Module> modules = Collections.synchronizedList(new ArrayList<Module>());
 	
 	protected Module loadModule(ModuleSource source) {
