@@ -104,7 +104,7 @@ public class CmdModule extends Command {
 			if (args[1].toLowerCase().equals("loadhttp")) {
 				try {
 					URL url = new URL(StringTools.implode(args,2," "));
-					Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,Module.load(new ModuleSource.URLSource(url)) != null ? "Loaded" : "Failed");
+					Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,Module.load(new ModuleSource<URL>(url)) != null ? "Loaded" : "Failed");
 				} catch (Exception e) {e.printStackTrace();}
 				return;
 			}

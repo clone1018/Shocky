@@ -1,5 +1,6 @@
 package pl.shockah.shocky;
 
+import java.io.File;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
@@ -9,7 +10,7 @@ import java.util.List;
 public abstract class ModuleLoader {
 	protected List<Module> modules = Collections.synchronizedList(new ArrayList<Module>());
 	
-	protected Module loadModule(ModuleSource source) {
+	protected Module loadModule(ModuleSource<?> source) {
 		Module m = load(source);
 		if (m != null) modules.add(m);
 		return m;
@@ -22,30 +23,30 @@ public abstract class ModuleLoader {
 		while (!modules.isEmpty()) Module.unload(modules.get(0));
 	}
 	
-	protected abstract boolean accept(ModuleSource source);
-	protected abstract Module load(ModuleSource source);
+	protected abstract boolean accept(ModuleSource<?> source);
+	protected abstract Module load(ModuleSource<?> source);
 	
 	public static class Java extends ModuleLoader {
-		protected boolean accept(ModuleSource source) {
-			return source instanceof ModuleSource.FileSource || source instanceof ModuleSource.URLSource;
+		protected boolean accept(ModuleSource<?> source) {
+			return source.source instanceof File || source.source instanceof URL;
 		}
-		protected Module load(ModuleSource source) {
+		protected Module load(ModuleSource<?> source) {
 			Module module = null;
 			try {
-				if (source instanceof ModuleSource.FileSource) {
-					ModuleSource.FileSource src = (ModuleSource.FileSource)source;
-					String moduleName = src.file.getName(); 
+				if (source.source instanceof File) {
+					File file = (File)source.source;
+					String moduleName = file.getName(); 
 					if (moduleName.endsWith(".class")) moduleName = new StringBuilder(moduleName).reverse().delete(0,6).reverse().toString(); else return null;
 					if (moduleName.contains("$")) return null;
 					
-					Class<?> c = new URLClassLoader(new URL[]{src.file.getParentFile().toURI().toURL()}).loadClass(moduleName);
+					Class<?> c = new URLClassLoader(new URL[]{file.getParentFile().toURI().toURL()}).loadClass(moduleName);
 					if (Module.class.isAssignableFrom(c)) return (Module)c.newInstance();
-				} else if (source instanceof ModuleSource.URLSource) {
-					ModuleSource.URLSource src = (ModuleSource.URLSource)source;
-					String moduleName = src.url.toString();
+				} else if (source.source instanceof URL) {
+					URL url = (URL)source.source;
+					String moduleName = url.toString();
 					StringBuilder sb = new StringBuilder(moduleName).reverse();
 					moduleName = new StringBuilder(sb.substring(0,sb.indexOf("/"))).reverse().toString();
-					String modulePath = new StringBuilder(src.url.toString()).delete(0,src.url.toString().length()-moduleName.length()).toString();
+					String modulePath = new StringBuilder(url.toString()).delete(0,url.toString().length()-moduleName.length()).toString();
 					if (moduleName.endsWith(".class")) moduleName = new StringBuilder(moduleName).reverse().delete(0,6).reverse().toString(); else return null;
 					if (moduleName.contains("$")) return null;
 					

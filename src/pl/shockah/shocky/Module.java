@@ -25,11 +25,11 @@ public abstract class Module extends ListenerAdapter implements Comparable<Modul
 		}
 	}
 	
-	private static void setup(Module module, ModuleLoader loader, ModuleSource source) {
+	private static void setup(Module module, ModuleLoader loader, ModuleSource<?> source) {
 		module.loader = loader;
 		module.source = source;
 	}
-	public static Module load(ModuleSource source) {
+	public static Module load(ModuleSource<?> source) {
 		Module module = null;
 		for (int i = 0; i < loaders.size(); i++) {
 			if (loaders.get(i).accept(source)) module = loaders.get(i).loadModule(source);
@@ -64,7 +64,7 @@ public abstract class Module extends ListenerAdapter implements Comparable<Modul
 	}
 	public static boolean reload(Module module) {
 		if (module == null) return false;
-		ModuleSource src = module.source;
+		ModuleSource<?> src = module.source;
 		unload(module);
 		return load(src) != null;
 	}
@@ -92,7 +92,7 @@ public abstract class Module extends ListenerAdapter implements Comparable<Modul
 		File dir = new File("modules"); dir.mkdir();
 		for (File f : dir.listFiles()) {
 			if (f.isDirectory()) continue;
-			Module m = load(new ModuleSource.FileSource(f));
+			Module m = load(new ModuleSource<File>(f));
 			if (m != null) ret.add(m);
 		}
 		Collections.sort(ret);
@@ -115,7 +115,7 @@ public abstract class Module extends ListenerAdapter implements Comparable<Modul
 	}
 	
 	private ModuleLoader loader;
-	private ModuleSource source;
+	private ModuleSource<?> source;
 	
 	public abstract String name();
 	
