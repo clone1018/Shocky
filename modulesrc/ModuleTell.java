@@ -30,16 +30,15 @@ public class ModuleTell extends Module {
 	protected Command cmd;
 	
 	public String name() {return "tell";}
-	public void load() {
+	public void onEnable() {
 		Command.addCommands(cmd = new CmdTell());
 		
 		ArrayList<String> lines = FileLine.read(new File("data","tell.cfg"));
 		for (int i = 0; i < lines.size(); i += 4) addTell(lines.get(i),new LineMessage(Long.parseLong(lines.get(i+2)),lines.get(i+1),lines.get(i+3)));
 	}
-	public void unload() {
+	public void onDisable() {
 		Command.removeCommands(cmd);
 	}
-	
 	public void onDataSave() {
 		ArrayList<String> lines = new ArrayList<String>();
 		Iterator<Entry<String,ArrayList<LineMessage>>> it = tells.entrySet().iterator();

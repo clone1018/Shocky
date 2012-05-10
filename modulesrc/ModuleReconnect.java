@@ -15,11 +15,11 @@ public class ModuleReconnect extends Module implements ActionListener {
 	private List<PircBotX> bots = Collections.synchronizedList(new ArrayList<PircBotX>());
 	
 	public String name() {return "reconnect";}
-	public void load() {
+	public void onEnable() {
 		timers.clear();
 		bots.clear();
 	}
-	public void unload() {
+	public void onDisable() {
 		for (Timer timer : timers) timer.stop();
 	}
 	

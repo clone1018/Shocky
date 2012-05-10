@@ -17,11 +17,11 @@ public class ModuleAutoKick extends Module {
 	private Map<String,Map<String,CheckerStructure>> data = Collections.synchronizedMap(new TreeMap<String,Map<String,CheckerStructure>>());
 	
 	public String name() {return "autokick";}
-	public void load() {
+	public void onEnable() {
 		Data.config.setNotExists("autokick-messages",5);
 		Data.config.setNotExists("autokick-delay",1000);
 	}
-	public void unload() {
+	public void onDisable() {
 		for (String key1 : data.keySet()) {
 			Map<String,CheckerStructure> map = data.get(key1);
 			for (String key2 : map.keySet()) map.get(key2).resetTimers();

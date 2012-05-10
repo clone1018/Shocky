@@ -70,8 +70,8 @@ public class MultiChannel {
 		
 		for (String channel : joinList) {
 			channel = channel.toLowerCase();
-			if (!Data.getChannels().contains(channel))
-				Data.getChannels().add(channel);
+			if (!Data.channels.contains(channel))
+				Data.channels.add(channel);
 			
 			PircBotX bot = null;
 			for (Entry<PircBotX, List<String>> entry : channelMap.entrySet()) {
@@ -101,10 +101,10 @@ public class MultiChannel {
 	public static void part(String... channels) throws Exception {
 		List<String> argsList = null;
 		if (channels == null || channels.length == 0)
-			argsList = new LinkedList<String>(Data.getChannels());
+			argsList = new LinkedList<String>(Data.channels);
 		else
 			argsList = Arrays.asList(channels);
-		if (!Data.getChannels().removeAll(argsList))
+		if (!Data.channels.removeAll(argsList))
 			return;
 		
 		for (Entry<PircBotX, List<String>> entry : channelMap.entrySet()) {

@@ -23,7 +23,7 @@ public class CmdBlacklist extends Command {
 		
 		if (args.length == 1) {
 			StringBuilder sb = new StringBuilder();
-			for (String blacklisted : Data.getBlacklistNicks()) {
+			for (String blacklisted : Data.blacklistNicks) {
 				if (sb.length() != 0) sb.append(", ");
 				sb.append(blacklisted);
 			}
@@ -34,18 +34,18 @@ public class CmdBlacklist extends Command {
 		if (args.length == 3) {
 			String s = args[2].toLowerCase();
 			if (args[1].toLowerCase().equals("add")) {
-				if (Data.getBlacklistNicks().contains(s)) {
+				if (Data.blacklistNicks.contains(s)) {
 					Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,s+" is already in blacklist");
 				} else {
-					Data.getBlacklistNicks().add(s);
+					Data.blacklistNicks.add(s);
 					Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,"Added");
 				}
 				return;
 			} else if (args[1].toLowerCase().equals("remove")) {
-				if (!Data.getBlacklistNicks().contains(s)) {
+				if (!Data.blacklistNicks.contains(s)) {
 					Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,s+" isn't in blacklist");
 				} else {
-					Data.getBlacklistNicks().remove(s);
+					Data.blacklistNicks.remove(s);
 					Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,"Removed");
 				}
 				return;

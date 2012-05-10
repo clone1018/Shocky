@@ -13,10 +13,10 @@ public class ModuleSaspiron extends Module {
 	public String name() {
 		return "saspiron";
 	}
-	public void load() {
+	public void onEnable() {
 		Command.addCommands(cmd = new CmdSaspiron());
 	}
-	public void unload() {
+	public void onDisable() {
 		Command.removeCommands(cmd);
 	}
 

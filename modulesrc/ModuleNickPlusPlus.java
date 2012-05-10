@@ -19,18 +19,16 @@ public class ModuleNickPlusPlus extends Module {
 	}
 	
 	public String name() {return "nickplusplus";}
-	public void load() {
+	public void onEnable() {
 		Data.config.setNotExists("npp-announce",true);
 		config.load(new File("data","nickplusplus.cfg"));
 	}
-	public void unload() {}
-	
 	public void onDataSave() {
 		config.save(new File("data","nickplusplus.cfg"));
 	}
 	
 	public void onMessage(MessageEvent<PircBotX> event) {
-		if (Data.getBlacklistNicks().contains(event.getUser().getNick().toLowerCase())) return;
+		if (Data.blacklistNicks.contains(event.getUser().getNick().toLowerCase())) return;
 		if (event.getMessage().matches("^("+Utils.patternNick.pattern()+")((\\+\\+)|(\\-\\-)|(\\=\\=))$")) {
 			String nick = event.getMessage().substring(0,event.getMessage().length()-2);
 			

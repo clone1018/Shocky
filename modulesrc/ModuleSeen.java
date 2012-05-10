@@ -15,14 +15,13 @@ public class ModuleSeen extends Module {
 	protected Command cmd;
 	
 	public String name() {return "seen";}
-	public void load() {
+	public void onEnable() {
 		(config = new Config()).load(new File("data","seen.cfg"));
 		Command.addCommands(cmd = new CmdSeen());
 	}
-	public void unload() {
+	public void onDisable() {
 		Command.removeCommands(cmd);
 	}
-	
 	public void onDataSave() {
 		config.save(new File("data","seen.cfg"));
 	}

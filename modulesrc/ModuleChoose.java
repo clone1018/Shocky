@@ -11,10 +11,10 @@ public class ModuleChoose extends Module {
 	protected Command cmd;
 	
 	public String name() {return "choose";}
-	public void load() {
+	public void onEnable() {
 		Command.addCommands(cmd = new CmdChoose());
 	}
-	public void unload() {
+	public void onDisable() {
 		Command.removeCommands(cmd);
 	}
 	

@@ -17,7 +17,7 @@ public class ModuleFactoid extends Module {
 	private static Pattern functionPattern = Pattern.compile("([a-zA-Z_][a-zA-Z0-9_]*)\\(.*?\\)");
 	
 	public String name() {return "factoid";}
-	public void load() {
+	public void onEnable() {
 		Data.config.setNotExists("factoid-char","?!");
 		Data.config.setNotExists("factoid-charraw","+");
 		Data.config.setNotExists("factoid-charby","-");
@@ -80,13 +80,12 @@ public class ModuleFactoid extends Module {
 		};
 		functions.put(func.name(), func);
 	}
-	public void unload() {
+	public void onDisable() {
 		functions.clear();
 		Command.removeCommands(fcmds.toArray(new Command[fcmds.size()]));
 		fcmds.clear();
 		Command.removeCommands(cmdR,cmdF,cmdFCMD,cmdManage);
 	}
-	
 	public void onDataSave() {
 		config.save(new File("data","factoid.cfg"));
 		
@@ -104,7 +103,7 @@ public class ModuleFactoid extends Module {
 	}
 	
 	public void onMessage(MessageEvent<PircBotX> event) {
-		if (Data.getBlacklistNicks().contains(event.getUser().getNick().toLowerCase())) return;
+		if (Data.blacklistNicks.contains(event.getUser().getNick().toLowerCase())) return;
 		onMessage(event.getBot(),event.getChannel(),event.getUser(),event.getMessage());
 	}
 	public void onMessage(PircBotX bot, Channel channel, User sender, String msg) {

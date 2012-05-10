@@ -7,11 +7,9 @@ import pl.shockah.shocky.Shocky;
 
 public class ModuleInvite extends Module {
 	public String name() {return "invite";}
-	public void load() {}
-	public void unload() {}
 	
 	public void onInvite(InviteEvent<PircBotX> event) {
-		if (Data.getBlacklistNicks().contains(event.getUser().toLowerCase())) return;
+		if (Data.blacklistNicks.contains(event.getUser().toLowerCase())) return;
 		try {
 			MultiChannel.join(event.getChannel());
 		} catch (Exception e) {Shocky.sendNotice(event.getBot(),event.getBot().getUser(event.getUser()),"I'm already in channel "+event.getChannel());}

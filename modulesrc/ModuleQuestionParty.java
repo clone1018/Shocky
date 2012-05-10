@@ -38,10 +38,10 @@ public class ModuleQuestionParty extends Module {
 	}
 	
 	public String name() {return "questionparty";}
-	public void load() {
+	public void onEnable() {
 		Command.addCommands(cmd = new CmdQuestionParty());
 	}
-	public void unload() {
+	public void onDisable() {
 		Command.removeCommands(cmd);
 	}
 	

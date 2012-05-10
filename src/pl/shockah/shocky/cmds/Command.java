@@ -63,7 +63,7 @@ public abstract class Command implements Comparable<Command> {
 		if (bot.getInetAddress().isLoopbackAddress()) return true;
 		if (type == EType.Console) return true;
 		if (Shocky.getLogin(user) == null) return false;
-		return Data.getControllers().contains(Shocky.getLogin(user));
+		return Data.controllers.contains(Shocky.getLogin(user));
 	}
 	public final boolean canUseController(PircBotX bot, EType type, User user) {
 		if (isController(bot,type,user)) return true;

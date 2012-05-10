@@ -9,11 +9,9 @@ import pl.shockah.shocky.Module;
 
 public class ModuleActBack extends Module {
 	public String name() {return "actback";}
-	public void load() {}
-	public void unload() {}
 	
 	public void onAction(ActionEvent<PircBotX> event) {
-		if (Data.getBlacklistNicks().contains(event.getUser().getNick().toLowerCase())) return;
+		if (Data.blacklistNicks.contains(event.getUser().getNick().toLowerCase())) return;
 		String[] spl = event.getAction().split(" ");
 		List<String> list = Arrays.asList(spl);
 		if (spl.length >= 2 && list.contains(event.getBot().getNick())) {

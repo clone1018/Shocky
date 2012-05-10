@@ -69,21 +69,21 @@ public class ModuleYoutube extends Module {
 	}
 	
 	public String name() {return "youtube";}
-	public void load() {
+	public void onEnable() {
 		Data.config.setNotExists("yt-otherbot",false);
 		Command.addCommands(cmd = new CmdYoutube());
 		
 		patternsAction.add(Pattern.compile("^.*?(?:(?:playing)|(?:listening))(?: to)?:? (.*)$"));
 		patternsMessage.add(Pattern.compile("^np: (.*)$"));
 	}
-	public void unload() {
+	public void onDisable() {
 		patternsAction.clear();
 		patternsMessage.clear();
 		Command.removeCommands(cmd);
 	}
 	
 	public void onMessage(MessageEvent<PircBotX> event) {
-		if (Data.getBlacklistNicks().contains(event.getUser().getNick().toLowerCase())) return;
+		if (Data.blacklistNicks.contains(event.getUser().getNick().toLowerCase())) return;
 		
 		for (Pattern p : patternsMessage) {
 			Matcher m = p.matcher(event.getMessage());
@@ -106,7 +106,7 @@ public class ModuleYoutube extends Module {
 		}
 	}
 	public void onAction(ActionEvent<PircBotX> event) {
-		if (Data.getBlacklistNicks().contains(event.getUser().getNick().toLowerCase())) return;
+		if (Data.blacklistNicks.contains(event.getUser().getNick().toLowerCase())) return;
 		
 		for (Pattern p : patternsAction) {
 			Matcher m = p.matcher(event.getAction());

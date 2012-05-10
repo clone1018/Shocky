@@ -23,7 +23,7 @@ public class CmdController extends Command {
 		
 		if (args.length == 1) {
 			StringBuilder sb = new StringBuilder();
-			for (String controller : Data.getControllers()) {
+			for (String controller : Data.controllers) {
 				if (sb.length() != 0) sb.append(", ");
 				sb.append(controller);
 			}
@@ -34,7 +34,7 @@ public class CmdController extends Command {
 		if (args.length == 3) {
 			String s = args[2];
 			User u = Shocky.getUser(args[2]);
-			if (!Data.getControllers().contains(s) && u != null) {
+			if (!Data.controllers.contains(s) && u != null) {
 				if (Shocky.getLogin(u) == null) {
 					Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,s+" isn't identified");
 					return;
@@ -43,18 +43,18 @@ public class CmdController extends Command {
 			}
 			
 			if (args[1].toLowerCase().equals("add")) {
-				if (Data.getControllers().contains(s)) {
+				if (Data.controllers.contains(s)) {
 					Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,s+" is already a controller");
 				} else {
-					Data.getControllers().add(s);
+					Data.controllers.add(s);
 					Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,"Added");
 				}
 				return;
 			} else if (args[1].toLowerCase().equals("remove")) {
-				if (!Data.getControllers().contains(s)) {
+				if (!Data.controllers.contains(s)) {
 					Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,s+" isn't a controller");
 				} else {
-					Data.getControllers().remove(s);
+					Data.controllers.remove(s);
 					Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,"Removed");
 				}
 				return;

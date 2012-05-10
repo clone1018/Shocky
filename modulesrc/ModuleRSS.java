@@ -41,7 +41,7 @@ public class ModuleRSS extends Module {
 	protected ArrayList<Feed> feeds = new ArrayList<Feed>();
 	
 	public String name() {return "rss";}
-	public void load() {
+	public void onEnable() {
 		Command.addCommands(cmd = new CmdRSS());
 		
 		ArrayList<String> lines = FileLine.read(new File("data","rss.cfg"));
@@ -52,11 +52,10 @@ public class ModuleRSS extends Module {
 			feeds.add(new Feed(url,date,channels));
 		}
 	}
-	public void unload() {
+	public void onDisable() {
 		Command.removeCommands(cmd);
 		for (Feed feed : feeds) feed.stop();
 	}
-	
 	public void onDataSave() {
 		ArrayList<String> lines = new ArrayList<String>();
 		for (Feed feed : feeds) {

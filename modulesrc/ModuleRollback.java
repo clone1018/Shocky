@@ -7,6 +7,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.TimeZone;
 import java.util.regex.Pattern;
 import org.pircbotx.Channel;
@@ -53,7 +54,7 @@ public class ModuleRollback extends Module {
 	}
 	
 	public String name() {return "rollback";}
-	public void load() {
+	public void onEnable() {
 		File dir = new File("data","rollback"); dir.mkdir();
 		File[] files = dir.listFiles();
 		for (File f : files) {
@@ -84,21 +85,20 @@ public class ModuleRollback extends Module {
 		services.add(new ServicePastebinCom());
 		services.add(new ServicePastebinCa());
 	}
-	public void unload() {
+	public void onDisable() {
 		Command.removeCommands(cmd);
 		services.clear();
 	}
-	
-	@SuppressWarnings({"rawtypes","unchecked"}) public void onDataSave() {
+	public void onDataSave() {
 		File dir = new File("data","rollback"); dir.mkdir();
 		BinBuffer binb = new BinBuffer();
 		
-		Iterator it = rollbackTmp.entrySet().iterator();
+		Iterator<Entry<String, ArrayList<Line>>> it = rollbackTmp.entrySet().iterator();
 		while (it.hasNext()) {
 			binb.clear();
-			Map.Entry pair = (Map.Entry)it.next();
+			Map.Entry<String, ArrayList<Line>> pair = it.next();
 			
-			ArrayList<Line> lines = (ArrayList<Line>)pair.getValue();
+			ArrayList<Line> lines = pair.getValue();
 			for (Line line : lines) {
 				binb.writeXBytes(line.time.getTime(),8);
 				if (line.getClass() == LineOther.class) {
@@ -116,7 +116,7 @@ public class ModuleRollback extends Module {
 			}
 			
 			binb.setPos(0);
-			new BinFile(new File(dir,(String)pair.getKey())).append(binb);
+			new BinFile(new File(dir,pair.getKey())).append(binb);
 		}
 		
 		rollbackTmp.clear();

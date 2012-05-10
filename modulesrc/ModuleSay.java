@@ -10,10 +10,10 @@ public class ModuleSay extends Module {
 	protected Command cmdSay, cmdAction;
 	
 	public String name() {return "say";}
-	public void load() {
+	public void onEnable() {
 		Command.addCommands(cmdSay = new CmdSay(),cmdAction = new CmdAction());
 	}
-	public void unload() {
+	public void onDisable() {
 		Command.removeCommands(cmdSay,cmdAction);
 	}
 	

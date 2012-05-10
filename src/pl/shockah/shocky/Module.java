@@ -1,83 +1,88 @@
 package pl.shockah.shocky;
 
 import java.io.File;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collections;
+import java.util.List;
 import org.pircbotx.PircBotX;
 
 public abstract class Module extends ListenerAdapter {
-	private static final ArrayList<Module> modules = new ArrayList<Module>();
-	private static final ArrayList<URL> urls = new ArrayList<URL>();
-	private static final ArrayList<String> loadedClasses = new ArrayList<String>();
-	private static final HashMap<Module,Object> classSource = new HashMap<Module,Object>();
+	private static final List<Module> modules = Collections.synchronizedList(new ArrayList<Module>()), modulesOn = Collections.synchronizedList(new ArrayList<Module>());
+	private static final List<ModuleLoader> loaders = Collections.synchronizedList(new ArrayList<ModuleLoader>());
 	
-	private static synchronized Module load(String cls) {
-		try {
-			Module module = (Module)new URLClassLoader(urls.toArray(new URL[urls.size()])).loadClass(cls).newInstance();
-			classSource.put(module,cls);
-			afterLoad(module);
-			return module;
-		} catch (Exception e) {e.printStackTrace();}
-		return null;
+	public static void registerModuleLoader(ModuleLoader loader) {
+		if (loaders.contains(loader)) loaders.remove(loader);
+		loaders.add(loader);
 	}
-	public static synchronized Module load(URL url) {
-		try {
-			String u = new StringBuilder(url.toExternalForm()).reverse().toString(), cname = u;
-			u = new StringBuilder(u.substring(u.indexOf('/'))).reverse().toString();
-			cname = new StringBuilder(cname.substring(0,cname.indexOf('/'))).reverse().toString().replace(".class","");
+	public static void unregisterModuleLoader(ModuleLoader loader) {
+		if (loaders.contains(loader)) {
+			loader.unloadAllModules();
+			loaders.remove(loader);
+		}
+	}
+	
+	private static void setup(Module module, ModuleLoader loader, ModuleSource source) {
+		module.loader = loader;
+		module.source = source;
+	}
+	public static Module load(ModuleSource source) {
+		Module module = null;
+		for (int i = 0; i < loaders.size(); i++) {
+			if (loaders.get(i).accept(source)) module = loaders.get(i).loadModule(source);
+			if (module != null) {
+				setup(module,loaders.get(i),source);
+				break;
+			}
+		}
+		
+		if (module != null) {
+			for (int i = 0; i < modules.size(); i++) if (modules.get(i).name().equals(module.name())) {
+				module.loader.unloadModule(module);
+				return null;
+			}
 			
-			Module module = (Module)new URLClassLoader(new URL[]{new URL(u)}).loadClass(cname).newInstance();
-			classSource.put(module,url);
-			afterLoad(module);
-			return module;
-		} catch (Exception e) {e.printStackTrace();}
-		return null;
+			modules.add(module);
+			Data.config.setNotExists("module-"+module.name(),true);
+			if (Data.config.getBoolean("module-"+module.name())) {
+				module.onEnable();
+				modulesOn.add(module);
+			}
+		}
+		return module;
 	}
-	private static synchronized void afterLoad(Module module) {
-		loadedClasses.add(module.getClass().getName());
-		modules.add(module);
-		Data.config.setNotExists("module-"+module.name(),true);
-		if (Data.config.getBoolean("module-"+module.name())) on(module);
-	}
-	
-	private static Module load(Module module, Object source) {
-		if (source instanceof URL) return load((URL)source);
-		return load(module.getClass().getName());
-	}
-	public static synchronized boolean unload(Module module) {
+	public static boolean unload(Module module) {
 		if (module == null) return false;
-		off(module);
-		loadedClasses.remove(module.getClass().getName());
-		classSource.remove(module);
+		if (!modules.contains(module)) return false;
+		if (modulesOn.contains(module)) {
+			module.onDisable();
+			modulesOn.remove(module);
+		}
 		modules.remove(module);
+		module.loader.unloadModule(module);
 		return true;
 	}
 	public static boolean reload(Module module) {
-		Object source = classSource.get(module);
-		if (!unload(module)) return false;
-		return load(module,source) != null;
-	}
-	public static boolean reload(String module) {
-		return reload(getModule(module.toLowerCase()));
+		if (module == null) return false;
+		ModuleSource src = module.source;
+		unload(module);
+		return load(src) != null;
 	}
 	
-	public static synchronized void updateURLs() {
-		urls.clear();
-		try {
-			File dir = new File("modules"); dir.mkdir();
-			urls.add(dir.toURI().toURL());
-			for (File f : dir.listFiles()) {
-				if (f.isDirectory()) continue;
-				if (!f.getName().endsWith(".jar")) continue;
-				urls.add(f.toURI().toURL());
-			}
-			
-		} catch (Exception e) {e.printStackTrace();}
+	public static boolean enable(Module module) {
+		if (module == null) return false;
+		if (modulesOn.contains(module)) return false;
+		module.onEnable();
+		modulesOn.add(module);
+		return true;
 	}
-	public static synchronized ArrayList<Module> loadNewModules() {
-		updateURLs();
+	public static boolean disable(Module module) {
+		if (!modulesOn.contains(module)) return false;
+		module.onDisable();
+		modulesOn.remove(module);
+		return true;
+	}
+	
+	public static ArrayList<Module> loadNewModules() {
 		ArrayList<Module> ret = new ArrayList<Module>();
 		File dir = new File("modules"); dir.mkdir();
 		for (File f : dir.listFiles()) {
@@ -85,46 +90,36 @@ public abstract class Module extends ListenerAdapter {
 			if (f.getName().contains("$")) continue;
 			if (!f.getName().endsWith(".class")) continue;
 			if (!f.getName().startsWith("Module")) continue;
-			if (loadedClasses.contains(f.getName().replace(".class",""))) continue;
-			ret.add(load(f.getName().replace(".class","")));
+			Module m = load(new ModuleSource.File(f));
+			if (m != null) ret.add(m);
 		}
 		return ret;
 	}
 	
-	public static synchronized ArrayList<Module> getModules(boolean withTurnedOff) {
-		ArrayList<Module> ret = new ArrayList<Module>(modules);
-		if (!withTurnedOff) for (int i = 0; i < ret.size(); i++) if (!ret.get(i).isOn()) ret.remove(i--);
-		return ret;
-	}
-	public static synchronized Module getModule(String name) {
-		for (Module module : modules) if (module.name().equalsIgnoreCase(name)) return module;
+	public static Module getModule(String name) {
+		for (int i = 0; i < modules.size(); i++) if (modules.get(i).name().equals(name)) return modules.get(i);
 		return null;
 	}
-	public static synchronized boolean on(Module module) {
-		if (module == null) return false;
-		if (module.isOn()) return false;
-		Shocky.getBotManager().getListenerManager().addListener(module);
-		module.load();
-		module.isOn = true;
-		return true;
+	public static ArrayList<Module> getModules() {
+		return new ArrayList<Module>(modules);
 	}
-	public static synchronized boolean off(Module module) {
-		if (module == null) return false;
-		if (!module.isOn()) return false;
-		Shocky.getBotManager().getListenerManager().removeListener(module);
-		module.onDataSave();
-		module.unload();
-		module.isOn = false;
-		return true;
+	public static ArrayList<Module> getModules(boolean enabled) {
+		ArrayList<Module> ret = getModules();
+		for (int i = 0; i < ret.size(); i++) if (modulesOn.contains(ret.get(i)) != enabled) ret.remove(i--);
+		return ret;
 	}
 	
-	protected boolean isOn = false;
+	private ModuleLoader loader;
+	private ModuleSource source;
 	
-	public Module() {}
-	public final boolean isOn() {return isOn;}
 	public abstract String name();
-	public abstract void load();
-	public abstract void unload();
-	public void onDataSave() {}
+	
+	public void onEnable() {}
+	public void onDisable() {}
 	public void onDie(PircBotX bot) {}
+	public void onDataSave() {}
+	
+	public final boolean isEnabled() {
+		return modulesOn.contains(this);
+	}
 }

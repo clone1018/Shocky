@@ -44,7 +44,7 @@ public class Shocky extends ListenerAdapter {
 		timed = new TimedActions();
 		
 		try {
-			MultiChannel.join(Data.getChannels().toArray(new String[0]));
+			MultiChannel.join(Data.channels.toArray(new String[0]));
 		} catch (Exception e) {e.printStackTrace();}
 		
 		Module.loadNewModules();
@@ -174,18 +174,18 @@ public class Shocky extends ListenerAdapter {
 	}
 	
 	public void onMessage(MessageEvent<PircBotX> event) {
-		if (Data.getBlacklistNicks().contains(event.getUser().getNick().toLowerCase())) return;
+		if (Data.blacklistNicks.contains(event.getUser().getNick().toLowerCase())) return;
 		Command cmd = Command.getCommand(event.getBot(),Command.EType.Channel,event.getMessage());
 		if (cmd != null) cmd.doCommand(event.getBot(),Command.EType.Channel,event.getChannel(),event.getUser(),event.getMessage());
 	}
 	public void onPrivateMessage(PrivateMessageEvent<PircBotX> event) {
-		if (Data.getBlacklistNicks().contains(event.getUser().getNick().toLowerCase())) return;
+		if (Data.blacklistNicks.contains(event.getUser().getNick().toLowerCase())) return;
 		Command cmd = Command.getCommand(event.getBot(),Command.EType.Private,event.getMessage());
 		if (cmd != null) cmd.doCommand(event.getBot(),Command.EType.Private,null,event.getUser(),event.getMessage());
 	}
 	public void onNotice(NoticeEvent<PircBotX> event) {
 		if (event.getUser().getNick().equals("NickServ")) return;
-		if (Data.getBlacklistNicks().contains(event.getUser().getNick().toLowerCase())) return;
+		if (Data.blacklistNicks.contains(event.getUser().getNick().toLowerCase())) return;
 		Command cmd = Command.getCommand(event.getBot(),Command.EType.Notice,event.getMessage());
 		if (cmd != null) cmd.doCommand(event.getBot(),Command.EType.Notice,null,event.getUser(),event.getMessage());
 	}

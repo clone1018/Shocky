@@ -37,22 +37,21 @@ public class ModuleHighFive extends Module implements ActionListener {
 	}
 	
 	public String name() {return "highfive";}
-	public void load() {
+	public void onEnable() {
 		Data.config.setNotExists("hf-announce",true);
 		Data.config.setNotExists("hf-maxtime",1000*60*5);
 		config.load(new File("data","highfive.cfg"));
 	}
-	public void unload() {
+	public void onDisable() {
 		for (String key : timers.keySet()) timers.get(key).stop();
 		timers.clear();
 	}
-	
 	public void onDataSave() {
 		config.save(new File("data","highfive.cfg"));
 	}
 	
 	public void onMessage(MessageEvent<PircBotX> event) {
-		if (Data.getBlacklistNicks().contains(event.getUser().getNick().toLowerCase())) return;
+		if (Data.blacklistNicks.contains(event.getUser().getNick().toLowerCase())) return;
 		List<String> list = Arrays.asList(event.getMessage().split(" "));
 		
 		String s = started.get(event.getChannel().getName());

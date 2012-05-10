@@ -22,7 +22,7 @@ public class ModuleQuote extends Module {
 	private HashMap<String,ArrayList<Quote>> quotes = new HashMap<String,ArrayList<Quote>>();
 	
 	public String name() {return "quote";}
-	public void load() {
+	public void onEnable() {
 		File dir = new File("data","quotes"); dir.mkdir();
 		File[] files = dir.listFiles();
 		for (File f : files) {
@@ -40,10 +40,9 @@ public class ModuleQuote extends Module {
 		
 		Command.addCommands(cmd = new CmdQuote(),cmdAdd = new CmdQuoteAdd(),cmdRemove = new CmdQuoteRemove());
 	}
-	public void unload() {
+	public void onDisable() {
 		Command.removeCommands(cmd,cmdAdd,cmdRemove);
 	}
-	
 	public void onDataSave() {
 		File dir = new File("data","quotes"); dir.mkdir();
 		BinBuffer binb = new BinBuffer();

@@ -7,19 +7,9 @@ import pl.shockah.FileLine;
 
 public class Data {
 	public static final Config config = new Config();
-	private static final ArrayList<String> controllers = new ArrayList<String>();
-	private static final ArrayList<String> channels = new ArrayList<String>();
-	private static final ArrayList<String> blacklistNicks = new ArrayList<String>();
-	
-	public static ArrayList<String> getControllers() {
-		return controllers;
-	}
-	public static ArrayList<String> getChannels() {
-		return channels;
-	}
-	public static ArrayList<String> getBlacklistNicks() {
-		return blacklistNicks;
-	}
+	public static final ArrayList<String> controllers = new ArrayList<String>();
+	public static final ArrayList<String> channels = new ArrayList<String>();
+	public static final ArrayList<String> blacklistNicks = new ArrayList<String>();
 	
 	public static synchronized void blank() {}
 	public static synchronized void load() {

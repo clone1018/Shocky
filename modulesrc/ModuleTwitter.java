@@ -22,13 +22,12 @@ public class ModuleTwitter extends Module {
 	private final Pattern statusUrl = Pattern.compile("https?://twitter\\.com/(#!/)?[^/]+/status(es)?/[0-9]+");
 	
 	public String name() {return "twitter";}
-	public void load() {
+	public void onEnable() {
 		Data.config.setNotExists("twitter-dateformat","dd.MM.yyyy HH:mm:ss");
 	}
-	public void unload() {}
 	
 	public void onMessage(MessageEvent<PircBotX> event) {
-		if (Data.getBlacklistNicks().contains(event.getUser().getNick().toLowerCase())) return;
+		if (Data.blacklistNicks.contains(event.getUser().getNick().toLowerCase())) return;
 		
 		for (String url : Utils.getAllUrls(event.getMessage())) {
 			if (!statusUrl.matcher(url).find()) continue;

@@ -16,12 +16,12 @@ public class ModuleUrban extends Module {
 	@Override
 	public String name() {return "urban";}
 	@Override
-	public void load() {
+	public void onEnable() {
 		Command.addCommands(cmd = new CmdUrban());
 	}
 	
 	@Override
-	public void unload() {
+	public void onDisable() {
 		Command.removeCommands(cmd);
 	}
 	

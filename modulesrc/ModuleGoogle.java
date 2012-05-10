@@ -17,13 +17,13 @@ public class ModuleGoogle extends Module {
 	@Override
 	public String name() {return "google";}
 	@Override
-	public void load() {
+	public void onEnable() {
 		Command.addCommands(cmd1 = new CmdGoogle());
 		Command.addCommands(cmd2 = new CmdGoogleImg());
 	}
 	
 	@Override
-	public void unload() {
+	public void onDisable() {
 		Command.removeCommands(cmd1);
 		Command.removeCommands(cmd2);
 	}

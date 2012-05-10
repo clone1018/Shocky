@@ -14,11 +14,11 @@ public class ModulePHP extends Module {
 	protected Command cmd;
 	
 	public String name() {return "php";}
-	public void load() {
+	public void onEnable() {
 		Data.config.setNotExists("php-url","http://localhost/shocky/shocky.php");
 		Command.addCommands(cmd = new CmdPHP());
 	}
-	public void unload() {
+	public void onDisable() {
 		Command.removeCommands(cmd);
 	}
 	
