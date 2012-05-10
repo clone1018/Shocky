@@ -1,6 +1,7 @@
 package pl.shockah.shocky.cmds;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
@@ -14,6 +15,7 @@ public class CmdHelp extends Command {
 		sb.append("help {command} - shows command's help\n");
 		
 		ArrayList<Command> cmds = Command.getCommands();
+		Collections.sort(cmds);
 		for (int i = 0; i < cmds.size(); i++) {
 			Command cmd = cmds.get(i);
 			if (i != 0) sb.append(", ");

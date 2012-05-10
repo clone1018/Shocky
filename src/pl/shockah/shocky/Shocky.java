@@ -43,11 +43,11 @@ public class Shocky extends ListenerAdapter {
 		
 		timed = new TimedActions();
 		
+		Module.loadNewModules();
 		try {
 			MultiChannel.join(Data.channels.toArray(new String[0]));
 		} catch (Exception e) {e.printStackTrace();}
 		
-		Module.loadNewModules();
 		new ThreadConsoleInput().start();
 	}
 	

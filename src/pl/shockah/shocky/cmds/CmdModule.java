@@ -32,7 +32,7 @@ public class CmdModule extends Command {
 		String[] args = message.split(" ");
 		
 		if (args.length == 1) {
-			ArrayList<Module> modules = Module.getModules(true);
+			ArrayList<Module> modules = Module.getModules();
 			StringBuilder sb = new StringBuilder();
 			for (Module module : modules) {
 				if (sb.length() != 0) sb.append(", ");

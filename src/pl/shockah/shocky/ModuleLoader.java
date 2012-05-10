@@ -7,10 +7,6 @@ import java.util.Collections;
 import java.util.List;
 
 public abstract class ModuleLoader {
-	static {
-		Module.registerModuleLoader(new Java());
-	}
-	
 	protected List<Module> modules = Collections.synchronizedList(new ArrayList<Module>());
 	
 	protected Module loadModule(ModuleSource source) {
@@ -40,9 +36,10 @@ public abstract class ModuleLoader {
 					ModuleSource.File src = (ModuleSource.File)source;
 					String moduleName = src.file.getName(); 
 					if (moduleName.endsWith(".class")) moduleName = new StringBuilder(moduleName).reverse().delete(0,6).reverse().toString(); else return null;
+					if (moduleName.contains("$")) return null;
 					
-					Class<?> c = new URLClassLoader(new URL[]{new URL(src.file.getParent())}).loadClass(moduleName);
-					if (c.isAssignableFrom(Module.class)) return (Module)c.newInstance();
+					Class<?> c = new URLClassLoader(new URL[]{src.file.getParentFile().toURI().toURL()}).loadClass(moduleName);
+					if (Module.class.isAssignableFrom(c)) return (Module)c.newInstance();
 				} else if (source instanceof ModuleSource.URL) {
 					ModuleSource.URL src = (ModuleSource.URL)source;
 					String moduleName = src.url.toString();
@@ -50,9 +47,10 @@ public abstract class ModuleLoader {
 					moduleName = new StringBuilder(sb.substring(0,sb.indexOf("/"))).reverse().toString();
 					String modulePath = new StringBuilder(src.url.toString()).delete(0,src.url.toString().length()-moduleName.length()).toString();
 					if (moduleName.endsWith(".class")) moduleName = new StringBuilder(moduleName).reverse().delete(0,6).reverse().toString(); else return null;
+					if (moduleName.contains("$")) return null;
 					
 					Class<?> c = new URLClassLoader(new URL[]{new URL(modulePath)}).loadClass(moduleName);
-					if (c.isAssignableFrom(Module.class)) return (Module)c.newInstance();
+					if (Module.class.isAssignableFrom(c)) return (Module)c.newInstance();
 				}
 			} catch (Exception e) {e.printStackTrace();}
 			return module;

@@ -6,9 +6,13 @@ import java.util.Collections;
 import java.util.List;
 import org.pircbotx.PircBotX;
 
-public abstract class Module extends ListenerAdapter {
+public abstract class Module extends ListenerAdapter implements Comparable<Module> {
 	private static final List<Module> modules = Collections.synchronizedList(new ArrayList<Module>()), modulesOn = Collections.synchronizedList(new ArrayList<Module>());
 	private static final List<ModuleLoader> loaders = Collections.synchronizedList(new ArrayList<ModuleLoader>());
+	
+	static {
+		Module.registerModuleLoader(new ModuleLoader.Java());
+	}
 	
 	public static void registerModuleLoader(ModuleLoader loader) {
 		if (loaders.contains(loader)) loaders.remove(loader);
@@ -87,12 +91,10 @@ public abstract class Module extends ListenerAdapter {
 		File dir = new File("modules"); dir.mkdir();
 		for (File f : dir.listFiles()) {
 			if (f.isDirectory()) continue;
-			if (f.getName().contains("$")) continue;
-			if (!f.getName().endsWith(".class")) continue;
-			if (!f.getName().startsWith("Module")) continue;
 			Module m = load(new ModuleSource.File(f));
 			if (m != null) ret.add(m);
 		}
+		Collections.sort(ret);
 		return ret;
 	}
 	
@@ -101,7 +103,9 @@ public abstract class Module extends ListenerAdapter {
 		return null;
 	}
 	public static ArrayList<Module> getModules() {
-		return new ArrayList<Module>(modules);
+		ArrayList<Module> ret = new ArrayList<Module>(modules);
+		Collections.sort(ret);
+		return ret;
 	}
 	public static ArrayList<Module> getModules(boolean enabled) {
 		ArrayList<Module> ret = getModules();
@@ -121,5 +125,9 @@ public abstract class Module extends ListenerAdapter {
 	
 	public final boolean isEnabled() {
 		return modulesOn.contains(this);
+	}
+	
+	public int compareTo(Module module) {
+		return name().compareTo(module.name());
 	}
 }
