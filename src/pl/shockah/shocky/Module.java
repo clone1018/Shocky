@@ -47,10 +47,7 @@ public abstract class Module extends ListenerAdapter implements Comparable<Modul
 			
 			modules.add(module);
 			Data.config.setNotExists("module-"+module.name(),true);
-			if (Data.config.getBoolean("module-"+module.name())) {
-				module.onEnable();
-				modulesOn.add(module);
-			}
+			if (Data.config.getBoolean("module-"+module.name())) enable(module);
 		}
 		return module;
 	}
