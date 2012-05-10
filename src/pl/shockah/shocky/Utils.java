@@ -15,8 +15,8 @@ public class Utils {
 		patternURL = Pattern.compile("[a-z]+://(www\\.)?[a-z0-9]+(\\.[a-z]+)+/([^/:]+/)*([^/]*)?"),
 		patternNick = Pattern.compile("[a-zA-Z0-9\\Q_-\\[]{}^`|\\E]+");
 	private static final String
-		mungeOriginal =	"acdefghijklnoprstuwxyzACDEGHIJKLORSTUWYZ0123456789",
-		mungeReplace =	"äċđëƒġħíĵķĺñöρŗšţüωχÿźÅÇĎĒĠĦÍĴĶĹÖŖŠŢŮŴỲŻ０１２３４５６７８９";
+		mungeOriginal =	"abcdefghijklnoprstuwxyzABCDEGHIJKLORSTUWYZ0123456789",
+		mungeReplace =	"äḃċđëƒġħíĵķĺñöρŗšţüωχÿźÅḂÇĎĒĠĦÍĴĶĹÖŖŠŢŮŴỲŻ０１２３４５６７８９";
 	private static final String
 		flipOriginal =	"!().12345679<>?ABCDEFGJKLMPQRTUVWY[]_abcdefghijklmnpqrtuvwy{},'\"┳",
 		flipReplace =	"¡)(˙⇂ᄅƐㄣϛ9Ɫ6><¿∀ℇƆ◖ƎℲפſ丬˥WԀΌᴚ⊥∩ΛMλ][‾ɐqɔpǝɟɓɥıɾʞlɯudbɹʇnʌʍʎ}{',„┻";

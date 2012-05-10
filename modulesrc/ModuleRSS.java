@@ -25,6 +25,18 @@ import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 
 public class ModuleRSS extends Module {
+	private static final SimpleDateFormat sdf = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z",Locale.US);
+	private static final SimpleDateFormat sdf2 = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z",Locale.US); 
+	private static final SimpleDateFormat sdf3 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+	private static final SimpleDateFormat sdf4 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+	
+	static {
+		 sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
+		 sdf2.setTimeZone(TimeZone.getTimeZone("GMT"));
+		 sdf3.setTimeZone(TimeZone.getTimeZone("GMT"));
+		 sdf4.setTimeZone(TimeZone.getTimeZone("GMT"));
+	}
+	
 	protected Command cmd;
 	protected ArrayList<Feed> feeds = new ArrayList<Feed>();
 	
@@ -101,7 +113,6 @@ public class ModuleRSS extends Module {
 					q.connect(true,false);
 					XMLObject xBase = XMLObject.deserialize(q.readWhole());
 					if (xBase.getAllElements().get(0).getName().equals("feed")) {
-						SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'"); sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
 						ArrayList<XMLObject> xEntries = xBase.getElement("feed").get(0).getElement("entry");
 						for (XMLObject xEntry : xEntries) {
 							Date entryDate;
@@ -111,14 +122,14 @@ public class ModuleRSS extends Module {
 							if (xEntry.getElement("updated").size() > 0) {
 								String s = xEntry.getElement("updated").get(0).getValue();
 								try {
-									entryDate = sdf.parse(s);
+									entryDate = sdf4.parse(s);
 								} catch (ParseException ex) {
 									entryDate = parseAtomDate(s);
 								}
 							} else if (xEntry.getElement("published").size() > 0) {
 								String s = xEntry.getElement("published").get(0).getValue();
 								try {
-									entryDate = sdf.parse(s);
+									entryDate = sdf4.parse(s);
 								} catch (ParseException ex) {
 									entryDate = parseAtomDate(s);
 								}
@@ -129,9 +140,6 @@ public class ModuleRSS extends Module {
 							if (entryDate.after(lastDate)) ret.add(new FeedEntry(entryTitle,entryLink,entryDate));
 						}
 					} else if (xBase.getAllElements().get(0).getName().equals("rss")) {
-						SimpleDateFormat sdf = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z",Locale.US); sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
-						SimpleDateFormat sdf2 = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z",Locale.US); sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
-						SimpleDateFormat sdf3 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss"); sdf2.setTimeZone(TimeZone.getTimeZone("GMT"));
 						ArrayList<XMLObject> xEntries = xBase.getElement("rss").get(0).getElement("channel").get(0).getElement("item");
 						for (XMLObject xEntry : xEntries) {
 							Date entryDate = null;
@@ -164,10 +172,10 @@ public class ModuleRSS extends Module {
 		
 		public Date parseAtomDate(String s) {
 			try {
-				SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss"); sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
+				
 				Calendar c = Calendar.getInstance();
 				c.setTimeZone(TimeZone.getTimeZone("GMT"));
-				c.setTime(sdf.parse(s.substring(0,19)));
+				c.setTime(sdf3.parse(s.substring(0,19)));
 				
 				s = s.substring(19);
 				long t = c.getTime().getTime();

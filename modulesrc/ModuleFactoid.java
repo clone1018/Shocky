@@ -247,7 +247,7 @@ public class ModuleFactoid extends Module {
 		}
 	}
 	
-	private static final Pattern argPattern = Pattern.compile("%([A-Za-z\\+]+)([0-9]+)?(-)?([0-9]+)?%");
+	private static final Pattern argPattern = Pattern.compile("%([A-Za-z]+)([0-9]+)?(-)?([0-9]+)?%");
 	public String parseVariables(PircBotX bot, Channel channel, User sender, String message, String raw) {
 		StringBuilder escapedMsg = new StringBuilder(message);
 		for (int i = 0; i < escapedMsg.length(); i++) {
@@ -281,16 +281,12 @@ public class ModuleFactoid extends Module {
 			
 			if (tag.contentEquals("arg") && num1 < args.length && num2 < args.length) {
 					if (range) {
-						if (num1 != Integer.MIN_VALUE && num2 != Integer.MIN_VALUE)
-							m.appendReplacement(ret, StringTools.implode(args, num1, num2, " "));
-						else if (num1 != Integer.MIN_VALUE)
-							m.appendReplacement(ret, StringTools.implode(args, num1, " "));
-						else if (num2 != Integer.MIN_VALUE)
-							m.appendReplacement(ret, StringTools.implode(args, 1, num2, " "));
-						else
-							m.appendReplacement(ret, StringTools.implode(args, 1, " "));
+						int min = num1 != Integer.MIN_VALUE ? num1 : 1;
+						int max = num2 != Integer.MIN_VALUE ? num2 : args.length-1;
+						m.appendReplacement(ret, StringTools.implode(args, min, max, " "));
 					}
-					else m.appendReplacement(ret, args[num1]);
+					else if (num1 != Integer.MIN_VALUE)
+						m.appendReplacement(ret, args[num1]);
 			} else if (tag.contentEquals("req") && num1 != Integer.MIN_VALUE) {
 				if (args.length <= num1)
 					return String.format("This factoid requires at least %d args",num1);
@@ -307,10 +303,10 @@ public class ModuleFactoid extends Module {
 			else if (tag.contentEquals("user"))
 				m.appendReplacement(ret, sender.getNick());
 			else if (tag.contentEquals("rndn")) {
-				if (rnd == null)
+				if (users == null) {
 					rnd = new Random();
-				if (users == null)
 					users = channel.getUsers().toArray(new User[0]);
+				}
 				m.appendReplacement(ret, users[rnd.nextInt(users.length)].getNick());
 			}
 		}
