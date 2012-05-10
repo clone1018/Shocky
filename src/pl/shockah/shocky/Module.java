@@ -92,7 +92,7 @@ public abstract class Module extends ListenerAdapter implements Comparable<Modul
 		File dir = new File("modules"); dir.mkdir();
 		for (File f : dir.listFiles()) {
 			if (f.isDirectory()) continue;
-			Module m = load(new ModuleSource.File(f));
+			Module m = load(new ModuleSource.FileSource(f));
 			if (m != null) ret.add(m);
 		}
 		Collections.sort(ret);

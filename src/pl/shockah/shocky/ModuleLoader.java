@@ -27,21 +27,21 @@ public abstract class ModuleLoader {
 	
 	public static class Java extends ModuleLoader {
 		protected boolean accept(ModuleSource source) {
-			return source instanceof ModuleSource.File || source instanceof ModuleSource.URL;
+			return source instanceof ModuleSource.FileSource || source instanceof ModuleSource.URLSource;
 		}
 		protected Module load(ModuleSource source) {
 			Module module = null;
 			try {
-				if (source instanceof ModuleSource.File) {
-					ModuleSource.File src = (ModuleSource.File)source;
+				if (source instanceof ModuleSource.FileSource) {
+					ModuleSource.FileSource src = (ModuleSource.FileSource)source;
 					String moduleName = src.file.getName(); 
 					if (moduleName.endsWith(".class")) moduleName = new StringBuilder(moduleName).reverse().delete(0,6).reverse().toString(); else return null;
 					if (moduleName.contains("$")) return null;
 					
 					Class<?> c = new URLClassLoader(new URL[]{src.file.getParentFile().toURI().toURL()}).loadClass(moduleName);
 					if (Module.class.isAssignableFrom(c)) return (Module)c.newInstance();
-				} else if (source instanceof ModuleSource.URL) {
-					ModuleSource.URL src = (ModuleSource.URL)source;
+				} else if (source instanceof ModuleSource.URLSource) {
+					ModuleSource.URLSource src = (ModuleSource.URLSource)source;
 					String moduleName = src.url.toString();
 					StringBuilder sb = new StringBuilder(moduleName).reverse();
 					moduleName = new StringBuilder(sb.substring(0,sb.indexOf("/"))).reverse().toString();
