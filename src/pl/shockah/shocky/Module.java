@@ -76,11 +76,15 @@ public abstract class Module extends ListenerAdapter implements Comparable<Modul
 		if (module == null) return false;
 		if (modulesOn.contains(module)) return false;
 		module.onEnable();
+		Shocky.getBotManager().getListenerManager().addListener(module);
 		modulesOn.add(module);
 		return true;
 	}
 	public static boolean disable(Module module) {
+		if (module == null) return false;
 		if (!modulesOn.contains(module)) return false;
+		Shocky.getBotManager().getListenerManager().removeListener(module);
+		module.onDataSave();
 		module.onDisable();
 		modulesOn.remove(module);
 		return true;
