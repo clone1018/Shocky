@@ -1,6 +1,8 @@
 import java.io.File;
 import java.util.*;
 import java.util.regex.*;
+
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.pircbotx.*;
 import org.pircbotx.hooks.events.MessageEvent;
 import pl.shockah.*;
@@ -144,7 +146,7 @@ public class ModuleFactoid extends Module {
 					cfg = config.getConfig(channel.getName());
 					if (!cfg.exists("r_"+msg)) cfg = config;
 				}
-				if (target != null) Shocky.overrideTarget.put(Thread.currentThread(),new Pair<Command.EType,Command.EType>(Command.EType.Channel,Command.EType.Notice));
+				if (target != null) Shocky.overrideTarget.put(Thread.currentThread(),new ImmutablePair<Command.EType,Command.EType>(Command.EType.Channel,Command.EType.Notice));
 				if (cfg.exists("r_"+msg)) Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),msg+": "+cfg.getString("r_"+msg));
 				if (target != null) Shocky.overrideTarget.remove(Thread.currentThread());
 				return;
@@ -155,7 +157,7 @@ public class ModuleFactoid extends Module {
 					cfg = config.getConfig(channel.getName());
 					if (!cfg.exists("r_"+msg)) cfg = config;
 				}
-				if (target != null) Shocky.overrideTarget.put(Thread.currentThread(),new Pair<Command.EType,Command.EType>(Command.EType.Channel,Command.EType.Notice));
+				if (target != null) Shocky.overrideTarget.put(Thread.currentThread(),new ImmutablePair<Command.EType,Command.EType>(Command.EType.Channel,Command.EType.Notice));
 				if (cfg.exists("b_"+msg)) Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),msg+", last edited by "+cfg.getString("b_"+msg));
 				if (target != null) Shocky.overrideTarget.remove(Thread.currentThread());
 				return;
@@ -178,7 +180,7 @@ public class ModuleFactoid extends Module {
 						checkRecursive.add(msg);
 						continue;
 					} else {
-						if (target != null) Shocky.overrideTarget.put(Thread.currentThread(),new Pair<Command.EType,Command.EType>(Command.EType.Channel,Command.EType.Notice));
+						if (target != null) Shocky.overrideTarget.put(Thread.currentThread(),new ImmutablePair<Command.EType,Command.EType>(Command.EType.Channel,Command.EType.Notice));
 						String message = parse(bot,channel,sender,msg,raw);
 						if (message != null && message.length() > 0) {
 							if (target == null && ping != null) {

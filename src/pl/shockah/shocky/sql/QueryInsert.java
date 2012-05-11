@@ -3,7 +3,8 @@ package pl.shockah.shocky.sql;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.regex.Pattern;
-import pl.shockah.Pair;
+
+import org.apache.commons.lang3.tuple.ImmutablePair;
 
 public class QueryInsert extends Query {
 	private static String getColumnsClause(ArrayList<String> list) {
@@ -43,8 +44,8 @@ public class QueryInsert extends Query {
 	public void addValues(Object... values) {
 		this.values.addAll(Arrays.asList(values));
 	}
-	public void add(Pair<String,Object>... pairs) {
-		for (Pair<String,Object> pair : pairs) add(pair.get1(),pair.get2());
+	public void add(ImmutablePair<String,Object>... pairs) {
+		for (ImmutablePair<String,Object> pair : pairs) add(pair.getLeft(),pair.getRight());
 	}
 	public void add(String column, Object value) {
 		columns.add(column);

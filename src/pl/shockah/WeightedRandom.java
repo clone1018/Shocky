@@ -2,8 +2,10 @@ package pl.shockah;
 
 import java.util.*;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
+
 public class WeightedRandom<T> {
-	protected LinkedList<Pair<T,Double>> list = new LinkedList<Pair<T,Double>>();
+	protected LinkedList<ImmutablePair<T,Double>> list = new LinkedList<ImmutablePair<T,Double>>();
 	protected final Random rnd;
 	
 	public WeightedRandom() {
@@ -15,21 +17,21 @@ public class WeightedRandom<T> {
 	}
 	
 	public void add(T element, double weight) {
-		list.add(new Pair<T,Double>(element,weight));
+		list.add(new ImmutablePair<T,Double>(element,weight));
 	}
 	public void remove(T element) {
-		Iterator<Pair<T,Double>> iterator = list.iterator();
-		while (iterator.hasNext()) if (iterator.next().get1().equals(element)) iterator.remove();
+		Iterator<ImmutablePair<T,Double>> iterator = list.iterator();
+		while (iterator.hasNext()) if (iterator.next().getLeft().equals(element)) iterator.remove();
 	}
 	
 	public T get() {
 		double r = rnd.nextDouble(), t = 0d;
-		for (Pair<T,Double> pair : list) t += pair.get2();
+		for (ImmutablePair<T,Double> pair : list) t += pair.getRight();
 		r *= t;
 		
-		for (Pair<T,Double> pair : list) {
-			if (r > pair.get2()) r -= pair.get2();
-			else return pair.get1();
+		for (ImmutablePair<T,Double> pair : list) {
+			if (r > pair.getRight()) r -= pair.getRight();
+			else return pair.getLeft();
 		}
 		
 		return null;

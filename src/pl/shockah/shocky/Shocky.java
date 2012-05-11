@@ -1,14 +1,15 @@
 package pl.shockah.shocky;
 
 import java.util.*;
+
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.pircbotx.*;
 import org.pircbotx.hooks.events.*;
 
-import pl.shockah.Pair;
 import pl.shockah.shocky.cmds.Command;
 
 public class Shocky extends ListenerAdapter {
-	public static Map<Thread,Pair<Command.EType,Command.EType>> overrideTarget = Collections.synchronizedMap(new HashMap<Thread,Pair<Command.EType,Command.EType>>());
+	public static Map<Thread,ImmutablePair<Command.EType,Command.EType>> overrideTarget = Collections.synchronizedMap(new HashMap<Thread,ImmutablePair<Command.EType,Command.EType>>());
 	private static TimedActions timed;
 	private static MultiBotManager multiBot;
 	private static boolean isClosing = false;
@@ -93,8 +94,8 @@ public class Shocky extends ListenerAdapter {
 	public static void send(PircBotX bot, Command.EType type, Channel channel, User user, String message) {
 		Thread t = Thread.currentThread();
 		if (overrideTarget.containsKey(t)) {
-			Pair<Command.EType,Command.EType> pair = overrideTarget.get(t);
-			if (type == pair.get1()) type = pair.get2();
+			ImmutablePair<Command.EType,Command.EType> pair = overrideTarget.get(t);
+			if (type == pair.getLeft()) type = pair.getRight();
 		}
 		switch (type) {
 			case Channel: sendChannel(bot,channel,message); break;

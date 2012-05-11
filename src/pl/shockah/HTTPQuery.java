@@ -8,6 +8,8 @@ import java.net.URL;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
+
 public class HTTPQuery {
 	protected URL url = null;
 	protected String method;
@@ -84,12 +86,12 @@ public class HTTPQuery {
 		return sb.toString();
 	}
 	
-	public static String parseArgs(ArrayList<Pair<String,String>> args) {
+	public static String parseArgs(ArrayList<ImmutablePair<String,String>> args) {
 		StringBuilder sb = new StringBuilder();
-		for (Pair<String,String> pair : args) {
+		for (ImmutablePair<String,String> pair : args) {
 			if (sb.length() != 0) sb.append("&");
 			try {
-				sb.append(URLEncoder.encode(pair.get1()+"="+pair.get2(),"UTF-8"));
+				sb.append(URLEncoder.encode(pair.getLeft()+"="+pair.getRight(),"UTF-8"));
 			} catch (Exception e) {e.printStackTrace();}
 		}
 		return sb.toString();
