@@ -13,7 +13,7 @@ public class Data {
 	public static final ArrayList<String> channels = new ArrayList<String>();
 	public static final ArrayList<String> blacklistNicks = new ArrayList<String>();
 	
-	public static synchronized void blank() {
+	private static synchronized void blank() {
 		Data.config.setNotExists("main-botname","Shocky");
 		Data.config.setNotExists("main-server","irc.esper.net");
 		Data.config.setNotExists("main-version","Shocky - PircBotX 1.6 - https://github.com/clone1018/Shocky - http://pircbotx.googlecode.com");
@@ -34,14 +34,15 @@ public class Data {
 			
 			firstRunSetupString(c,"main-server");
 			firstRunSetupBoolean(c,"main-verbose");
-			firstRunSetupString(c,"main-version");
+			firstRunSetupString(c,"main-botname");
 			firstRunSetupPassword(c,"main-nickservpass");
+			firstRunSetupString(c,"main-version");
 			firstRunSetupInt(c,"main-maxchannels");
 			firstRunSetupString(c,"main-cmdchar");
 			System.out.println();
 		}
 	}
-	public static synchronized void load() {
+	protected static synchronized void load() {
 		File dir = new File("data"); dir.mkdir();
 		
 		config.load(new File(dir,"config.cfg"));
@@ -51,7 +52,7 @@ public class Data {
 			blacklistNicks.addAll(FileLine.read(new File(dir,"blacklistNicks.cfg")));
 		} else blank();
 	}
-	public static synchronized void save() {
+	protected static synchronized void save() {
 		File dir = new File("data"); dir.mkdir();
 		
 		config.save(new File(dir,"config.cfg"));

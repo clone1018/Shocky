@@ -128,7 +128,7 @@ public abstract class Module extends ListenerAdapter implements Comparable<Modul
 		return modulesOn.contains(this);
 	}
 	
-	public int compareTo(Module module) {
+	public final int compareTo(Module module) {
 		return name().compareTo(module.name());
 	}
 }

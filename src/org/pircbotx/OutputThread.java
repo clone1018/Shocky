@@ -18,14 +18,16 @@ public class OutputThread extends Thread {
 
 	public void sendRawLineNow(String line) {
 		failIfNotConnected();
-		if (line.length() > this.bot.getMaxLineLength()-2) line = line.substring(0,this.bot.getMaxLineLength()-2);
+		if (line.length() > this.bot.getMaxLineLength() - 2) line = line.substring(0,this.bot.getMaxLineLength() - 2);
 		synchronized (this.bwriter) {
 			try {
-				this.bwriter.write(line+"\r\n");
+				this.bwriter.write(line + "\r\n");
 				this.bwriter.flush();
-				this.bot.log(">>>"+line);
+				this.bot.log(">>>" + line);
 				handleLine(line);
-			} catch (Exception e) {this.bot.logException(e);}
+			} catch (Exception e) {
+				this.bot.logException(e);
+			}
 		}
 	}
 	
@@ -50,7 +52,9 @@ public class OutputThread extends Thread {
 		failIfNotConnected();
 		try {
 			this.queue.put(message);
-		} catch (InterruptedException ex) {throw new RuntimeException("Can't add message to queue",ex);}
+		} catch (InterruptedException ex) {
+			throw new RuntimeException("Can't add message to queue",ex);
+		}
 	}
 
 	public int getQueueSize() {
@@ -66,10 +70,12 @@ public class OutputThread extends Thread {
 			while (true) {
 				String line = this.queue.take();
 				failIfNotConnected();
-				if (line != null && this.bot.isConnected()) sendRawLineNow(line);
+				if ((line != null) && (this.bot.isConnected())) {
+					sendRawLineNow(line);
+				}
+
 				Thread.sleep(this.bot.getMessageDelay());
 			}
-		}
-		catch (InterruptedException e) {}
+		} catch (InterruptedException e) {}
 	}
 }
