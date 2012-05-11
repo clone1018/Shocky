@@ -59,31 +59,31 @@ public abstract class Command implements Comparable<Command> {
 	public void visible(PircBotX bot, EType type, Channel channel, User sender) {}
 	public abstract void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message);
 	
-	public final boolean isController(PircBotX bot, EType type, User user) {
+	public static boolean isController(PircBotX bot, EType type, User user) {
 		if (bot == null) return true;
 		if (bot.getInetAddress().isLoopbackAddress()) return true;
 		if (type == EType.Console) return true;
 		if (Shocky.getLogin(user) == null) return false;
 		return Data.controllers.contains(Shocky.getLogin(user));
 	}
-	public final boolean canUseController(PircBotX bot, EType type, User user) {
+	public static boolean canUseController(PircBotX bot, EType type, User user) {
 		if (isController(bot,type,user)) return true;
 		Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,null,user,"Restricted command");
 		return false;
 	}
 	
-	public final boolean isOp(PircBotX bot, EType type, Channel channel, User user) {
+	public static boolean isOp(PircBotX bot, EType type, Channel channel, User user) {
 		if (type == EType.Console) return false;
 		if (channel == null) return false;
 		return channel.isOp(user);
 	}
-	public final boolean canUseOp(PircBotX bot, EType type, Channel channel, User user) {
+	public static boolean canUseOp(PircBotX bot, EType type, Channel channel, User user) {
 		if (isOp(bot,type,channel,user)) return true;
 		Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,user,"Restricted command");
 		return false;
 	}
 	
-	public final boolean canUseAny(PircBotX bot, EType type, Channel channel, User user) {
+	public static boolean canUseAny(PircBotX bot, EType type, Channel channel, User user) {
 		if (isController(bot,type,user) || isOp(bot,type,channel,user)) return true;
 		Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,null,user,"Restricted command");
 		return false;

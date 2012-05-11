@@ -83,6 +83,11 @@ public class CmdModule extends Command {
 		
 		if (args.length == 3) {
 			Module module = Module.getModule(args[2]);
+			if (module == null) {
+				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,"No such module");
+				return;
+			}
+			
 			if (args[1].toLowerCase().equals("on")) {
 				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,Module.enable(module) ? "Enabled" : "Failed");
 				Data.config.set("module-"+module.name(),true);
