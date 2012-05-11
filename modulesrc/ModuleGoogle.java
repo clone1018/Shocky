@@ -67,11 +67,7 @@ public class ModuleGoogle extends Module {
 			result.append(content);
 		else
 			result.append("No description available.");
-		String output = result.toString();
-		output = StringTools.unicodeParse(output);
-		output = output.replaceAll("</?b>", "\u0002");
-		output = StringTools.unescapeHTML(output);
-		output = StringTools.stripHTMLTags(output);
+		String output = StringTools.ircFormatted(result);
 		Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,output);
 	}
 	

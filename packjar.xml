@@ -11,7 +11,8 @@
                 <attribute name="Class-Path" value="."/>
             </manifest>
             <fileset dir="bin"/>
-            <zipfileset excludes="META-INF/*.SF" src="libs/pircbotx-1.6.jar"/>
+            <zipfileset excludes="META-INF/*" src="libs/pircbotx-1.6.jar"/>
+        	<zipfileset excludes="META-INF/*" src="libs/commons-lang3-3.1.jar"/>
         </jar>
     </target>
 </project>

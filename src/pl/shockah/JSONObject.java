@@ -37,7 +37,7 @@ public class JSONObject {
 				if (c == '"') {
 					while ((c = text.charAt(i++)) != '"' || (value.length() != 0 && value.charAt(value.length()-1) == '\\')) value.append(c);
 					if (value.length()>0&&value.charAt(value.length()-1) == '\\') value.deleteCharAt(value.length()-1);
-					j.elements.put(key.toString(),value.toString());
+					j.elements.put(key.toString(),new JSON<CharSequence>(value));
 				} else {
 					i--;
 					while ((c = text.charAt(i++)) != ',' && c != '}' && c != ']' && c != ' ') value.append(c);
@@ -48,11 +48,11 @@ public class JSONObject {
 						if (s.equals("null"))
 							valueObj = null;
 						else if (StringTools.isBoolean(s))
-							valueObj = new JSONBoolean(Boolean.parseBoolean(s));
+							valueObj = new JSON<Boolean>(Boolean.parseBoolean(s));
 						else if (StringTools.isNumber(s))
-							valueObj = new JSONInt(Integer.parseInt(s));
+							valueObj = new JSON<Long>(Long.parseLong(s));
 						else
-							valueObj = new JSONDouble(Double.parseDouble(s));
+							valueObj = new JSON<Double>(Double.parseDouble(s));
 						j.elements.put(key.toString(),valueObj);
 					}
 				}
@@ -82,19 +82,21 @@ public class JSONObject {
 	public boolean exists(String key) {return elements.containsKey(key);}
 	public int size() {return elements.size();}
 	
-	public Object get(String key) {return elements.get(key);}
-	public JSONObject getJSONObject(String key) {Object o = get(key); if (o instanceof JSONObject) return (JSONObject)o; return null;}
-	public String getString(String key) {Object o = get(key); if (o instanceof String) return (String)o; return null;}
+	public JSON<?> getElement(String key) {Object o = elements.get(key); return (o instanceof JSON ? (JSON<?>)o : null);}
+	public JSONObject getJSONObject(String key) {Object o = elements.get(key); if (o instanceof JSONObject) return (JSONObject)o; return null;}
+	
+	public String getString(String key) {JSON<?> o = getElement(key); if (o.value instanceof CharSequence) return o.value.toString(); return null;}
+	public long getLong(String key) {JSON<?> o = getElement(key); if (o.value instanceof Long) return (Long) o.value; throw new RuntimeException("Wrong type (long) for "+key);}
+	public double getDouble(String key) {JSON<?> o = getElement(key); if (o.value instanceof Double) return (Double) o.value; throw new RuntimeException("Wrong type (double) for "+key);}
+	public boolean getBoolean(String key) {JSON<?> o = getElement(key); if (o.value instanceof Boolean) return (Boolean) o.value; throw new RuntimeException("Wrong type (boolean) for "+key);}
 	public int getInt(String key) {return (int)getLong(key);}
-	public long getLong(String key) {Object o = get(key); if (o instanceof JSONInt) return ((JSONInt)o).value; throw new RuntimeException("Wrong type (long) for "+key);}
-	public double getDouble(String key) {Object o = get(key); if (o instanceof JSONDouble) return ((JSONDouble)o).value; throw new RuntimeException("Wrong type (double) for "+key);}
-	public boolean getBoolean(String key) {Object o = get(key); if (o instanceof JSONBoolean) return ((JSONBoolean)o).value; throw new RuntimeException("Wrong type (boolean) for "+key);}
+	
 	public Object[] getArray(String key) {
 		JSONObject o = getJSONObject(key);
 		if (o == null) return null;
 		Object[] a = new Object[o.elements.size()];
 		int i = 0;
-		for (String k : o.elements.keySet()) if ((a[i++] = o.get(k)) == null) return null;
+		for (String k : o.elements.keySet()) if ((a[i++] = o.getElement(k)) == null) return null;
 		return a;
 	}
 	public JSONObject[] getJSONObjectArray(String key) {
@@ -173,28 +175,33 @@ public class JSONObject {
 			if (!isArray()) sb.append("\""+key.replace("\"","\\\"")+"\":");
 			Object e = elements.get(key);
 			if (e instanceof JSONObject) ((JSONObject)e).serialize(sb);
-			else if (e instanceof String) sb.append("\""+((String)e).replace("\"","\\\"")+"\"");
-			else if (e instanceof JSONInt) sb.append(((JSONInt)e).toString());
-			else if (e instanceof JSONDouble) sb.append(((JSONDouble)e).toString());
-			else if (e instanceof JSONBoolean) sb.append(((JSONBoolean)e).toString());
+			else if (e instanceof JSON) sb.append(((JSON<?>)e).serialize());
 		}
 		sb.append(isArray() ? "]" : "}");
 		return sb;
 	}
 	
-	private static class JSONInt {
-		private final long value;
-		private JSONInt(long value) {this.value = value;}
-		public String toString() {return Long.toString(value);}
-	}
-	private static class JSONDouble {
-		private final double value;
-		private JSONDouble(double value) {this.value = value;}
-		public String toString() {return Double.toString(value);}
-	}
-	private static class JSONBoolean {
-		private final boolean value;
-		private JSONBoolean(boolean value) {this.value = value;}
-		public String toString() {return Boolean.toString(value);}
+	private static class JSON<T> {
+		private final T value;
+		private JSON(T value) {this.value = value;}
+		public String toString() {return value.toString();}
+		public String serialize() {
+			if (value instanceof CharSequence)
+			{
+				CharSequence seq = (CharSequence)value;
+				StringBuilder sb = new StringBuilder();
+				sb.append('"');
+				for (int i = 0; i < seq.length(); i++) {
+					char c = seq.charAt(i);
+					if (c == '"' && seq.charAt(i-1) != '\\')
+						sb.append('\\');
+					sb.append(c);
+				}
+				sb.append('"');
+				return sb.toString();
+			} else {
+				return this.toString();
+			}
+		}
 	}
 }

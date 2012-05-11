@@ -78,7 +78,7 @@ public class ModuleUrban extends Module {
 				result.append(" Example: ");
 				result.append(example);
 			}
-			String output = StringTools.unicodeParse(result.toString().replaceAll("\\s*\\\\[rn]\\\\[n]\\s*", " ").replaceAll("\\\\\"", "\""));
+			String output = StringTools.ircFormatted(result);
 			Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,output);
 		}
 	}

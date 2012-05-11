@@ -1,12 +1,18 @@
 package pl.shockah;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.commons.lang3.text.translate.UnicodeUnescaper;
 
 public class StringTools {
 	private static HashMap<String,String> htmlEntities;
 	public static final Pattern unicodePattern = Pattern.compile("\\\\u([0-9a-fA-F]{4})");
+	public static final Pattern htmlTagPattern = Pattern.compile("<([^>]+)>");
+	public static final UnicodeUnescaper unicodeEscape = new UnicodeUnescaper();
 	
 	static {
 		htmlEntities = new HashMap<String,String>();
@@ -87,31 +93,54 @@ public class StringTools {
 		} while (continueLoop);
 		return source;
 	}
-	public static String stripHTMLTags(String s) {
-		return s.replaceAll("\\<[^>]*>","");
+	public static String stripHTMLTags(CharSequence s) {
+		Matcher m = htmlTagPattern.matcher(s);
+		StringBuffer sb = new StringBuffer();
+		while (m.find())
+			m.appendReplacement(sb, "");
+		m.appendTail(sb);
+		return sb.toString();
 	}
-	public static String unicodeParse(String s) {
+	public static String unicodeParse(CharSequence s) {
 		Matcher m = unicodePattern.matcher(s);
+		StringBuffer sb = new StringBuffer();
 		while (m.find()) {
-			int count = m.groupCount();
-			if (count == 1) {
-				short hex = Short.valueOf(m.group(1),16);
-				s = s.replaceAll("\\\\u"+m.group(1),Character.toString((char)hex));
-			}
-			m = unicodePattern.matcher(s);
+			int hex = Integer.valueOf(m.group(1),16);
+			m.appendReplacement(sb, Character.toString((char)hex));
 		}
-		return s;
+		m.appendTail(sb);
+		return sb.toString();
 	}
 	
-	public static boolean isNumber(String s) {
-		try {
-			Integer.parseInt(s);
-		} catch (NumberFormatException e) {return false;}
-		return true;
+	public static boolean isNumber(CharSequence s) {
+		boolean ret = true;
+		for (int i = 0; ret && i < s.length(); i++) {
+			Character c = s.charAt(i);
+			if (i == 0 && c == '-')
+				continue;
+			if (!Character.isDigit(c))
+				ret = false;
+		}
+		return ret;
 	}
 	
 	public static boolean isBoolean(String s) {
 		return (s.equalsIgnoreCase("true")||s.equalsIgnoreCase("false"));
+	}
+	
+	public static String ircFormatted(CharSequence s) {
+		String output = unicodeEscape.translate(s);
+		output = StringEscapeUtils.unescapeHtml4(output);
+		output = output.replaceAll("</?b>", "\u0002");
+		try {
+			output = URLDecoder.decode(output, "utf8");
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
+		output = StringEscapeUtils.unescapeJava(output);
+		output = output.replace("\r", "");
+		output = output.replace("\n", " ");
+		return output;
 	}
 	
 	public static String implode(String[] spl, String separator) {return implode(spl,0,spl.length-1,separator);}
