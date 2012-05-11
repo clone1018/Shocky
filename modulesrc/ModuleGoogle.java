@@ -57,9 +57,9 @@ public class ModuleGoogle extends Module {
 			Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,"No results.");
 			return;
 		}
-		String title = results[0].getString("titleNoFormatting");
-		String url = results[0].getString("unescapedUrl");
-		String content = results[0].getString("content");
+		String title = StringTools.ircFormatted(results[0].getString("titleNoFormatting"),true);
+		String url = StringTools.ircFormatted(results[0].getString("unescapedUrl"),false);
+		String content = StringTools.ircFormatted(results[0].getString("content"),true);
 		result.append(url);
 		result.append(" -- ");result.append(title);
 		result.append(": ");
@@ -67,8 +67,7 @@ public class ModuleGoogle extends Module {
 			result.append(content);
 		else
 			result.append("No description available.");
-		String output = StringTools.ircFormatted(result);
-		Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,output);
+		Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,result.toString());
 	}
 	
 	public class CmdGoogle extends Command {

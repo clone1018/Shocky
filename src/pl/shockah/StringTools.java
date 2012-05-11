@@ -128,20 +128,34 @@ public class StringTools {
 		return (s.equalsIgnoreCase("true")||s.equalsIgnoreCase("false"));
 	}
 	
-	public static String ircFormatted(CharSequence s) {
+	public static String ircFormatted(CharSequence s, boolean urlDecode) {
 		String output = unicodeEscape.translate(s);
 		output = StringEscapeUtils.unescapeHtml4(output);
 		output = output.replaceAll("</?b>", "\u0002");
-		try {
-			output = URLDecoder.decode(output, "utf8");
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
+		output = output.replaceAll("</?u>", "\u001f");
+		if (urlDecode) {
+			try {
+				output = URLDecoder.decode(output, "utf8");
+			} catch (UnsupportedEncodingException e) {
+				e.printStackTrace();
+			}
 		}
 		output = StringEscapeUtils.unescapeJava(output);
-		output = output.replace("\r", "");
-		output = output.replace("\n", " ");
+		output = deleteWhitespace(output);
 		return output;
 	}
+	
+    public static String deleteWhitespace(CharSequence str) {
+        StringBuilder sb = new StringBuilder(str.length());
+        for (int i = 0; i < str.length(); i++) {
+        	char c = str.charAt(i);
+            if (i > 0 && Character.isWhitespace(c) && Character.isWhitespace(str.charAt(i-1))) {
+                continue;
+            }
+            sb.append(c);
+        }
+        return sb.toString();
+    }
 	
 	public static String implode(String[] spl, String separator) {return implode(spl,0,spl.length-1,separator);}
 	public static String implode(String[] spl, int a, String separator) {return implode(spl,a,spl.length-1,separator);}
