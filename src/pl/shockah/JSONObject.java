@@ -6,12 +6,9 @@ import java.util.TreeMap;
 
 public class JSONObject {
 	public static JSONObject deserialize(String text) {
-		System.out.println(text);
 		text = text.replace("\t","").replace("\r","").replace("\n","").trim();
 		JSONObject j = new JSONObject(false);
-		JSONObject ret = deserialize(j,text,0) == -1 ? null : j;
-		System.out.println(ret.serialize());
-		return ret;
+		return deserialize(j,text,0) == -1 ? null : j;
 	}
 	private static int deserialize(JSONObject j, String text, int i) {
 		if (text.charAt(i++) != (j.isArray() ? '[' : '{')) return -1;
