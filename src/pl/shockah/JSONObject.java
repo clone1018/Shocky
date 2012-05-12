@@ -6,9 +6,12 @@ import java.util.TreeMap;
 
 public class JSONObject {
 	public static JSONObject deserialize(String text) {
+		System.out.println(text);
 		text = text.replace("\t","").replace("\r","").replace("\n","").trim();
 		JSONObject j = new JSONObject(false);
-		return deserialize(j,text,0) == -1 ? null : j;
+		JSONObject ret = deserialize(j,text,0) == -1 ? null : j;
+		System.out.println(ret.serialize());
+		return ret;
 	}
 	private static int deserialize(JSONObject j, String text, int i) {
 		if (text.charAt(i++) != (j.isArray() ? '[' : '{')) return -1;
@@ -38,6 +41,7 @@ public class JSONObject {
 				if (c == '"') {
 					while ((c = text.charAt(i++)) != '"' || (value.length() != 0 && value.charAt(value.length()-1) == '\\')) value.append(c);
 					if (value.length()>0&&value.charAt(value.length()-1) == '\\') value.deleteCharAt(value.length()-1);
+					value = new StringBuilder(value.toString().replaceAll("\\\\(.)","$1"));
 					j.elements.put(key.toString(),new JSON<CharSequence>(value));
 				} else {
 					i--;

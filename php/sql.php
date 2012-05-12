@@ -69,7 +69,7 @@ function sql2json($data_sql) {
 				if (count($data) > 1) $json_str .= "\"".$key."\":";
 				if (is_string($value)) {
 					$json_str .= "\"";
-					$value = preg_replace('/\\"\\\\/',"\\$0",$value);
+					$value = escapeJsonString($value);
 				}
 				$json_str .= $value;
 				if (is_string($value)) $json_str .= "\"";
@@ -83,6 +83,12 @@ function sql2json($data_sql) {
 		if ($total > 1) $json_str .= "]";
 	} else $json_str = "{}";
 	return $json_str;
+}
+function escapeJsonString($value) {
+    $escapers = array("\\", "\"");
+    $replacements = array("\\\\", "\\\"");
+    $result = str_replace($escapers, $replacements, $value);
+    return $result;
 }
 
 ?>
