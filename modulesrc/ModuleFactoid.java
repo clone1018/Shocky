@@ -19,7 +19,6 @@ import pl.shockah.shocky.sql.SQL;
 public class ModuleFactoid extends Module {
 	protected Command cmdR, cmdF, cmdFCMD, cmdManage;
 	private ArrayList<CmdFactoid> fcmds = new ArrayList<CmdFactoid>();
-	private Config config;
 	private HashMap<String,Function> functions = new HashMap<String,Function>();
 	private static Pattern functionPattern = Pattern.compile("([a-zA-Z_][a-zA-Z0-9_]*)\\(.*?\\)");
 	
@@ -33,8 +32,33 @@ public class ModuleFactoid extends Module {
 		
 		SQL.raw("CREATE TABLE IF NOT EXISTS "+SQL.getTable("factoid")+" (channel TEXT NOT NULL,factoid TEXT,author TEXT,rawtext TEXT,stamp INT(10) UNSIGNED NOT NULL,locked INT(1) UNSIGNED NOT NULL DEFAULT 0,forgotten INT(1) UNSIGNED NOT NULL DEFAULT 0)");
 		
-		config = new Config();
-		config.load(new File("data","factoid.cfg"));
+		if (new File("data","factoid.cfg").exists()) {
+			Config config = new Config();
+			config.load(new File("data","factoid.cfg"));
+			
+			ArrayList<String> cfgs = new ArrayList<String>();
+			cfgs.add(null);
+			cfgs.addAll(config.getKeysSubconfigs());
+			
+			for (String subc : cfgs) {
+				Config cfg = subc == null ? config : config.getConfig(subc);
+				ArrayList<String> factoids = new ArrayList<String>();
+				for (String s : cfg.getKeys()) if (s.startsWith("r_")) factoids.add(s);
+				for (String s : factoids) {
+					s = s.substring(2);
+					QueryInsert q = new QueryInsert(SQL.getTable("factoid"));
+					q.add("channel",subc == null ? "" : subc);
+					q.add("factoid",s);
+					q.add("author",cfg.getString("b_"+s));
+					q.add("rawtext",cfg.getString("r_"+s));
+					q.add("stamp",0);
+					SQL.insert(q);
+					if (cfg.exists("l_"+s)) q.add("locked",1);
+				}
+			}
+			
+			new File("data","factoid.cfg").delete();
+		}
 		ArrayList<String> lines = FileLine.read(new File("data","factoidCmd.cfg"));
 		for (int i = 0; i < lines.size(); i += 2) fcmds.add(new CmdFactoid(lines.get(i),lines.get(i+1)));
 		
@@ -97,8 +121,6 @@ public class ModuleFactoid extends Module {
 		Command.removeCommands(cmdR,cmdF,cmdFCMD,cmdManage);
 	}
 	public void onDataSave() {
-		config.save(new File("data","factoid.cfg"));
-		
 		ArrayList<String> lines = new ArrayList<String>();
 		for (CmdFactoid fcmd : fcmds) {
 			StringBuilder sb = new StringBuilder();

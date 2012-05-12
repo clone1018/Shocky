@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.regex.Pattern;
 import pl.shockah.FileLine;
 
@@ -92,6 +93,13 @@ public class Config {
 	public long getLong(String key) {return Long.parseLong(getString(key));}
 	public float getFloat(String key) {return Float.parseFloat(getString(key));}
 	public double getDouble(String key) {return Double.parseDouble(getString(key));}
+	
+	public Set<String> getKeysSubconfigs() {
+		return mapSubconfigs.keySet();
+	}
+	public Set<String> getKeys() {
+		return mapValues.keySet();
+	}
 	
 	public void load(File file) {
 		load(FileLine.read(file));
