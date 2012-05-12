@@ -1,7 +1,9 @@
 <?php
 
 require_once 'Requests/library/Requests.php';
+require_once 'Safe.php';
 Requests::register_autoloader();
+$safe = new Safe();
 
 mb_internal_encoding("UTF-8");
 mb_regex_encoding("UTF-8");
@@ -16,6 +18,6 @@ function mb_ord($char) {
     return $k2*256+$k1;
 } 
 
-eval($_GET["code"]);
+$safe->checkScript($_GET["code"]);
 
 ?>
