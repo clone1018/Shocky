@@ -152,6 +152,10 @@ public class StringTools {
             if (i > 0 && Character.isWhitespace(c) && Character.isWhitespace(str.charAt(i-1))) {
                 continue;
             }
+            if (c == '\r' || c == '\n') {
+            	sb.append(' ');
+            	continue;
+            }
             sb.append(c);
         }
         return sb.toString();
