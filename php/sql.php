@@ -69,8 +69,7 @@ function sql2json($data_sql) {
 				if (count($data) > 1) $json_str .= "\"".$key."\":";
 				if (is_string($value)) {
 					$json_str .= "\"";
-					$value = str_replace("\\","\\\\",$value);
-					$value = str_replace("\"","\\\"",$value);
+					$value = preg_replace('/\\"\\\\/',"\\$0",$value);
 				}
 				$json_str .= $value;
 				if (is_string($value)) $json_str .= "\"";
