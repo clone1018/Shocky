@@ -9,7 +9,7 @@ public class QuerySelect extends Query {
 	private ArrayList<String> columns = new ArrayList<String>();
 	private ArrayList<Criterion> criterions = new ArrayList<Criterion>();
 	private ArrayList<ImmutablePair<String,Boolean>> orderby = new ArrayList<ImmutablePair<String,Boolean>>();
-	private int limitOffset = 0, limitCount = 1;
+	private int limitOffset = 0, limitCount = -1;
 	
 	public QuerySelect(String table) {
 		this.table = table;
@@ -37,7 +37,7 @@ public class QuerySelect extends Query {
 		String clauseColumns = getColumnsClause(columns);
 		String clauseWhere = Criterion.getWhereClause(criterions);
 		String clauseOrderBy = getOrderByClause(orderby);
-		String clauseLimit = limitOffset == 0 && limitCount == 1 ? "" : "LIMIT "+(limitOffset != 0 ? ""+limitOffset+"," : "")+limitCount;
+		String clauseLimit = limitOffset == 0 && limitCount == -1 ? "" : "LIMIT "+(limitOffset != 0 ? ""+limitOffset+"," : "")+limitCount;
 		return "SELECT "+clauseColumns+" FROM "+table+(clauseWhere.isEmpty() ? "" : " "+clauseWhere)+(clauseOrderBy.isEmpty() ? "" : " "+clauseOrderBy)+(clauseLimit.isEmpty() ? "" : " "+clauseLimit);
 	}
 }
