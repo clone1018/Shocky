@@ -14,7 +14,7 @@ import pl.shockah.shocky.cmds.Command.EType;
 public class ModuleFactoid extends Module {
 	protected Command cmdR, cmdF, cmdFCMD, cmdManage;
 	private ArrayList<CmdFactoid> fcmds = new ArrayList<CmdFactoid>();
-	private Config config = new Config();
+	private Config config;
 	private HashMap<String,Function> functions = new HashMap<String,Function>();
 	private static Pattern functionPattern = Pattern.compile("([a-zA-Z_][a-zA-Z0-9_]*)\\(.*?\\)");
 	
@@ -26,6 +26,7 @@ public class ModuleFactoid extends Module {
 		Data.config.setNotExists("factoid-show",true);
 		Data.config.setNotExists("php-url","http://localhost/shocky/shocky.php");
 		
+		config = new Config();
 		config.load(new File("data","factoid.cfg"));
 		ArrayList<String> lines = FileLine.read(new File("data","factoidCmd.cfg"));
 		for (int i = 0; i < lines.size(); i += 2) fcmds.add(new CmdFactoid(lines.get(i),lines.get(i+1)));
