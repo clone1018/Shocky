@@ -60,7 +60,7 @@ public class Data {
 		FileLine.write(new File(dir,"channels.cfg"),channels);
 		FileLine.write(new File(dir,"blacklistNicks.cfg"),blacklistNicks);
 		
-		for (Module module : Module.getModules(false)) module.onDataSave();
+		for (Module module : Module.getModules()) module.onDataSave();
 	}
 	
 	private static void firstRunSetupString(Console c, String key) {
