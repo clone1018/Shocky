@@ -8,6 +8,8 @@ import java.util.regex.Pattern;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.text.translate.UnicodeUnescaper;
 
+import pl.shockah.shocky.Data;
+
 public class StringTools {
 	private static HashMap<String,String> htmlEntities;
 	public static final Pattern unicodePattern = Pattern.compile("\\\\u([0-9a-fA-F]{4})");
@@ -142,6 +144,8 @@ public class StringTools {
 		}
 		output = StringEscapeUtils.unescapeJava(output);
 		output = deleteWhitespace(output);
+		if (output.length() > Data.config.getInt("main-messagelength"))
+			output = output.substring(0, Data.config.getInt("main-messagelength"))+"...";
 		return output;
 	}
 	

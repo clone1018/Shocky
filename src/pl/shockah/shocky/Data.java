@@ -21,6 +21,7 @@ public class Data {
 		Data.config.setNotExists("main-maxchannels",10);
 		Data.config.setNotExists("main-nickservpass","");
 		Data.config.setNotExists("main-cmdchar","`~");
+		Data.config.setNotExists("main-messagelength",400);
 		/*Data.config.setNotExists("main-sqlurl","http://localhost/shocky/sql.php");
 		Data.config.setNotExists("main-sqlhost","localhost");
 		Data.config.setNotExists("main-sqluser","");
@@ -39,6 +40,7 @@ public class Data {
 			firstRunSetupString(c,"main-version");
 			firstRunSetupInt(c,"main-maxchannels");
 			firstRunSetupString(c,"main-cmdchar");
+			firstRunSetupInt(c,"main-messagelength");
 			System.out.println();
 		}
 	}
