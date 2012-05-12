@@ -1,7 +1,6 @@
 import java.io.File;
 import java.util.*;
 import java.util.regex.*;
-
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.pircbotx.*;
 import org.pircbotx.hooks.events.MessageEvent;
@@ -10,6 +9,12 @@ import pl.shockah.shocky.*;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.Command.EType;
+import pl.shockah.shocky.sql.CriterionNumber;
+import pl.shockah.shocky.sql.CriterionStringEquals;
+import pl.shockah.shocky.sql.QueryInsert;
+import pl.shockah.shocky.sql.QuerySelect;
+import pl.shockah.shocky.sql.QueryUpdate;
+import pl.shockah.shocky.sql.SQL;
 
 public class ModuleFactoid extends Module {
 	protected Command cmdR, cmdF, cmdFCMD, cmdManage;
@@ -25,6 +30,8 @@ public class ModuleFactoid extends Module {
 		Data.config.setNotExists("factoid-charby","-");
 		Data.config.setNotExists("factoid-show",true);
 		Data.config.setNotExists("php-url","http://localhost/shocky/shocky.php");
+		
+		SQL.raw("CREATE TABLE IF NOT EXISTS "+SQL.getTable("factoid")+" (channel TEXT NOT NULL,factoid TEXT,author TEXT,rawtext TEXT,stamp INT(10) UNSIGNED NOT NULL,locked INT(1) UNSIGNED NOT NULL DEFAULT 0,forgotten INT(1) UNSIGNED NOT NULL DEFAULT 0)");
 		
 		config = new Config();
 		config.load(new File("data","factoid.cfg"));
@@ -143,37 +150,29 @@ public class ModuleFactoid extends Module {
 			
 			for (i = 0; i < charsraw.length(); i++) if (msg.charAt(0) == charsraw.charAt(i)) {
 				msg = new StringBuilder(msg).deleteCharAt(0).toString().split(" ")[0].toLowerCase();
-				Config cfg = config; if (cfg.existsConfig(channel.getName())) {
-					cfg = config.getConfig(channel.getName());
-					if (!cfg.exists("r_"+msg)) cfg = config;
-				}
+				Factoid f = getLatest(channel.getName(),msg);
 				if (target != null) Shocky.overrideTarget.put(Thread.currentThread(),new ImmutablePair<Command.EType,Command.EType>(Command.EType.Channel,Command.EType.Notice));
-				if (cfg.exists("r_"+msg)) Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),msg+": "+cfg.getString("r_"+msg));
+				if (f != null) Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),msg+": "+f.rawtext);
 				if (target != null) Shocky.overrideTarget.remove(Thread.currentThread());
 				return;
 			}
 			for (i = 0; i < charsby.length(); i++) if (msg.charAt(0) == charsby.charAt(i)) {
 				msg = new StringBuilder(msg).deleteCharAt(0).toString().split(" ")[0].toLowerCase();
-				Config cfg = config; if (cfg.existsConfig(channel.getName())) {
-					cfg = config.getConfig(channel.getName());
-					if (!cfg.exists("r_"+msg)) cfg = config;
-				}
+				Factoid f = getLatest(channel.getName(),msg);
 				if (target != null) Shocky.overrideTarget.put(Thread.currentThread(),new ImmutablePair<Command.EType,Command.EType>(Command.EType.Channel,Command.EType.Notice));
-				if (cfg.exists("b_"+msg)) Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),msg+", last edited by "+cfg.getString("b_"+msg));
+				if (f != null) Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),msg+", last edited by "+f.author);
 				if (target != null) Shocky.overrideTarget.remove(Thread.currentThread());
 				return;
 			}
 			
-			Config cfg = config; if (cfg.existsConfig(channel.getName())) {
-				cfg = config.getConfig(channel.getName());
-				if (!cfg.exists("r_"+msg.split(" ")[0].toLowerCase())) cfg = config;
-			}
+			if (getLatest(channel.getName(),msg.split(" ")[0]) == null) return;
 			
 			LinkedList<String> checkRecursive = new LinkedList<String>();
 			while (true) {
 				String factoid = msg.split(" ")[0].toLowerCase();
-				if (cfg.exists("r_"+factoid)) {
-					String raw = cfg.getString("r_"+factoid);
+				Factoid f = getLatest(channel.getName(),factoid);
+				if (f != null) {
+					String raw = f.rawtext;
 					if (raw.startsWith("<alias>")) {
 						msg = parseVariables(bot, channel, sender, msg, raw);
 						msg = msg.substring(7);
@@ -224,7 +223,7 @@ public class ModuleFactoid extends Module {
 			
 			code = sb.toString()+" "+code;
 			
-			HTTPQuery q = new HTTPQuery(Data.config.getString("php-phpurl")+"?"+HTTPQuery.parseArgs("code",code));
+			HTTPQuery q = new HTTPQuery(Data.config.getString("php-url")+"?"+HTTPQuery.parseArgs("code",code));
 			q.connect(true,false);
 			
 			sb = new StringBuilder();
@@ -360,6 +359,41 @@ public class ModuleFactoid extends Module {
 		output.append(input.substring(pos));
 	}
 	
+	private Factoid getLatest(String channel, String factoid) {
+		return getLatest(channel,factoid,false);
+	}
+	private Factoid getLatest(String channel, String factoid, boolean withForgotten) {
+		QuerySelect q = new QuerySelect(SQL.getTable("factoid"));
+		if (channel != null) q.addCriterions(new CriterionStringEquals("channel",channel.toLowerCase()));
+		q.addCriterions(new CriterionStringEquals("factoid",factoid.toLowerCase()));
+		if (withForgotten) q.addCriterions(new CriterionNumber("forgotten",CriterionNumber.Operation.NotEquals,1));
+		q.addOrder("stamp",false);
+		q.setLimitCount(1);
+		JSONObject j = SQL.select(q);
+		return j != null && !j.isEmpty() ? new Factoid(j) : (channel == null ? null : getLatest(null,factoid));
+	}
+	
+	@SuppressWarnings("unused") private final class Factoid {
+		private final String channel, author, rawtext;
+		private final long stamp;
+		private final boolean locked, forgotten;
+		
+		private Factoid(JSONObject j) {
+			this(j.getString("channel"),j.getString("author"),j.getString("rawtext"),Long.parseLong(j.getString("stamp"))*1000,j.getString("locked").equals("1"),j.getString("forgotten").equals("1"));
+		}
+		private Factoid(String channel, String author, String rawtext, long stamp) {
+			this(channel,author,rawtext,stamp,false,false);
+		}
+		private Factoid(String channel, String author, String rawtext, long stamp, boolean locked, boolean forgotten) {
+			this.channel = channel;
+			this.author = author;
+			this.rawtext = rawtext;
+			this.stamp = stamp;
+			this.locked = locked;
+			this.forgotten = forgotten;
+		}
+	}
+	
 	public abstract class Function {
 		public abstract String name();
 		public abstract String result(String arg);
@@ -402,13 +436,19 @@ public class ModuleFactoid extends Module {
 				return;
 			}
 			
-			String prefix = args[1].equals(".") ? channel.getName()+"->" : "";
+			String prefix = args[1].equals(".") ? channel.getName() : "";
 			String name = args[args[1].equals(".") ? 2 : 1].toLowerCase();
 			String rem = StringTools.implode(args,args[1].equals(".") ? 3 : 2," ");
 			
-			if (config.exists(prefix+"l_"+name)) Shocky.sendNotice(bot,sender,"Factoid is locked"); else {
-				config.set(prefix+"r_"+name,rem);
-				config.set(prefix+"b_"+name,sender.getNick());
+			Factoid f = getLatest(channel.getName(),name,true);
+			if (f != null && f.locked) Shocky.sendNotice(bot,sender,"Factoid is locked"); else {
+				QueryInsert q = new QueryInsert(SQL.getTable("factoid"));
+				q.add("channel",prefix);
+				q.add("factoid",name);
+				q.add("author",sender.getNick());
+				q.add("rawtext",rem);
+				q.add("stamp",new Date().getTime()/1000);
+				SQL.insert(q);
 				Shocky.sendNotice(bot,sender,"Done.");
 			}
 		}
@@ -433,12 +473,23 @@ public class ModuleFactoid extends Module {
 				return;
 			}
 			
-			String prefix = args[1].equals(".") ? channel.getName()+"->" : "";
+			String prefix = args[1].equals(".") ? channel.getName() : "";
 			String name = args[args[1].equals(".") ? 2 : 1].toLowerCase();
 			
-			if (config.exists(prefix+"l_"+name)) Shocky.sendNotice(bot,sender,"Factoid is locked"); else {
-				config.remove(prefix+"r_"+name);
-				Shocky.sendNotice(bot,sender,config.remove(prefix+"b_"+name) ? "Done." : "No such factoid");
+			Factoid f = getLatest(channel.getName(),name);
+			if (f == null) Shocky.sendNotice(bot,sender,"No such factoid"); else {
+				if (f.locked) Shocky.sendNotice(bot,sender,"Factoid is locked");
+				else {
+					QueryInsert q = new QueryInsert(SQL.getTable("factoid"));
+					q.add("channel",prefix);
+					q.add("factoid",name);
+					q.add("author",sender.getNick());
+					q.add("rawtext",f.rawtext);
+					q.add("stamp",new Date().getTime()/1000);
+					q.add("forgotten",1);
+					SQL.insert(q);
+					Shocky.sendNotice(bot,sender,"Done.");
+				}
 			}
 		}
 	}
@@ -550,35 +601,43 @@ l1:				for (int i = 0; i < fcmds.size(); i++) {
 					String factoid = (local ? args[3] : args[2]).toLowerCase();
 					if (args[1].equals("lock")) {
 						if ((local && canUseOp(bot,type,channel,sender)) || (!local && canUseController(bot,type,sender))) {
-							Config cfg = config;
-							if (local) cfg = cfg.getConfig(channel.getName());
-							if (cfg == null || !cfg.exists("r_"+factoid)) {
+							Factoid f = getLatest(local ? channel.getName() : null,factoid,true);
+							if (f == null) {
 								Shocky.sendNotice(bot,sender,"No such factoid");
 								return;
 							}
-							if (cfg.exists("l_"+factoid)) {
+							if (f.locked) {
 								Shocky.sendNotice(bot,sender,"Already locked");
 								return;
 							}
 							
-							cfg.set("l_"+factoid,true);
+							QueryUpdate q = new QueryUpdate(SQL.getTable("factoid"));
+							q.set("locked",1);
+							q.addCriterions(new CriterionStringEquals("channel",local ? channel.getName() : ""),new CriterionStringEquals("factoid",factoid));
+							q.addOrder("stamp",false);
+							q.setLimitCount(1);
+							SQL.update(q);
 							Shocky.sendNotice(bot,sender,"Done");
 							return;
 						}
 					} else if (args[1].equals("unlock")) {
 						if ((local && canUseOp(bot,type,channel,sender)) || (!local && canUseController(bot,type,sender))) {
-							Config cfg = config;
-							if (local) cfg = cfg.getConfig(channel.getName());
-							if (cfg == null || !cfg.exists("r_"+factoid)) {
+							Factoid f = getLatest(local ? channel.getName() : null,factoid,true);
+							if (f == null) {
 								Shocky.sendNotice(bot,sender,"No such factoid");
 								return;
 							}
-							if (!cfg.exists("l_"+factoid)) {
+							if (!f.locked) {
 								Shocky.sendNotice(bot,sender,"Already unlocked");
 								return;
 							}
 							
-							cfg.remove("l_"+factoid);
+							QueryUpdate q = new QueryUpdate(SQL.getTable("factoid"));
+							q.set("locked",0);
+							q.addCriterions(new CriterionStringEquals("channel",local ? channel.getName() : ""),new CriterionStringEquals("factoid",factoid));
+							q.addOrder("stamp",false);
+							q.setLimitCount(1);
+							SQL.update(q);
 							Shocky.sendNotice(bot,sender,"Done");
 							return;
 						}

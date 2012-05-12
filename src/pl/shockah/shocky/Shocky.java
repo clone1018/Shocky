@@ -1,11 +1,9 @@
 package pl.shockah.shocky;
 
 import java.util.*;
-
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.pircbotx.*;
 import org.pircbotx.hooks.events.*;
-
 import pl.shockah.shocky.cmds.Command;
 
 public class Shocky extends ListenerAdapter {
@@ -16,7 +14,7 @@ public class Shocky extends ListenerAdapter {
 	
 	public static void main(String[] args) {
 		Data.load();
-		
+				
 		multiBot = new MultiBotManager(Data.config.getString("main-botname"));
 		try {
 			multiBot.setName(Data.config.getString("main-botname"));

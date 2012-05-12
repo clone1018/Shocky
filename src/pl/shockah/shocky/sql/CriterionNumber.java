@@ -6,7 +6,7 @@ public class CriterionNumber extends Criterion {
 	}
 	
 	public static enum Operation {
-		Equals("="), Lesser("<"), Greater(">"), LesserOrEqual("<="), GreaterOrEqual(">=");
+		Equals("="), NotEquals("<>"), Lesser("<"), Greater(">"), LesserOrEqual("<="), GreaterOrEqual(">=");
 		
 		private String operation;
 		

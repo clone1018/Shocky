@@ -9,8 +9,10 @@ public class SQL {
 	public static JSONObject select(QuerySelect query) {return queryJSON(query.getSQLQuery());}
 	public static String insert(QueryInsert query) {return queryInsertId(query.getSQLQuery());}
 	public static String delete(QueryDelete query) {return queryRaw(query.getSQLQuery());}
+	public static String update(QueryUpdate query) {return queryRaw(query.getSQLQuery());}
 	
 	public static String queryRaw(String query) {
+		System.out.println(query);
 		HTTPQuery q = new HTTPQuery(Data.config.getString("main-sqlurl")+"?"+HTTPQuery.parseArgs("type","raw","q",query,"eval",getEval()),"GET");
 		q.connect(true,false);
 		String s = q.readWhole();
@@ -18,6 +20,7 @@ public class SQL {
 		return s;
 	}
 	public static String queryInsertId(String query) {
+		System.out.println(query);
 		HTTPQuery q = new HTTPQuery(Data.config.getString("main-sqlurl")+"?"+HTTPQuery.parseArgs("type","insertid","q",query,"eval",getEval()),"GET");
 		q.connect(true,false);
 		String s = q.readWhole();
@@ -25,6 +28,7 @@ public class SQL {
 		return s;
 	}
 	public static JSONObject queryJSON(String query) {
+		System.out.println(query);
 		HTTPQuery q = new HTTPQuery(Data.config.getString("main-sqlurl")+"?"+HTTPQuery.parseArgs("type","json","q",query,"eval",getEval()),"GET");
 		q.connect(true,false);
 		JSONObject j = JSONObject.deserialize(q.readWhole());

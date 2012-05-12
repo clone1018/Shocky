@@ -2,34 +2,9 @@ package pl.shockah.shocky.sql;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.regex.Pattern;
-
 import org.apache.commons.lang3.tuple.ImmutablePair;
 
 public class QueryInsert extends Query {
-	private static String getColumnsClause(ArrayList<String> list) {
-		if (list == null || list.isEmpty()) return "*";
-		StringBuilder sb = new StringBuilder();
-		
-		for (String s : list) {
-			if (sb.length() != 0) sb.append(",");
-			sb.append(s);
-		}
-		
-		return sb.toString();
-	}
-	private static String getValuesClause(ArrayList<Object> list) {
-		StringBuilder sb = new StringBuilder();
-		
-		for (Object o : list) {
-			if (sb.length() != 0) sb.append(",");
-			if (o instanceof String) sb.append("'"+((String)o).replaceAll(Pattern.quote("\"'\n\\"),"\\$0")+"'");
-			else sb.append(o);
-		}
-		
-		return sb.toString();
-	}
-	
 	private String table;
 	private ArrayList<String> columns = new ArrayList<String>();
 	private ArrayList<Object> values = new ArrayList<Object>();
@@ -54,7 +29,7 @@ public class QueryInsert extends Query {
 	
 	public String getSQLQuery() {
 		String clauseColumns = getColumnsClause(columns);
-		String clauseValues = getValuesClause(values);
+		String clauseValues = getValuesObjectClause(values);
 		return "INSERT INTO "+table+" ("+clauseColumns+") VALUES("+clauseValues+")";
 	}
 }

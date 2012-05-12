@@ -22,12 +22,12 @@ public class Data {
 		Data.config.setNotExists("main-nickservpass","");
 		Data.config.setNotExists("main-cmdchar","`~");
 		Data.config.setNotExists("main-messagelength",400);
-		/*Data.config.setNotExists("main-sqlurl","http://localhost/shocky/sql.php");
+		Data.config.setNotExists("main-sqlurl","http://localhost/shocky/sql.php");
 		Data.config.setNotExists("main-sqlhost","localhost");
 		Data.config.setNotExists("main-sqluser","");
 		Data.config.setNotExists("main-sqlpass","");
 		Data.config.setNotExists("main-sqldb","shocky");
-		Data.config.setNotExists("main-sqlprefix","");*/
+		Data.config.setNotExists("main-sqlprefix","");
 		
 		Console c = System.console();
 		if (c == null) System.out.println("--- Not running in console, using default first-run settings ---"); else {
@@ -41,6 +41,12 @@ public class Data {
 			firstRunSetupInt(c,"main-maxchannels");
 			firstRunSetupString(c,"main-cmdchar");
 			firstRunSetupInt(c,"main-messagelength");
+			firstRunSetupString(c,"main-sqlurl");
+			firstRunSetupString(c,"main-sqlhost");
+			firstRunSetupString(c,"main-sqluser");
+			firstRunSetupPassword(c,"main-sqlpass");
+			firstRunSetupString(c,"main-sqldb");
+			firstRunSetupString(c,"main-sqlprefix");
 			System.out.println();
 		}
 	}

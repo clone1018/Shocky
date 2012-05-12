@@ -12,6 +12,7 @@ public class JSONObject {
 	}
 	private static int deserialize(JSONObject j, String text, int i) {
 		if (text.charAt(i++) != (j.isArray() ? '[' : '{')) return -1;
+		if (text.charAt(i) == (j.isArray() ? ']' : '}')) return i+1;
 		
 		char c; int count = 0;
 		while (true) {
@@ -81,6 +82,7 @@ public class JSONObject {
 	public boolean isArray() {return isArray;}
 	public boolean exists(String key) {return elements.containsKey(key);}
 	public int size() {return elements.size();}
+	public boolean isEmpty() {return size() == 0;}
 	
 	public JSON<?> getElement(String key) {Object o = elements.get(key); return (o instanceof JSON ? (JSON<?>)o : null);}
 	public JSONObject getJSONObject(String key) {Object o = elements.get(key); if (o instanceof JSONObject) return (JSONObject)o; return null;}

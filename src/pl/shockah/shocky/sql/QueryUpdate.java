@@ -4,19 +4,22 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 
-public class QuerySelect extends Query {
+public class QueryUpdate extends Query {
 	private String table;
-	private ArrayList<String> columns = new ArrayList<String>();
+	private ArrayList<ImmutablePair<String,Object>> values = new ArrayList<ImmutablePair<String,Object>>();
 	private ArrayList<Criterion> criterions = new ArrayList<Criterion>();
 	private ArrayList<ImmutablePair<String,Boolean>> orderby = new ArrayList<ImmutablePair<String,Boolean>>();
 	private int limitOffset = 0, limitCount = 1;
 	
-	public QuerySelect(String table) {
+	public QueryUpdate(String table) {
 		this.table = table;
 	}
 	
-	public void addColumns(String... columns) {
-		this.columns.addAll(Arrays.asList(columns));
+	public void set(ImmutablePair<String,Object>... pairs) {
+		values.addAll(Arrays.asList(pairs));
+	}
+	public void set(String column, Object value) {
+		values.add(new ImmutablePair<String,Object>(column,value));
 	}
 	public void addCriterions(Criterion... criterions) {
 		this.criterions.addAll(Arrays.asList(criterions));
@@ -34,10 +37,10 @@ public class QuerySelect extends Query {
 	}
 	
 	public String getSQLQuery() {
-		String clauseColumns = getColumnsClause(columns);
+		String clauseValues = getValuesPairClause(values);
 		String clauseWhere = Criterion.getWhereClause(criterions);
 		String clauseOrderBy = getOrderByClause(orderby);
 		String clauseLimit = limitOffset == 0 && limitCount == 1 ? "" : "LIMIT "+(limitOffset != 0 ? ""+limitOffset+"," : "")+limitCount;
-		return "SELECT "+clauseColumns+" FROM "+table+(clauseWhere.isEmpty() ? "" : " "+clauseWhere)+(clauseOrderBy.isEmpty() ? "" : " "+clauseOrderBy)+(clauseLimit.isEmpty() ? "" : " "+clauseLimit);
+		return "UPDATE "+table+" SET "+clauseValues+(clauseWhere.isEmpty() ? "" : " "+clauseWhere)+(clauseOrderBy.isEmpty() ? "" : " "+clauseOrderBy)+(clauseLimit.isEmpty() ? "" : " "+clauseLimit);
 	}
 }
