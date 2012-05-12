@@ -55,8 +55,7 @@ public abstract class Module extends ListenerAdapter implements Comparable<Modul
 		if (module == null) return false;
 		if (!modules.contains(module)) return false;
 		if (modulesOn.contains(module)) {
-			module.onDisable();
-			modulesOn.remove(module);
+			disable(module);
 		}
 		modules.remove(module);
 		module.loader.unloadModule(module);
