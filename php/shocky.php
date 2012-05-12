@@ -16,8 +16,7 @@ function mb_ord($char) {
     $k1 = ord(substr($k,0,1));
     $k2 = ord(substr($k,1,1));
     return $k2*256+$k1;
-} 
+}
 
-$safe->checkScript($_GET["code"]);
-
-?>
+$output = $safe->checkScript($_GET["code"], 1);
+exit($output);

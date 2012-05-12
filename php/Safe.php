@@ -182,7 +182,7 @@ class Safe {
 			'T_DO',				// do..while
 			'T_DOUBLE_ARROW',		// array syntax
 			'T_DOUBLE_CAST',		// type-casting
-		 	'T_ECHO',                       //
+			'T_ECHO',                       //
 			'T_ELSE',			// else
 			'T_ELSEIF',			// elseif
 			'T_EMPTY',			// empty()
@@ -244,7 +244,8 @@ class Safe {
 		//	'/(\]|\})\s*\//',		// Comment after parentheses: "] /" or "} /"
 
 		);
-		$this->disabledFunctions = array("file_put_contents", "file", "ini_set", "ini_get", "mail", "phpinfo", "setenv", "getenv", "socket_create", "socket_bind", "socket_listen", "socket_create_listen", "socket_create_pair", "socket_accept", "pcntl_fork", "exec", "passthru", "shell_exec", "system", "proc_open", "popen", "parse_ini_file", "show_source", "glob", "opendir", "readdir", "set_time_limit", "unlink", "rmdir", "mkdir", "rename", "copy", "dir", "scandir", "ftp_connect", "ftp_ssl_connect", "openlog", "syslog", "fsockopen", "define_syslog_variables", "pfsockopen", "snmp2_get", "snmp3_get", "snmp2_walk", "snmp2_real_walk", "snmp2_getnext", "snmp3_walk", "snmp3_real_walk", "snmpget", "snmpwalk", "snmpgetnext", "snmprealwalk", "snmp3_getnext", "snmpwalkoid", "ssh2_connect", "ssh2_fetch_stream", "ssh2_tunnel", "yaz_connect", "yaz_wait", "disk_free_space", "disk_total_space", "flock", "link", "tempnam", "tmpfile", "touch", "symlink", "pcntl_exec", "posix_kill", "posix_mkfifo", "posix_mknod", "fopen", "stream_socket_server", "stream_socket_client", "stream_socket_pair", "gc_disable", "ob_end_flush", "flush", "ini_get_all", "get_loaded_extensions", "ini_alter", "chmod", "chgrp", "chown", "posix_access", "posix_ctermid", "posix_errno", "posix_get_last_error", "posix_getcwd", "posix_getegid", "posix_geteuid", "posix_getgid", "posix_getgrgid", "posix_getgrnam", "posix_getgroups", "posix_getlogin", "posix_getpgid", "posix_getpgrp", "posix_getpid", "posix_getppid", "posix_getpwnam", "posix_getpwuid", "posix_getrlimit", "posix_getsid", "posix_getuid", "posix_initgroups", "posix_isatty", "posix_kill", "posix_mkfifo", "posix_mknod", "posix_setegid", "posix_seteuid", "posix_setgid", "posix_setpgid", "posix_setsid", "posix_setuid", "posix_strerror", "posix_times", "posix_ttyname", "posix_uname", "chdir", "opendir", "readdir", "debug_backtrace", "debug_print_backtrace");
+		$this->disabledFunctions = array("readfile", "file_put_contents", "file", "ini_set", "ini_get", "mail", "phpinfo", "setenv", "getenv", "socket_create", "socket_bind", "socket_listen", "socket_create_listen", "socket_create_pair", "socket_accept", "pcntl_fork", "exec", "passthru", "shell_exec", "system", "proc_open", "popen", "parse_ini_file", "show_source", "glob", "opendir", "readdir", "set_time_limit", "unlink", "rmdir", "mkdir", "rename", "copy", "dir", "scandir", "ftp_connect", "ftp_ssl_connect", "openlog", "syslog", "fsockopen", "define_syslog_variables", "pfsockopen", "snmp2_get", "snmp3_get", "snmp2_walk", "snmp2_real_walk", "snmp2_getnext", "snmp3_walk", "snmp3_real_walk", "snmpget", "snmpwalk", "snmpgetnext", "snmprealwalk", "snmp3_getnext", "snmpwalkoid", "ssh2_connect", "ssh2_fetch_stream", "ssh2_tunnel", "yaz_connect", "yaz_wait", "disk_free_space", "disk_total_space", "flock", "link", "tempnam", "tmpfile", "touch", "symlink", "pcntl_exec", "posix_kill", "posix_mkfifo", "posix_mknod", "fopen", "stream_socket_server", "stream_socket_client", "stream_socket_pair", "gc_disable", "ob_end_flush", "flush", "ini_get_all", "get_loaded_extensions", "ini_alter", "chmod", "chgrp", "chown", "posix_access", "posix_ctermid", "posix_errno", "posix_get_last_error", "posix_getcwd", "posix_getegid", "posix_geteuid", "posix_getgid", "posix_getgrgid", "posix_getgrnam", "posix_getgroups", "posix_getlogin", "posix_getpgid", "posix_getpgrp", "posix_getpid", "posix_getppid", "posix_getpwnam", "posix_getpwuid", "posix_getrlimit", "posix_getsid", "posix_getuid", "posix_initgroups", "posix_isatty", "posix_kill", "posix_mkfifo", "posix_mknod", "posix_setegid", "posix_seteuid", "posix_setgid", "posix_setpgid", "posix_setsid", "posix_setuid", "posix_strerror", "posix_times", "posix_ttyname", "posix_uname", "chdir", "opendir", "readdir", "debug_backtrace", "debug_print_backtrace"
+			);
 	}
 
 	public function evalSyntax($code) { // Separate function for checking syntax without breaking the script
@@ -280,16 +281,6 @@ class Safe {
 			$this->errors[0]['name'] = 'Syntax error.';
 		}
 
-		// STEP 3: EXPRESSIONS - Check against various insecure elements
-		if (empty($this->errors)) foreach ($this->disallowedExpressions as $disallowedExpression) {
-			unset($matches);
-			preg_match($disallowedExpression, $this->code, $matches);
-			if($matches) {
-				$this->errors[0]['name'] = 'Execution operator / variable function name / variable variable name detected.';
-				break;
-			}	
-		}
-
 		// STEP 4: TOKENS
 		if(empty($this->errors)) {
 			unset($this->tokens[0]);
@@ -310,7 +301,7 @@ class Safe {
 								$this->errors[$i]['line'] = $token[2];
 							}
 							if($token[1] == 'file_get_contents') {
-								$this->tokens[$i][1] = '$this->ignite_file_get_contents';
+								$this->tokens[$i][1] = '$this->safe_file_get_contents';
 							}
 							break;
 						default:
@@ -335,40 +326,29 @@ class Safe {
 		}
 
 		if(!empty($this->errors)) {
-			return $this->errors;
-		} else if ($this->execute) {
-			foreach ($this->globalVariables as $globalVariable) {
-				global $$globalVariable;
-			}
+			return $this->PrintErrors($this->errors);
+		} elseif ($this->execute) {
 
 			ob_start();
 			$this->CI = '';
 			eval($this->code);
-			$output = htmlentities(ob_get_contents());
+			$output = ob_get_contents();
 			ob_end_clean();
-
-			$end = array('output' => $output);
-			if(isset($error)) $end['error'] = $error;
-			return $end;	
+	
+			return $output;
 		}
 	}
 	
-	public function htmlErrors ($errors = null) {
-		if ($errors) {
+	public function PrintErrors($errors = null) {
+		if($errors) {
 			$this->errors = $errors;
-			$this->errorsHTML = '<dl>';
-			foreach ($this->errors as $error) {
-				if ($error['line']) {
-					$error['line']++;
-					$this->errorsHTML .= '<dt>Line '.$error['line'].'</dt>';
-				}
-				$this->errorsHTML .= '<dd>'.$error['name'].'</dd>';
+			$this->error = 'ERROR: ';
+			foreach($this->errors as $error) {
+				$this->error .= $error['name'];
 			}
-			$this->errorsHTML .= '</dl>';
-			return($this->errorsHTML);
+			return $this->error;
 		}
 	}
-
 
 	public function safe_file_get_contents($url) {
 
@@ -376,6 +356,7 @@ class Safe {
 		$timeout = 30;
 		curl_setopt($ch,CURLOPT_URL,$url);
 		curl_setopt($ch,CURLOPT_RETURNTRANSFER,1);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 		curl_setopt($ch,CURLOPT_CONNECTTIMEOUT,$timeout);
 		$data = curl_exec($ch);
 		curl_close($ch);
@@ -383,3 +364,4 @@ class Safe {
 
 	}
 }
+
