@@ -41,7 +41,7 @@ public class ModulePHP extends Module {
 			sb.append(line);
 		}
 		
-		return sb.toString();
+		return StringTools.limitLength(sb.toString());
 	}
 	
 	public class CmdPHP extends Command {
