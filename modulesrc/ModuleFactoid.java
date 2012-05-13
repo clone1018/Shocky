@@ -31,6 +31,7 @@ public class ModuleFactoid extends Module {
 		Data.config.setNotExists("factoid-charby","-");
 		Data.config.setNotExists("factoid-show",true);
 		Data.config.setNotExists("php-url","http://localhost/shocky/shocky.php");
+		Data.config.setNotExists("python-url","http://eval.appspot.com/eval");
 		
 		SQL.raw("CREATE TABLE IF NOT EXISTS "+SQL.getTable("factoid")+" (channel TEXT NOT NULL,factoid TEXT,author TEXT,rawtext TEXT,stamp INT(10) UNSIGNED NOT NULL,locked INT(1) UNSIGNED NOT NULL DEFAULT 0,forgotten INT(1) UNSIGNED NOT NULL DEFAULT 0)");
 		
@@ -116,6 +117,33 @@ public class ModuleFactoid extends Module {
 			
 			FileLine.write(new File("data","crowdbodd.txt"),odd);
 			new File("data","crowdb.txt").delete();
+		}
+		
+		if (new File("data","crowdbodd.txt").exists()) {
+			ArrayList<String> lines = FileLine.read(new File("data","crowdbodd.txt"));
+			ArrayList<String> odd2 = new ArrayList<String>();
+			
+			for (String s : lines) {
+				String[] spl = s.split("|");
+				String fFactoid = spl[0].trim();
+				String fAuthor = spl[1].trim();
+				String fRaw = StringTools.implode(spl,2," ").trim();
+				if (fRaw.startsWith("<command")) {
+					odd2.add(s);
+					continue;
+				} else if (fRaw.startsWith("<pyexec>")) fRaw = "<py>"+fRaw.substring(8);
+				
+				QueryInsert q = new QueryInsert(SQL.getTable("factoid"));
+				q.add("channel","");
+				q.add("factoid",fFactoid);
+				q.add("author",fAuthor);
+				q.add("rawtext",fRaw);
+				q.add("stamp",0);
+				SQL.insert(q);
+			}
+			
+			FileLine.write(new File("data","crowdbodd2.txt"),odd2);
+			new File("data","crowdbodd.txt").delete();
 		}
 		
 		ArrayList<String> lines = FileLine.read(new File("data","factoidCmd.cfg"));
@@ -306,6 +334,36 @@ public class ModuleFactoid extends Module {
 			code = sb.toString()+" "+code;
 			
 			HTTPQuery q = new HTTPQuery(Data.config.getString("php-url")+"?"+HTTPQuery.parseArgs("code",code));
+			q.connect(true,false);
+			
+			sb = new StringBuilder();
+			for (String line : q.read()) {
+				if (sb.length() != 0) sb.append(" | ");
+				sb.append(line);
+			}
+			
+			return sb.toString();
+		} else if (raw.startsWith("<py>")) {
+			String code = raw.substring(5);
+			String[] args = message.split(" ");
+			String argsImp = StringTools.implode(args,1," "); if (argsImp == null) argsImp = "";
+			
+			StringBuilder sb = new StringBuilder("channel = \""+channel.getName()+"\"; bot = \""+bot.getNick().replace("\"","\\\"")+"\"; sender = \""+sender.getNick().replace("\"","\\\"")+"\";");
+			sb.append(" argc = "+(args.length-1)+"; args = \""+argsImp.replace("\"","\\\"")+"\"; ioru = \""+(args.length-1 == 0 ? sender.getNick() : argsImp).replace("\"","\\\"")+"\";");
+			
+			User[] users = channel.getUsers().toArray(new User[channel.getUsers().size()]);
+			sb.append(" randnick = \""+users[new Random().nextInt(users.length)].getNick().replace("\"","\\\"")+"\";");
+			
+			sb.append("arg = array(");
+			for (int i = 1; i < args.length; i++) {
+				if (i != 1) sb.append(",");
+				sb.append("\""+args[i].replace("\"","\\\"")+"\"");
+			}
+			sb.append(");");
+			
+			code = sb.toString()+" "+code;
+			
+			HTTPQuery q = new HTTPQuery(Data.config.getString("python-url")+"?"+HTTPQuery.parseArgs("statement",code));
 			q.connect(true,false);
 			
 			sb = new StringBuilder();
