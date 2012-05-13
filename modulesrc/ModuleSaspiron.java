@@ -42,19 +42,19 @@ public class ModuleSaspiron extends Module {
 				if (args[i].length() < 4) TheWords.add(args[i]);
 				else TheOtherWords.add(args[i]);
 			}
-			String msg = "";
+			StringBuilder sb = new StringBuilder();
 			for (int i = 1; i < args.length; i++) {
-				if (!msg.isEmpty()) msg += " ";
+				if (sb.length() == 0) sb.append(" ");
 				if (args[i].length() < 4) {
-					if (rnd.nextInt(10) == 0) msg += three[rnd.nextInt(three.length)];
-					else msg += TheWords.remove(rnd.nextInt(TheWords.size()));
+					if (rnd.nextInt(10) == 0) sb.append(three[rnd.nextInt(three.length)]).append(" ");
+					else sb.append(TheWords.remove(rnd.nextInt(TheWords.size())));
 				} else {
-					if (rnd.nextInt(30) == 0) msg += four[rnd.nextInt(three.length)];
-					msg += TheOtherWords.remove(rnd.nextInt(TheOtherWords.size()));
+					if (rnd.nextInt(30) == 0) sb.append(four[rnd.nextInt(four.length)]).append(" ");
+					sb.append(TheOtherWords.remove(rnd.nextInt(TheOtherWords.size())));
 				}
 			}
-			msg += ". this message is aproved by Saspiron";
-			Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,msg);
+			
+			Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,sb.toString());
 		}
 	}
 }
