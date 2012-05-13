@@ -2,6 +2,8 @@ import java.io.File;
 import java.util.*;
 import java.util.regex.*;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.pircbotx.*;
 import org.pircbotx.hooks.events.MessageEvent;
 import pl.shockah.*;
@@ -59,6 +61,63 @@ public class ModuleFactoid extends Module {
 			
 			new File("data","factoid.cfg").delete();
 		}
+		
+		if (new File("data","crowdb.txt").exists()) {
+			ArrayList<String> odd = new ArrayList<String>();
+			try {
+				JSONArray base = new JSONArray(FileLine.readString(new File("data","crowdb.txt")));
+				for (int i = 0; i < base.length(); i++) {
+					JSONObject j = base.getJSONObject(i);
+					String fFactoid = j.getString("name");
+					String fRaw = j.getString("data");
+					String fAuthor = j.getString("last_changed_by");
+					boolean fLocked = false; boolean ignore = false;
+					
+					if (fFactoid.equals("$ioru")) continue;
+					if (fFactoid.equals("$user")) continue;
+					
+					fRaw.trim();
+					while (!fRaw.isEmpty() && fRaw.charAt(0) == '<') {
+						if (fRaw.startsWith("<reply>")) {
+							fRaw = fRaw.substring(7).trim();
+						} else if (fRaw.startsWith("<locked")) {
+							fLocked = true;
+							fRaw = fRaw.substring(fRaw.indexOf('>')+1).trim();
+						} else if (fRaw.startsWith("<forgotten>")) {
+							ignore = true;
+							break;
+						} else if (fRaw.startsWith("<command") || fRaw.startsWith("<pyexec")) {
+							odd.add(fFactoid+" | "+fAuthor+" | "+fRaw);
+							ignore = true;
+							break;
+						} else break;
+					}
+					
+					if (ignore) continue;
+					
+					fRaw = fRaw.replace("$inp","%inp%");
+					fRaw = fRaw.replace("$ioru","%ioru%");
+					fRaw = fRaw.replace("$user","%user%");
+					fRaw = fRaw.replace("$chan","%chan%");
+					
+					Factoid f = getLatest(null,fFactoid,true);
+					if (f == null) {
+						QueryInsert q = new QueryInsert(SQL.getTable("factoid"));
+						q.add("channel","");
+						q.add("factoid",fFactoid);
+						q.add("author",fAuthor);
+						q.add("rawtext",fRaw);
+						q.add("stamp",0);
+						if (fLocked) q.add("locked",1);
+						SQL.insert(q);
+					}
+				}
+			} catch (Exception e) {e.printStackTrace();}
+			
+			FileLine.write(new File("data","crowdbodd.txt"),odd);
+			new File("data","crowdb.txt").delete();
+		}
+		
 		ArrayList<String> lines = FileLine.read(new File("data","factoidCmd.cfg"));
 		for (int i = 0; i < lines.size(); i += 2) fcmds.add(new CmdFactoid(lines.get(i),lines.get(i+1)));
 		
@@ -172,17 +231,17 @@ public class ModuleFactoid extends Module {
 			
 			for (i = 0; i < charsraw.length(); i++) if (msg.charAt(0) == charsraw.charAt(i)) {
 				msg = new StringBuilder(msg).deleteCharAt(0).toString().split(" ")[0].toLowerCase();
-				Factoid f = getLatest(channel.getName(),msg);
+				Factoid f = getLatest(channel.getName(),msg,true);
 				if (target != null) Shocky.overrideTarget.put(Thread.currentThread(),new ImmutablePair<Command.EType,Command.EType>(Command.EType.Channel,Command.EType.Notice));
-				if (f != null) Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),msg+": "+f.rawtext);
+				if (f != null && !f.forgotten) Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),msg+": "+f.rawtext);
 				if (target != null) Shocky.overrideTarget.remove(Thread.currentThread());
 				return;
 			}
 			for (i = 0; i < charsby.length(); i++) if (msg.charAt(0) == charsby.charAt(i)) {
 				msg = new StringBuilder(msg).deleteCharAt(0).toString().split(" ")[0].toLowerCase();
-				Factoid f = getLatest(channel.getName(),msg);
+				Factoid f = getLatest(channel.getName(),msg,true);
 				if (target != null) Shocky.overrideTarget.put(Thread.currentThread(),new ImmutablePair<Command.EType,Command.EType>(Command.EType.Channel,Command.EType.Notice));
-				if (f != null) Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),msg+", last edited by "+f.author);
+				if (f != null && !f.forgotten) Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),msg+", last edited by "+f.author);
 				if (target != null) Shocky.overrideTarget.remove(Thread.currentThread());
 				return;
 			}
@@ -192,8 +251,9 @@ public class ModuleFactoid extends Module {
 			LinkedList<String> checkRecursive = new LinkedList<String>();
 			while (true) {
 				String factoid = msg.split(" ")[0].toLowerCase();
-				Factoid f = getLatest(channel.getName(),factoid);
+				Factoid f = getLatest(channel.getName(),factoid,true);
 				if (f != null) {
+					if (f.forgotten) return;
 					String raw = f.rawtext;
 					if (raw.startsWith("<alias>")) {
 						msg = parseVariables(bot, channel, sender, msg, raw);
@@ -392,17 +452,21 @@ public class ModuleFactoid extends Module {
 		q.addOrder("stamp",false);
 		q.setLimitCount(1);
 		JSONObject j = SQL.select(q);
-		return j != null && !j.isEmpty() ? new Factoid(j) : (channel == null ? null : getLatest(null,factoid));
+		return j != null && j.length() != 0 ? Factoid.fromJSONObject(j) : (channel == null ? null : getLatest(null,factoid));
 	}
 	
-	@SuppressWarnings("unused") private final class Factoid {
+	@SuppressWarnings("unused") private static final class Factoid {
+		private static Factoid fromJSONObject(JSONObject j) {
+			try {
+				 return new Factoid(j.getString("channel"),j.getString("author"),j.getString("rawtext"),Long.parseLong(j.getString("stamp"))*1000,j.getString("locked").equals("1"),j.getString("forgotten").equals("1"));
+			} catch (Exception e) {e.printStackTrace();}
+			return null;
+		}
+		
 		private final String channel, author, rawtext;
 		private final long stamp;
 		private final boolean locked, forgotten;
 		
-		private Factoid(JSONObject j) {
-			this(j.getString("channel"),j.getString("author"),j.getString("rawtext"),Long.parseLong(j.getString("stamp"))*1000,j.getString("locked").equals("1"),j.getString("forgotten").equals("1"));
-		}
 		private Factoid(String channel, String author, String rawtext, long stamp) {
 			this(channel,author,rawtext,stamp,false,false);
 		}

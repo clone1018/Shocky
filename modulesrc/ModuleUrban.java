@@ -1,9 +1,9 @@
 import java.net.URLEncoder;
+import org.json.JSONObject;
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 import pl.shockah.HTTPQuery;
-import pl.shockah.JSONObject;
 import pl.shockah.StringTools;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Shocky;
@@ -58,28 +58,31 @@ public class ModuleUrban extends Module {
 			}
 			q.connect(true, false);
 			String line = q.readWhole();
-			JSONObject json = JSONObject.deserialize(line);
-			String resulttype = json.getString("result_type");
-			if (resulttype.contentEquals("no_results")) {
-				Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,"No results.");
-				return;
-			}
-			JSONObject entry = json.getJSONObjectArray("list")[0];
-			String word = entry.getString("word");
-			String definition = entry.getString("definition");
-			String example = entry.getString("example");
-			String permalink = entry.getString("permalink");
-			result.append(Utils.shortenUrl(permalink));
-			result.append(" \u0002");
-			result.append(word);
-			result.append("\u0002: ");
-			result.append(definition);
-			if (example != null && example.length()>0) {
-				result.append(" Example: ");
-				result.append(example);
-			}
-			String output = StringTools.ircFormatted(result, true);
-			Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,output);
+			
+			try {
+				JSONObject json = new JSONObject(line);
+				String resulttype = json.getString("result_type");
+				if (resulttype.contentEquals("no_results")) {
+					Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,"No results.");
+					return;
+				}
+				JSONObject entry = json.getJSONArray("list").getJSONObject(0);
+				String word = entry.getString("word");
+				String definition = entry.getString("definition");
+				String example = entry.getString("example");
+				String permalink = entry.getString("permalink");
+				result.append(Utils.shortenUrl(permalink));
+				result.append(" \u0002");
+				result.append(word);
+				result.append("\u0002: ");
+				result.append(definition);
+				if (example != null && example.length()>0) {
+					result.append(" Example: ");
+					result.append(example);
+				}
+				String output = StringTools.ircFormatted(result, true);
+				Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,output);
+			} catch (Exception e) {e.printStackTrace();}
 		}
 	}
 }

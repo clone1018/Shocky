@@ -2,13 +2,13 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.json.JSONObject;
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 import org.pircbotx.hooks.events.ActionEvent;
 import org.pircbotx.hooks.events.MessageEvent;
 import pl.shockah.HTTPQuery;
-import pl.shockah.JSONObject;
 import pl.shockah.StringTools;
 import pl.shockah.shocky.Data;
 import pl.shockah.shocky.Module;
@@ -27,21 +27,22 @@ public class ModuleYoutube extends Module {
 		try {
 			q = new HTTPQuery("http://gdata.youtube.com/feeds/api/videos/"+URLEncoder.encode(vID,"UTF8")+"?v=2&alt=jsonc","GET");
 			q.connect(true,false);
+			
+			JSONObject jItem = new JSONObject(q.readWhole()).getJSONObject("data");
+			q.close();
+			
+			String vUploader = jItem.getString("uploader");
+			String vTitle = StringTools.unicodeParse(jItem.getString("title"));
+			int vDuration = jItem.getInt("duration");
+			double vRating = jItem.has("rating") ? jItem.getDouble("rating") : -1;
+			int vViewCount = jItem.getInt("viewCount");
+			
+			int iDh = vDuration/3600, iDm = (vDuration/60) % 60, iDs = vDuration % 60;
+			
+			return vTitle+" | length "+(vDuration >= 3600 ? iDh+"h " : "")+(vDuration >= 60 ? iDm+"m " : "")+iDs+"s | rated "
+				+(vRating != -1 ? String.format("%.2f",vRating).replace(",",".")+"/5.00 | " : "")+vViewCount+" view"+(vViewCount != 1 ? "s" : "") +" | by "+vUploader;
 		} catch (Exception e) {e.printStackTrace();}
-		
-		JSONObject jItem = JSONObject.deserialize(q.readWhole()).getJSONObject("data");
-		q.close();
-		
-		String vUploader = jItem.getString("uploader");
-		String vTitle = StringTools.unicodeParse(jItem.getString("title"));
-		int vDuration = jItem.getInt("duration");
-		double vRating = jItem.exists("rating") ? jItem.getDouble("rating") : -1;
-		int vViewCount = jItem.getInt("viewCount");
-		
-		int iDh = vDuration/3600, iDm = (vDuration/60) % 60, iDs = vDuration % 60;
-		
-		return vTitle+" | length "+(vDuration >= 3600 ? iDh+"h " : "")+(vDuration >= 60 ? iDm+"m " : "")+iDs+"s | rated "
-			+(vRating != -1 ? String.format("%.2f",vRating).replace(",",".")+"/5.00 | " : "")+vViewCount+" view"+(vViewCount != 1 ? "s" : "") +" | by "+vUploader;
+		return null;
 	}
 	public String getVideoSearch(String query, boolean data, boolean url) {
 		HTTPQuery q = null;
@@ -49,23 +50,24 @@ public class ModuleYoutube extends Module {
 		try {
 			q = new HTTPQuery("http://gdata.youtube.com/feeds/api/videos?max-results=1&v=2&alt=jsonc&q="+URLEncoder.encode(query,"UTF8"),"GET");
 			q.connect(true,false);
+			
+			JSONObject jItem = new JSONObject(q.readWhole()).getJSONObject("data").getJSONArray("items").getJSONObject(0);
+			q.close();
+			
+			String vID = jItem.getString("id");
+			String vUploader = jItem.getString("uploader");
+			String vTitle = jItem.getString("title");
+			int vDuration = jItem.getInt("duration");
+			double vRating = jItem.has("rating") ? jItem.getDouble("rating") : -1;
+			int vViewCount = jItem.getInt("viewCount");
+			
+			int iDh = vDuration/3600, iDm = (vDuration/60) % 60, iDs = vDuration % 60;
+			
+			return (data ? vTitle+" | length "+(vDuration >= 3600 ? iDh+"h " : "")+(vDuration >= 60 ? iDm+"m " : "")+iDs+"s | rated "
+				+(vRating != -1 ? String.format("%.2f",vRating).replace(",",".")+"/5.00 | " : "")+vViewCount+" view"+(vViewCount != 1 ? "s" : "")
+				+" | by "+vUploader+(url ? " | " : "") : "")+(url ? "http://youtu.be/"+vID : "");
 		} catch (Exception e) {e.printStackTrace();}
-		
-		JSONObject jItem = JSONObject.deserialize(q.readWhole()).getJSONObject("data").getJSONObjectArray("items")[0];
-		q.close();
-		
-		String vID = jItem.getString("id");
-		String vUploader = jItem.getString("uploader");
-		String vTitle = jItem.getString("title");
-		int vDuration = jItem.getInt("duration");
-		double vRating = jItem.exists("rating") ? jItem.getDouble("rating") : -1;
-		int vViewCount = jItem.getInt("viewCount");
-		
-		int iDh = vDuration/3600, iDm = (vDuration/60) % 60, iDs = vDuration % 60;
-		
-		return (data ? vTitle+" | length "+(vDuration >= 3600 ? iDh+"h " : "")+(vDuration >= 60 ? iDm+"m " : "")+iDs+"s | rated "
-			+(vRating != -1 ? String.format("%.2f",vRating).replace(",",".")+"/5.00 | " : "")+vViewCount+" view"+(vViewCount != 1 ? "s" : "")
-			+" | by "+vUploader+(url ? " | " : "") : "")+(url ? "http://youtu.be/"+vID : "");
+		return null;
 	}
 	
 	public String name() {return "youtube";}
@@ -90,7 +92,9 @@ public class ModuleYoutube extends Module {
 			if (m.find()) {
 				String s = m.group(1);
 				if (s.startsWith("http://") || s.startsWith("www.//") || s.startsWith("youtu.be/") || s.startsWith("youtube/")) return;
-				s = Utils.mungeAllNicks(event.getChannel(),getVideoSearch(s,!Data.config.getBoolean("yt-otherbot"),true));
+				String result = getVideoSearch(s,!Data.config.getBoolean("yt-otherbot"),true);
+				if (result == null) return;
+				s = Utils.mungeAllNicks(event.getChannel(),result);
 				Shocky.sendChannel(event.getBot(),event.getChannel(),event.getUser().getNick()+": "+s);
 				break;
 			}
@@ -101,7 +105,9 @@ public class ModuleYoutube extends Module {
 			while (m.find()) {
 				String vID = m.group(1);
 				if (vID == null) vID = m.group(2);
-				Shocky.sendChannel(event.getBot(),event.getChannel(),event.getUser().getNick()+": "+getVideoInfo(vID));
+				String result = getVideoInfo(vID);
+				if (result == null) return;
+				Shocky.sendChannel(event.getBot(),event.getChannel(),event.getUser().getNick()+": "+result);
 			}
 		}
 	}
@@ -113,7 +119,9 @@ public class ModuleYoutube extends Module {
 			if (m.find()) {
 				String s = m.group(1);
 				if (s.startsWith("http://") || s.startsWith("www.//") || s.startsWith("youtu.be/") || s.startsWith("youtube/")) return;
-				s = Utils.mungeAllNicks(event.getChannel(),getVideoSearch(s,!Data.config.getBoolean("yt-otherbot"),true));
+				String result = getVideoSearch(s,!Data.config.getBoolean("yt-otherbot"),true);
+				if (result == null) return;
+				s = Utils.mungeAllNicks(event.getChannel(),result);
 				Shocky.sendChannel(event.getBot(),event.getChannel(),event.getUser().getNick()+": "+s);
 				break;
 			}
