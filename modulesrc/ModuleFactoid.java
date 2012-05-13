@@ -344,7 +344,7 @@ public class ModuleFactoid extends Module {
 			
 			return sb.toString();
 		} else if (raw.startsWith("<py>")) {
-			String code = raw.substring(5);
+			String code = raw.substring(4);
 			String[] args = message.split(" ");
 			String argsImp = StringTools.implode(args,1," "); if (argsImp == null) argsImp = "";
 			
