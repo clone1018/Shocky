@@ -354,16 +354,16 @@ public class ModuleFactoid extends Module {
 			User[] users = channel.getUsers().toArray(new User[channel.getUsers().size()]);
 			sb.append(" randnick = \""+users[new Random().nextInt(users.length)].getNick().replace("\"","\\\"")+"\";");
 			
-			sb.append("arg = array(");
+			sb.append("arg = [");
 			for (int i = 1; i < args.length; i++) {
 				if (i != 1) sb.append(",");
 				sb.append("\""+args[i].replace("\"","\\\"")+"\"");
 			}
-			sb.append(");");
+			sb.append("];");
 			
 			code = sb.toString()+" "+code;
 			
-			HTTPQuery q = new HTTPQuery(Data.config.getString("python-url")+"?"+HTTPQuery.parseArgs("statement",code));
+			HTTPQuery q = new HTTPQuery(Data.config.getString("python-url")+"?"+HTTPQuery.parseArgs("statement",code),"GET");
 			q.connect(true,false);
 			
 			sb = new StringBuilder();
