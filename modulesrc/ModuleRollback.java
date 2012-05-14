@@ -139,13 +139,13 @@ public class ModuleRollback extends Module {
 		addRollbackLine(event.getChannel().getName(),new LineOther("* "+event.getUser().getNick()+" has changed the topic to: "+event.getTopic()));
 	}
 	public void onJoin(JoinEvent<PircBotX> event) {
-		addRollbackLine(event.getChannel().getName(),new LineOther("* "+event.getUser().getNick()+" ("+event.getUser().getHostmask()+") has joined"));
+		addRollbackLine(event.getChannel().getName(),new LineEnterLeave(event.getUser().getNick(),"("+event.getUser().getHostmask()+") has joined"));
 	}
 	public void onPart(PartEvent<PircBotX> event) {
-		addRollbackLine(event.getChannel().getName(),new LineOther("* "+event.getUser().getNick()+" ("+event.getUser().getHostmask()+") has left"));
+		addRollbackLine(event.getChannel().getName(),new LineEnterLeave(event.getUser().getNick(),"("+event.getUser().getHostmask()+") has left"));
 	}
 	public void onQuit(QuitEvent<PircBotX> event) {
-		for (Channel channel : event.getUser().getChannels()) addRollbackLine(channel.getName(),new LineOther("* "+event.getUser().getNick()+" has quit ("+event.getReason()+")"));
+		for (Channel channel : event.getUser().getChannels()) addRollbackLine(channel.getName(),new LineEnterLeave(event.getUser().getNick(),"has quit ("+event.getReason()+")"));
 	}
 	public void onKick(KickEvent<PircBotX> event) {
 		addRollbackLine(event.getChannel().getName(),new LineOther("* "+event.getSource().getNick()+" has kicked "+event.getRecipient().getNick()+" ("+event.getReason()+")"));

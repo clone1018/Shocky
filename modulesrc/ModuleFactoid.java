@@ -342,7 +342,7 @@ public class ModuleFactoid extends Module {
 				sb.append(line);
 			}
 			
-			return sb.toString();
+			return StringTools.limitLength(sb);
 		} else if (raw.startsWith("<py>")) {
 			String code = raw.substring(4);
 			String[] args = message.split(" ");
@@ -372,7 +372,7 @@ public class ModuleFactoid extends Module {
 				sb.append(line);
 			}
 			
-			return sb.toString();
+			return StringTools.limitLength(sb);
 		} else if (raw.startsWith("<cmd>")) {
 			Command cmd = Command.getCommand(bot,EType.Channel,""+Data.config.getString("main-cmdchar").charAt(0)+raw.substring(5));
 			if (cmd != null && !(cmd instanceof CmdFactoid)) {
@@ -384,7 +384,7 @@ public class ModuleFactoid extends Module {
 			raw = parseVariables(bot, channel, sender, message, raw);
 			StringBuilder output = new StringBuilder();
 			parseFunctions(raw,output);
-			return output.toString();
+			return StringTools.limitLength(output);
 		}
 	}
 	

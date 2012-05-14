@@ -42,7 +42,7 @@ public class ModulePython extends Module {
 			sb.append(line);
 		}
 		
-		return sb.toString();
+		return StringTools.limitLength(sb);
 	}
 	
 	public class CmdPython extends Command {
