@@ -3,6 +3,15 @@
 class Safe {
    
 	public function Safe() {
+
+		$this->disallowedExpressions = array ( 	// Probably unsafe to change these
+
+			'/`/',				// Shell execution operator: "`"
+			'/\$\W/',			// Variable variables: any "$" which is not "$_" or "$alphanumeric"
+			'/(\]|\})\s*\(/',		// Variable functions: "] (" or "} ("
+			'/\$\w\w*\s*\(/',		// Variable functions: "$_ (" or "$alphanumeric"
+
+		);
 		$this->allowedCalls = array(
 			// Function Handling Functions
 		//	'func_get_arg',		// Return an item from the argument list
@@ -236,6 +245,16 @@ class Safe {
 			'T_OBJECT_OPERATOR',
 			'T_INCLUDE',
 			'T_EXIT',
+			'T_FUNCTION',
+			'T_OBJECT_OPERATOR',
+			'T_DOUBLE_COLON',
+			'T_CLASS',
+			'T_CONST',
+			'T_EXTENDS',
+			'T_NEW',
+			'T_PRIVATE',
+			'T_PUBLIC',
+			'T_PROTECTED',
 		);
 		$this->disabledFunctions = array("readfile", "file_put_contents", "file", "ini_set", "ini_get", "mail", "phpinfo", "setenv", "getenv", "socket_create", "socket_bind", "socket_listen", "socket_create_listen", "socket_create_pair", "socket_accept", "pcntl_fork", "exec", "passthru", "shell_exec", "system", "proc_open", "popen", "parse_ini_file", "show_source", "glob", "opendir", "readdir", "set_time_limit", "unlink", "rmdir", "mkdir", "rename", "copy", "dir", "scandir", "ftp_connect", "ftp_ssl_connect", "openlog", "syslog", "fsockopen", "define_syslog_variables", "pfsockopen", "snmp2_get", "snmp3_get", "snmp2_walk", "snmp2_real_walk", "snmp2_getnext", "snmp3_walk", "snmp3_real_walk", "snmpget", "snmpwalk", "snmpgetnext", "snmprealwalk", "snmp3_getnext", "snmpwalkoid", "ssh2_connect", "ssh2_fetch_stream", "ssh2_tunnel", "yaz_connect", "yaz_wait", "disk_free_space", "disk_total_space", "flock", "link", "tempnam", "tmpfile", "touch", "symlink", "pcntl_exec", "posix_kill", "posix_mkfifo", "posix_mknod", "fopen", "stream_socket_server", "stream_socket_client", "stream_socket_pair", "gc_disable", "ob_end_flush", "flush", "ini_get_all", "get_loaded_extensions", "ini_alter", "chmod", "chgrp", "chown", "posix_access", "posix_ctermid", "posix_errno", "posix_get_last_error", "posix_getcwd", "posix_getegid", "posix_geteuid", "posix_getgid", "posix_getgrgid", "posix_getgrnam", "posix_getgroups", "posix_getlogin", "posix_getpgid", "posix_getpgrp", "posix_getpid", "posix_getppid", "posix_getpwnam", "posix_getpwuid", "posix_getrlimit", "posix_getsid", "posix_getuid", "posix_initgroups", "posix_isatty", "posix_kill", "posix_mkfifo", "posix_mknod", "posix_setegid", "posix_seteuid", "posix_setgid", "posix_setpgid", "posix_setsid", "posix_setuid", "posix_strerror", "posix_times", "posix_ttyname", "posix_uname", "chdir", "opendir", "readdir", "debug_backtrace", "debug_print_backtrace"
 		);
@@ -274,6 +293,15 @@ class Safe {
 			$this->errors[0]['name'] = 'Syntax error.';
 		}
 
+		if (empty($this->errors)) foreach ($this->disallowedExpressions as $disallowedExpression) {
+			unset($matches);
+			preg_match($disallowedExpression, $this->code, $matches);
+			if($matches) {
+				$this->errors[0]['name'] = 'Execution operator / variable function name / variable variable name detected.';
+				break;
+			}	
+		}
+
 		// STEP 4: TOKENS
 		if(empty($this->errors)) {
 			unset($this->tokens[0]);
@@ -293,10 +321,16 @@ class Safe {
 								$this->errors[$i]['name'] = 'Illegal function: ' . $token[1];
 								$this->errors[$i]['line'] = $token[2];
 							}
-							if($token[1] == 'file_get_contents' || $token[1] == 'include') {
+							if($token[1] == 'file_get_contents') {
+								$this->tokens[$i][1] = '$this->safe_file_get_contents';
+							}
+							if($token[1] == 'include') {
 								$this->tokens[$i][1] = '$this->safe_file_get_contents';
 							}
 							break;
+						case('T_INCLUDE'):
+							$this->tokens[$i][1] = '$this->safe_include';
+						break;
 						default:
 							if (in_array($id, $this->allowedTokens) === false) {
 								$this->errors[$i]['name'] = 'Illegal token: ' . $token[1];
@@ -323,7 +357,6 @@ class Safe {
 		} elseif ($this->execute) {
 
 			ob_start();
-			$this->CI = '';
 			eval($this->code);
 			$output = ob_get_contents();
 			ob_end_clean();
@@ -355,6 +388,17 @@ class Safe {
 		curl_close($ch);
 		return $data;
 
+	}
+
+	public function safe_include($url) {
+		$code = $this->safe_file_get_contents($url);
+
+		ob_start();
+		eval('?>'. $code);
+		$output = ob_get_contents();
+		ob_end_clean();
+
+		return $output;
 	}
 }
 
