@@ -21,6 +21,21 @@ public class FileLine {
 		} catch (Exception e) {e.printStackTrace();}
 		return ret;
 	}
+	public static String readString(File file) {
+		String ret = "";
+		if (!file.exists()) return ret;
+		
+		try {
+			BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file),"UTF-8"));
+			String line; boolean first = true; while ((line = br.readLine()) != null) {
+				if (first) first = false; else ret += "\n";
+				ret += line;
+			}
+			br.close();
+		} catch (Exception e) {e.printStackTrace();}
+		return ret;
+	}
+	
 	public static void write(File file, ArrayList<String> lines) {
 		if (file.exists()) file.delete();
 		try {

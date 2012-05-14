@@ -144,8 +144,7 @@ public class StringTools {
 		}
 		output = StringEscapeUtils.unescapeJava(output);
 		output = deleteWhitespace(output);
-		if (output.length() > Data.config.getInt("main-messagelength"))
-			output = output.substring(0, Data.config.getInt("main-messagelength"))+"...";
+		output = limitLength(output);
 		return output;
 	}
 	
@@ -163,6 +162,12 @@ public class StringTools {
             sb.append(c);
         }
         return sb.toString();
+    }
+    
+    public static String limitLength(CharSequence str) {
+    	if (str.length() > Data.config.getInt("main-messagelength"))
+    		str = str.subSequence(0, Data.config.getInt("main-messagelength"))+"...";
+    	return str.toString();
     }
 	
 	public static String implode(String[] spl, String separator) {return implode(spl,0,spl.length-1,separator);}

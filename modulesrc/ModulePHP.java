@@ -32,7 +32,7 @@ public class ModulePHP extends Module {
 		
 		code = sb.toString()+code;
 		
-		HTTPQuery q = new HTTPQuery(Data.config.getString("php-phpurl")+"?"+HTTPQuery.parseArgs("code",code));
+		HTTPQuery q = new HTTPQuery(Data.config.getString("php-url")+"?"+HTTPQuery.parseArgs("code",code));
 		q.connect(true,false);
 		
 		sb = new StringBuilder();
@@ -41,7 +41,7 @@ public class ModulePHP extends Module {
 			sb.append(line);
 		}
 		
-		return sb.toString();
+		return StringTools.limitLength(sb.toString());
 	}
 	
 	public class CmdPHP extends Command {

@@ -1,9 +1,10 @@
 import java.net.URLEncoder;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 import pl.shockah.HTTPQuery;
-import pl.shockah.JSONObject;
 import pl.shockah.StringTools;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Shocky;
@@ -51,23 +52,27 @@ public class ModuleGoogle extends Module {
 		}
 		q.connect(true, false);
 		String line = q.readWhole();
-		JSONObject json = JSONObject.deserialize(line);
-		JSONObject[] results = json.getJSONObject("responseData").getJSONObjectArray("results");
-		if (results.length==0) {
-			Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,"No results.");
-			return;
-		}
-		String title = StringTools.ircFormatted(results[0].getString("titleNoFormatting"),true);
-		String url = StringTools.ircFormatted(results[0].getString("unescapedUrl"),false);
-		String content = StringTools.ircFormatted(results[0].getString("content"),true);
-		result.append(url);
-		result.append(" -- ");result.append(title);
-		result.append(": ");
-		if (!content.isEmpty())
-			result.append(content);
-		else
-			result.append("No description available.");
-		Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,result.toString());
+		
+		try {
+			JSONObject json = new JSONObject(line);
+			JSONArray results = json.getJSONObject("responseData").getJSONArray("results");
+			if (results.length() == 0) {
+				Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,"No results.");
+				return;
+			}
+			JSONObject r = results.getJSONObject(0);
+			String title = StringTools.ircFormatted(r.getString("titleNoFormatting"),true);
+			String url = StringTools.ircFormatted(r.getString("unescapedUrl"),false);
+			String content = StringTools.ircFormatted(r.getString("content"),true);
+			result.append(url);
+			result.append(" -- ");result.append(title);
+			result.append(": ");
+			if (!content.isEmpty())
+				result.append(content);
+			else
+				result.append("No description available.");
+			Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,result.toString());
+		} catch (Exception e) {e.printStackTrace();}
 	}
 	
 	public class CmdGoogle extends Command {
