@@ -2,6 +2,8 @@ package pl.shockah.shocky.lines;
 
 import java.util.Date;
 
+import pl.shockah.BinBuffer;
+
 public class LineOther extends Line {
 	public final String text;
 	
@@ -11,8 +13,22 @@ public class LineOther extends Line {
 		super(time);
 		this.text = text;
 	}
+	
+	public LineOther(BinBuffer buffer) {
+		super(buffer);
+		this.text = buffer.readUString();
+	}
+	
+	public void save(BinBuffer buffer) {
+		super.save(buffer);
+		buffer.writeUString(text);
+	}
 
 	public String getMessage() {
 		return text;
+	}
+
+	public boolean containsUser(String user) {
+		return false;
 	}
 }

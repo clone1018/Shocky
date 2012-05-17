@@ -1,4 +1,5 @@
 import java.io.File;
+import java.lang.reflect.Method;
 import java.util.*;
 import java.util.regex.*;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -11,6 +12,8 @@ import pl.shockah.shocky.*;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.Command.EType;
+import pl.shockah.shocky.lines.Line;
+import pl.shockah.shocky.lines.LineMessage;
 import pl.shockah.shocky.sql.CriterionNumber;
 import pl.shockah.shocky.sql.CriterionStringEquals;
 import pl.shockah.shocky.sql.QueryInsert;
@@ -311,6 +314,7 @@ public class ModuleFactoid extends Module {
 	}
 	
 	public String parse(PircBotX bot, Channel channel, User sender, String message, String raw) {
+		message = redirectMessage(channel, message);
 		if (raw.startsWith("<noreply>")) {
 			return "";
 		} else if (raw.startsWith("<php>")) {
@@ -453,6 +457,42 @@ public class ModuleFactoid extends Module {
 		}
 		m.appendTail(ret);
 		return ret.toString();
+	}
+	
+	public String redirectMessage(Channel channel, String message) {
+		String[] args = message.split(" ");
+		if (args.length >= 2 && args.length <= 3 && args[1].contentEquals("^")) {
+			Module module = Module.getModule("rollback");
+			try {
+			if (module != null) {
+				String user = null;
+				if (args.length == 3) {
+					for (User target : channel.getUsers()) {
+						if (target.getNick().contentEquals(args[2])) {
+							user = args[2];
+							break;
+						}
+					}
+				}
+				Method method = module.getClass().getDeclaredMethod("getRollbackLines", String.class, String.class, String.class, boolean.class, int.class, int.class);
+				int index = user != null ? 1 : 2;
+				@SuppressWarnings("unchecked")
+				ArrayList<Line> lines = (ArrayList<Line>) method.invoke(module, channel.getName(), user, null, true, index, 0);
+				if (lines.size() == index) {
+					Line line = lines.get(0);
+					if (line instanceof LineMessage) {
+						StringBuilder msg = new StringBuilder(args[0]);
+						msg.append(' ');
+						msg.append(((LineMessage)line).text);
+						message = msg.toString();
+					}
+				}
+			}
+			} catch(Exception e) {
+				e.printStackTrace();
+			}
+		}
+		return message;
 	}
 	
 	public void parseFunctions(String input, StringBuilder output) {

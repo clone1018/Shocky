@@ -6,12 +6,21 @@ import java.util.ArrayList;
 import pl.shockah.Config;
 import pl.shockah.FileLine;
 import pl.shockah.StringTools;
+import pl.shockah.shocky.lines.Line;
+import pl.shockah.shocky.lines.LineAction;
+import pl.shockah.shocky.lines.LineEnterLeave;
+import pl.shockah.shocky.lines.LineKick;
+import pl.shockah.shocky.lines.LineMessage;
+import pl.shockah.shocky.lines.LineOther;
 
 public class Data {
 	public static final Config config = new Config();
 	public static final ArrayList<String> controllers = new ArrayList<String>();
 	public static final ArrayList<String> channels = new ArrayList<String>();
 	public static final ArrayList<String> blacklistNicks = new ArrayList<String>();
+	static {
+		initializeLineTypes();
+	}
 	
 	private static synchronized void blank() {
 		Data.config.setNotExists("main-botname","Shocky");
@@ -100,5 +109,12 @@ public class Data {
 				}
 			} else return;
 		}
+	}
+	public static void initializeLineTypes() {
+		Line.registerLineType((byte) 0, LineOther.class);
+		Line.registerLineType((byte) 1, LineMessage.class);
+		Line.registerLineType((byte) 2, LineAction.class);
+		Line.registerLineType((byte) 3, LineEnterLeave.class);
+		Line.registerLineType((byte) 4, LineKick.class);
 	}
 }

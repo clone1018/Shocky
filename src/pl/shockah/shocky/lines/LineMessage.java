@@ -4,6 +4,8 @@ import java.util.Date;
 import org.pircbotx.PircBotX;
 import org.pircbotx.hooks.events.MessageEvent;
 
+import pl.shockah.BinBuffer;
+
 public class LineMessage extends LineWithSender {
 	public final String text;
 	
@@ -13,6 +15,16 @@ public class LineMessage extends LineWithSender {
 	public LineMessage(Date time, String sender, String text) {
 		super(time,sender);
 		this.text = text;
+	}
+	
+	public LineMessage(BinBuffer buffer) {
+		super(buffer);
+		this.text = buffer.readUString();
+	}
+	
+	public void save(BinBuffer buffer) {
+		super.save(buffer);
+		buffer.writeUString(text);
 	}
 
 	public String getMessage() {

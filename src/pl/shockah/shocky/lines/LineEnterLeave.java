@@ -4,6 +4,8 @@ import java.util.Date;
 import org.pircbotx.PircBotX;
 import org.pircbotx.hooks.events.ActionEvent;
 
+import pl.shockah.BinBuffer;
+
 public class LineEnterLeave extends LineWithSender {
 	public final String text;
 	
@@ -13,6 +15,16 @@ public class LineEnterLeave extends LineWithSender {
 	public LineEnterLeave(Date time, String sender, String text) {
 		super(time,sender);
 		this.text = text;
+	}
+	
+	public LineEnterLeave(BinBuffer buffer) {
+		super(buffer);
+		this.text = buffer.readUString();
+	}
+	
+	public void save(BinBuffer buffer) {
+		super.save(buffer);
+		buffer.writeUString(text);
 	}
 
 	public String getMessage() {

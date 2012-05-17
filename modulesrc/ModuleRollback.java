@@ -62,17 +62,15 @@ public class ModuleRollback extends Module {
 			
 			String channel = f.getName();
 			BinBuffer binb = new BinFile(f).read(); binb.setPos(0);
-			while (binb.bytesLeft() > 0) {
-				long time = binb.readXBytes(8);
-				int type = binb.readByte();
-				
-				Line line = null;
-				switch (type) {
-					case 0: line = new LineOther(time,binb.readUString()); break;
-					case 1: line = new LineMessage(time,binb.readUString(),binb.readUString()); break;
-					case 2: line = new LineAction(time,binb.readUString(),binb.readUString()); break;
+			int count = binb.readInt();
+			for (int i = 0; i < count; i++) {
+				try {
+					Line line = Line.readLine(binb);
+					if (line != null)
+						addRollbackLine(channel,line);
+				} catch (Exception e) {
+					e.printStackTrace();
 				}
-				addRollbackLine(channel,line);
 			}
 		}
 		
@@ -99,19 +97,12 @@ public class ModuleRollback extends Module {
 			Map.Entry<String, ArrayList<Line>> pair = it.next();
 			
 			ArrayList<Line> lines = pair.getValue();
+			binb.writeInt(lines.size());
 			for (Line line : lines) {
-				binb.writeXBytes(line.time.getTime(),8);
-				if (line.getClass() == LineOther.class) {
-					binb.writeByte(0);
-					binb.writeUString(((LineOther)line).text);
-				} else if (line.getClass() == LineMessage.class) {
-					binb.writeByte(1);
-					binb.writeUString(((LineMessage)line).sender);
-					binb.writeUString(((LineMessage)line).text);
-				} else if (line.getClass() == LineAction.class) {
-					binb.writeByte(2);
-					binb.writeUString(((LineAction)line).sender);
-					binb.writeUString(((LineAction)line).text);
+				byte type = Line.getLineID(line);
+				if (type != -1) {
+					binb.writeByte(type);
+					line.save(binb);
 				}
 			}
 			
@@ -148,7 +139,7 @@ public class ModuleRollback extends Module {
 		for (Channel channel : event.getUser().getChannels()) addRollbackLine(channel.getName(),new LineEnterLeave(event.getUser().getNick(),"has quit ("+event.getReason()+")"));
 	}
 	public void onKick(KickEvent<PircBotX> event) {
-		addRollbackLine(event.getChannel().getName(),new LineOther("* "+event.getSource().getNick()+" has kicked "+event.getRecipient().getNick()+" ("+event.getReason()+")"));
+		addRollbackLine(event.getChannel().getName(),new LineKick(event));
 	}
 	public void onNickChange(NickChangeEvent<PircBotX> event) {
 		for (Channel channel : event.getBot().getChannels(event.getUser())) addRollbackLine(channel.getName(),new LineOther("* "+event.getOldNick()+" is now known as "+event.getNewNick()));
@@ -185,7 +176,7 @@ public class ModuleRollback extends Module {
 				if (i < 0 || i >= linesChannel.size()) break;
 				
 				Line line = linesChannel.get(i);
-				if (user == null || (line instanceof LineWithSender && ((LineWithSender)line).sender.equals(user))) {
+				if (line.containsUser(user)) {
 					if (pat == null) ret.add(line);
 					else {
 						String tmp = null;
@@ -209,7 +200,7 @@ public class ModuleRollback extends Module {
 				if (newest && line.time.before(check)) break;
 				if (!newest && line.time.after(check)) break;
 				
-				if (user == null || (line instanceof LineWithSender && ((LineWithSender)line).sender.equals(user))) {
+				if (line.containsUser(user)) {
 					if (pat == null) ret.add(line);
 					else {
 						String tmp = null;
