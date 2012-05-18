@@ -28,7 +28,7 @@ public class ModuleNickPlusPlus extends Module {
 	}
 	
 	public void onMessage(MessageEvent<PircBotX> event) {
-		if (Data.blacklistNicks.contains(event.getUser().getNick().toLowerCase())) return;
+		if (Data.isBlacklisted(event.getUser())) return;
 		if (event.getMessage().matches("^("+Utils.patternNick.pattern()+")((\\+\\+)|(\\-\\-)|(\\=\\=))$")) {
 			String nick = event.getMessage().substring(0,event.getMessage().length()-2);
 			

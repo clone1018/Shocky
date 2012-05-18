@@ -27,7 +27,7 @@ public class ModuleTwitter extends Module {
 	}
 	
 	public void onMessage(MessageEvent<PircBotX> event) {
-		if (Data.blacklistNicks.contains(event.getUser().getNick().toLowerCase())) return;
+		if (Data.isBlacklisted(event.getUser())) return;
 		
 		for (String url : Utils.getAllUrls(event.getMessage())) {
 			if (!statusUrl.matcher(url).find()) continue;

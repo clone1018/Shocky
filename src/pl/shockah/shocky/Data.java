@@ -3,6 +3,9 @@ package pl.shockah.shocky;
 import java.io.Console;
 import java.io.File;
 import java.util.ArrayList;
+
+import org.pircbotx.User;
+
 import pl.shockah.Config;
 import pl.shockah.FileLine;
 import pl.shockah.StringTools;
@@ -116,5 +119,39 @@ public class Data {
 		Line.registerLineType((byte) 2, LineAction.class);
 		Line.registerLineType((byte) 3, LineEnterLeave.class);
 		Line.registerLineType((byte) 4, LineKick.class);
+	}
+	public static boolean isBlacklisted(User user) {
+		start: for (int i = 0; i < blacklistNicks.size(); i++) {
+			String blacklisted = blacklistNicks.get(i);
+			char type = 'n';
+			if (blacklisted.charAt(1) == ':') {
+				String[] blacklistParts = blacklisted.split(":", 2);
+				type = blacklistParts[0].charAt(0);
+				blacklisted = blacklistParts[1];
+			}
+			String[] array = blacklisted.split("\\*");
+			String value = "";
+			int o = 0;
+			switch (type) {
+			case 'n':
+				value = user.getNick().toLowerCase();
+				break;
+			case 'h':
+				value = user.getHostmask().toLowerCase();
+				break;
+			case 'i':
+				value = user.getLogin();
+				break;
+			}
+			for (String part : array) {
+				int idx = value.indexOf(part, o);
+				if (idx == -1)
+					continue start;
+				o += idx;
+			}
+			return true;
+		}
+
+		return false;
 	}
 }

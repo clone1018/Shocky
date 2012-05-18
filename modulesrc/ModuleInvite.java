@@ -9,7 +9,7 @@ public class ModuleInvite extends Module {
 	public String name() {return "invite";}
 	
 	public void onInvite(InviteEvent<PircBotX> event) {
-		if (Data.blacklistNicks.contains(event.getUser().toLowerCase())) return;
+		if (Data.isBlacklisted(event.getBot().getUser(event.getUser()))) return;
 		try {
 			MultiChannel.join(event.getChannel());
 		} catch (Exception e) {Shocky.sendNotice(event.getBot(),event.getBot().getUser(event.getUser()),"I'm already in channel "+event.getChannel());}

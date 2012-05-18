@@ -163,9 +163,27 @@ public class ModuleRollback extends Module {
 		rollback.get(channel).add(line);
 		rollbackTmp.get(channel).add(line);
 	}
+	
 	public ArrayList<Line> getRollbackLines(String channel, String user, String regex, boolean newest, int lines, int seconds) {
-		ArrayList<Line> ret = new ArrayList<Line>();
-		ArrayList<Line> linesChannel = rollback.get(channel);
+		return getRollbackLines(Line.class, channel, user, regex, newest, lines, seconds);
+	}
+	
+	@SuppressWarnings("unchecked")
+	public <T extends Line> ArrayList<T> getRollbackLines(Class<T> type, String channel, String user, String regex, boolean newest, int lines, int seconds) {
+		ArrayList<T> ret = new ArrayList<T>();
+		ArrayList<T> linesChannel;
+		if (type == Line.class) {
+			linesChannel = (ArrayList<T>) rollback.get(channel);
+		} else {
+			ArrayList<Line> linesChannelRef = rollback.get(channel);
+			linesChannel = new ArrayList<T>(linesChannelRef.size());
+			for (int i = 0; i < linesChannelRef.size(); i++) {
+				Line line = linesChannelRef.get(i);
+				if (line.getClass().isAssignableFrom(type)) {
+					linesChannel.add((T) line);
+				}
+			}
+		}
 		if (linesChannel == null || linesChannel.isEmpty()) return ret;
 		Pattern pat = regex == null ? null : Pattern.compile(regex);
 		
@@ -175,7 +193,7 @@ public class ModuleRollback extends Module {
 				i += newest ? -1 : 1;
 				if (i < 0 || i >= linesChannel.size()) break;
 				
-				Line line = linesChannel.get(i);
+				T line = linesChannel.get(i);
 				if (line.containsUser(user)) {
 					if (pat == null) ret.add(line);
 					else {
@@ -196,7 +214,7 @@ public class ModuleRollback extends Module {
 				i += newest ? -1 : 1;
 				if (i < 0 || i >= linesChannel.size()) break;
 				
-				Line line = linesChannel.get(i);
+				T line = linesChannel.get(i);
 				if (newest && line.time.before(check)) break;
 				if (!newest && line.time.after(check)) break;
 				

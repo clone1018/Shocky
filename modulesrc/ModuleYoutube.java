@@ -85,7 +85,7 @@ public class ModuleYoutube extends Module {
 	}
 	
 	public void onMessage(MessageEvent<PircBotX> event) {
-		if (Data.blacklistNicks.contains(event.getUser().getNick().toLowerCase())) return;
+		if (Data.isBlacklisted(event.getUser())) return;
 		
 		for (Pattern p : patternsMessage) {
 			Matcher m = p.matcher(event.getMessage());
@@ -112,7 +112,7 @@ public class ModuleYoutube extends Module {
 		}
 	}
 	public void onAction(ActionEvent<PircBotX> event) {
-		if (Data.blacklistNicks.contains(event.getUser().getNick().toLowerCase())) return;
+		if (Data.isBlacklisted(event.getUser())) return;
 		
 		for (Pattern p : patternsAction) {
 			Matcher m = p.matcher(event.getAction());

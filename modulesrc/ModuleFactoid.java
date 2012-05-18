@@ -225,7 +225,7 @@ public class ModuleFactoid extends Module {
 	}
 	
 	public void onMessage(MessageEvent<PircBotX> event) {
-		if (Data.blacklistNicks.contains(event.getUser().getNick().toLowerCase())) return;
+		if (Data.isBlacklisted(event.getUser())) return;
 		onMessage(event.getBot(),event.getChannel(),event.getUser(),event.getMessage());
 	}
 	public void onMessage(PircBotX bot, Channel channel, User sender, String msg) {
@@ -314,7 +314,7 @@ public class ModuleFactoid extends Module {
 	}
 	
 	public String parse(PircBotX bot, Channel channel, User sender, String message, String raw) {
-		message = redirectMessage(channel, message);
+		message = redirectMessage(channel, sender, message);
 		if (raw.startsWith("<noreply>")) {
 			return "";
 		} else if (raw.startsWith("<php>")) {
@@ -459,25 +459,25 @@ public class ModuleFactoid extends Module {
 		return ret.toString();
 	}
 	
-	public String redirectMessage(Channel channel, String message) {
+	public String redirectMessage(Channel channel, User sender, String message) {
 		String[] args = message.split(" ");
 		if (args.length >= 2 && args.length <= 3 && args[1].contentEquals("^")) {
 			Module module = Module.getModule("rollback");
 			try {
 			if (module != null) {
-				String user = null;
+				User user = null;
 				if (args.length == 3) {
 					for (User target : channel.getUsers()) {
 						if (target.getNick().contentEquals(args[2])) {
-							user = args[2];
+							user = target;
 							break;
 						}
 					}
 				}
-				Method method = module.getClass().getDeclaredMethod("getRollbackLines", String.class, String.class, String.class, boolean.class, int.class, int.class);
-				int index = user != null ? 1 : 2;
+				Method method = module.getClass().getDeclaredMethod("getRollbackLines", Class.class, String.class, String.class, String.class, boolean.class, int.class, int.class);
+				int index = (user != null && sender != user) ? 1 : 2;
 				@SuppressWarnings("unchecked")
-				ArrayList<Line> lines = (ArrayList<Line>) method.invoke(module, channel.getName(), user, null, true, index, 0);
+				ArrayList<Line> lines = (ArrayList<Line>) method.invoke(module, LineMessage.class, channel.getName(), user != null ? user.getNick() : null, null, true, index, 0);
 				if (lines.size() == index) {
 					Line line = lines.get(0);
 					if (line instanceof LineMessage) {

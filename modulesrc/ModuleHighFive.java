@@ -51,7 +51,7 @@ public class ModuleHighFive extends Module implements ActionListener {
 	}
 	
 	public void onMessage(MessageEvent<PircBotX> event) {
-		if (Data.blacklistNicks.contains(event.getUser().getNick().toLowerCase())) return;
+		if (Data.isBlacklisted(event.getUser())) return;
 		List<String> list = Arrays.asList(event.getMessage().split(" "));
 		
 		String s = started.get(event.getChannel().getName());

@@ -11,7 +11,7 @@ public class ModuleActBack extends Module {
 	public String name() {return "actback";}
 	
 	public void onAction(ActionEvent<PircBotX> event) {
-		if (Data.blacklistNicks.contains(event.getUser().getNick().toLowerCase())) return;
+		if (Data.isBlacklisted(event.getUser())) return;
 		String[] spl = event.getAction().split(" ");
 		List<String> list = Arrays.asList(spl);
 		if (spl.length >= 2 && list.contains(event.getBot().getNick())) {
