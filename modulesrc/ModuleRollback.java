@@ -168,22 +168,9 @@ public class ModuleRollback extends Module {
 		return getRollbackLines(Line.class, channel, user, regex, newest, lines, seconds);
 	}
 	
-	@SuppressWarnings("unchecked")
 	public <T extends Line> ArrayList<T> getRollbackLines(Class<T> type, String channel, String user, String regex, boolean newest, int lines, int seconds) {
 		ArrayList<T> ret = new ArrayList<T>();
-		ArrayList<T> linesChannel;
-		if (type == Line.class) {
-			linesChannel = (ArrayList<T>) rollback.get(channel);
-		} else {
-			ArrayList<Line> linesChannelRef = rollback.get(channel);
-			linesChannel = new ArrayList<T>(linesChannelRef.size());
-			for (int i = 0; i < linesChannelRef.size(); i++) {
-				Line line = linesChannelRef.get(i);
-				if (line.getClass().isAssignableFrom(type)) {
-					linesChannel.add((T) line);
-				}
-			}
-		}
+		ArrayList<Line> linesChannel = rollback.get(channel);
 		if (linesChannel == null || linesChannel.isEmpty()) return ret;
 		Pattern pat = regex == null ? null : Pattern.compile(regex);
 		
@@ -193,15 +180,19 @@ public class ModuleRollback extends Module {
 				i += newest ? -1 : 1;
 				if (i < 0 || i >= linesChannel.size()) break;
 				
-				T line = linesChannel.get(i);
+				Line line = linesChannel.get(i);
+				if (!line.getClass().isAssignableFrom(type))
+					continue;
+				@SuppressWarnings("unchecked")
+				T generic = (T) linesChannel.get(i);
 				if (line.containsUser(user)) {
-					if (pat == null) ret.add(line);
+					if (pat == null) ret.add(generic);
 					else {
 						String tmp = null;
 						if (line instanceof LineMessage) tmp = ((LineMessage)line).text;
 						if (line instanceof LineAction) tmp = ((LineAction)line).text;
 						if (tmp != null) {
-							if (pat.matcher(tmp).find()) ret.add(line);
+							if (pat.matcher(tmp).find()) ret.add(generic);
 							continue;
 						}
 					}
@@ -214,18 +205,22 @@ public class ModuleRollback extends Module {
 				i += newest ? -1 : 1;
 				if (i < 0 || i >= linesChannel.size()) break;
 				
-				T line = linesChannel.get(i);
+				Line line = linesChannel.get(i);
+				if (!line.getClass().isAssignableFrom(type))
+					continue;
+				@SuppressWarnings("unchecked")
+				T generic = (T) linesChannel.get(i);
 				if (newest && line.time.before(check)) break;
 				if (!newest && line.time.after(check)) break;
 				
 				if (line.containsUser(user)) {
-					if (pat == null) ret.add(line);
+					if (pat == null) ret.add(generic);
 					else {
 						String tmp = null;
 						if (line instanceof LineMessage) tmp = ((LineMessage)line).text;
 						if (line instanceof LineAction) tmp = ((LineAction)line).text;
 						if (tmp != null) {
-							if (pat.matcher(tmp).find()) ret.add(line);
+							if (pat.matcher(tmp).find()) ret.add(generic);
 							continue;
 						}
 					}

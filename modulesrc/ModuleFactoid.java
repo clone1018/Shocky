@@ -234,6 +234,7 @@ public class ModuleFactoid extends Module {
 		
 		for (int i = 0; i < chars.length(); i++) if (msg.charAt(0) == chars.charAt(i)) {
 			msg = new StringBuilder(msg).deleteCharAt(0).toString();
+			msg = redirectMessage(channel, sender, msg);
 			String charsraw = Data.config.getString("factoid-charraw");
 			String charsby = Data.config.getString("factoid-charby");
 			
@@ -287,8 +288,8 @@ public class ModuleFactoid extends Module {
 					if (f.forgotten) return;
 					String raw = f.rawtext;
 					if (raw.startsWith("<alias>")) {
+						raw = raw.substring(7);
 						msg = parseVariables(bot, channel, sender, msg, raw);
-						msg = msg.substring(7);
 						if (checkRecursive.contains(msg)) return;
 						checkRecursive.add(msg);
 						continue;
@@ -314,7 +315,6 @@ public class ModuleFactoid extends Module {
 	}
 	
 	public String parse(PircBotX bot, Channel channel, User sender, String message, String raw) {
-		message = redirectMessage(channel, sender, message);
 		if (raw.startsWith("<noreply>")) {
 			return "";
 		} else if (raw.startsWith("<php>")) {
