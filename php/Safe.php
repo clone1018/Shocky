@@ -3,15 +3,16 @@
 class Safe {
    
 	public function Safe() {
-
+/*
 		$this->disallowedExpressions = array ( 	// Probably unsafe to change these
 
 			'/`/',				// Shell execution operator: "`"
 			'/\$\W/',			// Variable variables: any "$" which is not "$_" or "$alphanumeric"
-			'/(\]|\})\s*\(/',		// Variable functions: "] (" or "} ("
-			'/\$\w\w*\s*\(/',		// Variable functions: "$_ (" or "$alphanumeric"
+			//'/(\]|\})\s*\(/',		// Variable functions: "] (" or "} ("
+			//'/\$\w\w*\s*\(/',		// Variable functions: "$_ (" or "$alphanumeric"
 
 		);
+*/
 		$this->allowedCalls = array(
 			// Function Handling Functions
 		//	'func_get_arg',		// Return an item from the argument list
@@ -293,14 +294,14 @@ class Safe {
 			$this->errors[0]['name'] = 'Syntax error.';
 		}
 
-		if (empty($this->errors)) foreach ($this->disallowedExpressions as $disallowedExpression) {
+		/*if (empty($this->errors)) foreach ($this->disallowedExpressions as $disallowedExpression) {
 			unset($matches);
 			preg_match($disallowedExpression, $this->code, $matches);
 			if($matches) {
 				$this->errors[0]['name'] = 'Execution operator / variable function name / variable variable name detected.';
 				break;
 			}	
-		}
+		}*/
 
 		// STEP 4: TOKENS
 		if(empty($this->errors)) {
