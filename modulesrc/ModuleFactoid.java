@@ -199,6 +199,19 @@ public class ModuleFactoid extends Module {
 		functions.put(func.name(), func);
 		
 		func = new Function(){
+			public String name() {return "bitflip";}
+			public static String result(String arg) {
+				try {
+					byte[] array = arg.getBytes("UTF-8");
+					for (int i = 0; i < array.length; i++) array[i] = (byte) (~array[i] - 0x80 & 0xFF);
+					return new String(array, "UTF-8");
+				} catch (UnsupportedEncodingException e) { }
+				return "All your base are belong to us.";
+			}
+		};
+		functions.put(func.name(), func);
+		
+		func = new Function(){
 			public String name() {return "flip";}
 			public String result(String arg) {return Utils.flip(arg);}
 		};
