@@ -203,6 +203,12 @@ public class ModuleFactoid extends Module {
 			public String result(String arg) {return Utils.flip(arg);}
 		};
 		functions.put(func.name(), func);
+		
+		func = new Function(){
+			public String name() {return "odd";}
+			public String result(String arg) {return Utils.odd(arg);}
+		};
+		functions.put(func.name(), func);
 	}
 	public void onDisable() {
 		functions.clear();
