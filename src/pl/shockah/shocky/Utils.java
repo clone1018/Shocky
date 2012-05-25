@@ -18,6 +18,9 @@ public class Utils {
 		mungeOriginal =	"abcdefghijklmnoprstuwxyzABCDEGHIJKLMORSTUWYZ0123456789",
 		mungeReplace =	"äḃċđëƒġħíĵķĺṁñöρŗšţüωχÿźÅḂÇĎĒĠĦÍĴĶĹṀÖŖŠŢŮŴỲŻ０１２３４５６７８９";
 	private static final String
+		oddOriginal =	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
+		oddReplace =	"αвcđєfġнίנкlмиoρqяsтυvωxуzαвcđєfġнίנкlмиoρqяsтυvωxуz";
+	private static final String
 		flipOriginal =	"!().12345679<>?ABCDEFGJKLMPQRTUVWY[]_abcdefghijklmnpqrtuvwy{},'\"┳",
 		flipReplace =	"¡)(˙⇂ᄅƐㄣϛ9Ɫ6><¿∀ℇƆ◖ƎℲפſ丬˥WԀΌᴚ⊥∩ΛMλ][‾ɐqɔpǝɟɓɥıɾʞlɯudbɹʇnʌʍʎ}{',„┻";
 	
@@ -78,6 +81,20 @@ l1:		for (int i = 0; i < spl.length; i++) {
 				chars[i] = flipReplace.charAt(iof1);
 			else if (iof2 != -1)
 				chars[i] = flipOriginal.charAt(iof2);
+		}
+		return String.copyValueOf(chars);
+	}
+	
+	public static String odd(String str) {
+		char[] chars = str.toCharArray();
+		for (int i = 0; i < chars.length; i++) {
+			int iof1 = oddOriginal.indexOf(chars[i]);
+			int iof2 = oddReplace.indexOf(chars[i]);
+			if (iof1 == -1 && iof2 == -1) continue;
+			if (iof1 != -1)
+				chars[i] = oddReplace.charAt(iof1);
+			else if (iof2 != -1)
+				chars[i] = oddOriginal.charAt(iof2);
 		}
 		return String.copyValueOf(chars);
 	}
