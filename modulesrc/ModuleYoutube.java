@@ -151,9 +151,12 @@ public class ModuleYoutube extends Module {
 				sb.append(args[i]);
 			}
 			
-			String msg = (type == EType.Channel ? sender.getNick()+": " : "")+getVideoSearch(sb.toString(),!Data.config.getBoolean("yt-otherbot"),true);
-			msg = Utils.mungeAllNicks(channel,msg,sender.getNick());
-			Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,msg);
+			String search = getVideoSearch(sb.toString(),!Data.config.getBoolean("yt-otherbot"),true);
+			if (search != null && !search.isEmpty()) {
+				String msg = (type == EType.Channel ? sender.getNick()+": " : "")+search;
+				msg = Utils.mungeAllNicks(channel,msg,sender.getNick());
+				Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,msg);
+			}
 		}
 	}
 }

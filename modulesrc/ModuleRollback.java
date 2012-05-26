@@ -181,7 +181,7 @@ public class ModuleRollback extends Module {
 				if (i < 0 || i >= linesChannel.size()) break;
 				
 				Line line = linesChannel.get(i);
-				if (!line.getClass().isAssignableFrom(type))
+				if (!type.isAssignableFrom(line.getClass()))
 					continue;
 				@SuppressWarnings("unchecked")
 				T generic = (T) linesChannel.get(i);

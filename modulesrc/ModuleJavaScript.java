@@ -1,7 +1,4 @@
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
 import java.io.StringWriter;
-import java.io.Writer;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -17,9 +14,7 @@ import javax.script.ScriptException;
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
-import pl.shockah.HTTPQuery;
 import pl.shockah.StringTools;
-import pl.shockah.shocky.Data;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.cmds.Command;

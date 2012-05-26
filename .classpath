@@ -9,5 +9,6 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="lib" path="libs/pircbotx-1.7.jar"/>
+	<classpathentry kind="lib" path="libs/LOLCODE-0.11.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

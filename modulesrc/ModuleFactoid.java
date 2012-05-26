@@ -200,13 +200,10 @@ public class ModuleFactoid extends Module {
 		
 		func = new Function(){
 			public String name() {return "bitflip";}
-			public static String result(String arg) {
-				try {
-					byte[] array = arg.getBytes("UTF-8");
-					for (int i = 0; i < array.length; i++) array[i] = (byte) (~array[i] - 0x80 & 0xFF);
-					return new String(array, "UTF-8");
-				} catch (UnsupportedEncodingException e) { }
-				return "All your base are belong to us.";
+			public String result(String arg) throws Exception {
+				byte[] array = arg.getBytes("UTF-8");
+				for (int i = 0; i < array.length; i++) array[i] = (byte) (~array[i] - 0x80 & 0xFF);
+				return new String(array, "UTF-8");
 			}
 		};
 		functions.put(func.name(), func);
@@ -214,6 +211,12 @@ public class ModuleFactoid extends Module {
 		func = new Function(){
 			public String name() {return "flip";}
 			public String result(String arg) {return Utils.flip(arg);}
+		};
+		functions.put(func.name(), func);
+		
+		func = new Function(){
+			public String name() {return "odd";}
+			public String result(String arg) {return Utils.odd(arg);}
 		};
 		functions.put(func.name(), func);
 	}
@@ -384,7 +387,11 @@ public class ModuleFactoid extends Module {
 			q.connect(true,false);
 			
 			sb = new StringBuilder();
-			for (String line : q.read()) {
+			ArrayList<String> result = q.read();
+			if (result.size()>0 && result.get(0).contentEquals("Traceback (most recent call last):"))
+				return result.get(result.size()-1);
+			
+			for (String line : result) {
 				if (sb.length() != 0) sb.append(" | ");
 				sb.append(line);
 			}
@@ -541,7 +548,10 @@ public class ModuleFactoid extends Module {
 					String inside = input.substring(start, end);
 					StringBuilder funcOutput = new StringBuilder();
 					parseFunctions(inside,funcOutput);
+					try {
 					output.append(func.result(funcOutput.toString()));
+					} catch(Exception e) {
+					}
 				}
 			}
 			else {
@@ -593,10 +603,10 @@ public class ModuleFactoid extends Module {
 	
 	public abstract class Function {
 		public abstract String name();
-		public abstract String result(String arg);
+		public abstract String result(String arg) throws Exception;
 	}
 	public abstract class FunctionMultiArg extends Function {
-		public final String result(String arg) {
+		public final String result(String arg) throws Exception {
 			ArrayList<String> spl = new ArrayList<String>(Arrays.asList(arg.split(",")));
 			for (int i = 0; i < spl.size(); i++) {
 				String s = spl.get(i);
@@ -610,7 +620,7 @@ public class ModuleFactoid extends Module {
 			
 			return result(spl.toArray(new String[spl.size()]));
 		}
-		public abstract String result(String[] arg);
+		public abstract String result(String[] arg) throws Exception;
 	}
 	
 	public class CmdRemember extends Command {

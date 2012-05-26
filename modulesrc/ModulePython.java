@@ -1,3 +1,4 @@
+import java.util.ArrayList;
 import java.util.Random;
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
@@ -37,7 +38,11 @@ public class ModulePython extends Module {
 		q.connect(true,false);
 		
 		sb = new StringBuilder();
-		for (String line : q.read()) {
+		ArrayList<String> result = q.read();
+		if (result.size()>0 && result.get(0).contentEquals("Traceback (most recent call last):"))
+			return result.get(result.size()-1);
+		
+		for (String line : result) {
 			if (sb.length() != 0) sb.append(" | ");
 			sb.append(line);
 		}

@@ -140,7 +140,7 @@ public class Data {
 				value = user.getHostmask().toLowerCase();
 				break;
 			case 'i':
-				value = user.getLogin();
+				value = user.getLogin().toLowerCase();
 				break;
 			}
 			for (String part : array) {
