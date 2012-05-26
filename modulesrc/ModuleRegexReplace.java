@@ -17,6 +17,7 @@ public class ModuleRegexReplace extends Module {
 
 	@Override
 	public String name() {return "regexreplace";}
+	public boolean isListener() {return true;}
 
 	@Override
 	public void onMessage(MessageEvent<PircBotX> event) throws Exception {

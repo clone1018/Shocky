@@ -22,6 +22,7 @@ public class ModuleTwitter extends Module {
 	private final Pattern statusUrl = Pattern.compile("https?://twitter\\.com/(#!/)?[^/]+/status(es)?/[0-9]+");
 	
 	public String name() {return "twitter";}
+	public boolean isListener() {return true;}
 	public void onEnable() {
 		Data.config.setNotExists("twitter-dateformat","dd.MM.yyyy HH:mm:ss");
 	}

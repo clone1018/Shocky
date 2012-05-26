@@ -72,14 +72,14 @@ public abstract class Module extends ListenerAdapter implements Comparable<Modul
 		if (module == null) return false;
 		if (modulesOn.contains(module)) return false;
 		module.onEnable();
-		Shocky.getBotManager().getListenerManager().addListener(module);
+		if (module.isListener()) Shocky.getBotManager().getListenerManager().addListener(module);
 		modulesOn.add(module);
 		return true;
 	}
 	public static boolean disable(Module module) {
 		if (module == null) return false;
 		if (!modulesOn.contains(module)) return false;
-		Shocky.getBotManager().getListenerManager().removeListener(module);
+		if (module.isListener()) Shocky.getBotManager().getListenerManager().removeListener(module);
 		module.onDataSave();
 		module.onDisable();
 		modulesOn.remove(module);
@@ -122,6 +122,7 @@ public abstract class Module extends ListenerAdapter implements Comparable<Modul
 	public void onDisable() {}
 	public void onDie(PircBotX bot) {}
 	public void onDataSave() {}
+	public boolean isListener() {return false;}
 	
 	public final boolean isEnabled() {
 		return modulesOn.contains(this);

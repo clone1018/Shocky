@@ -9,6 +9,7 @@ import pl.shockah.shocky.Module;
 
 public class ModuleActBack extends Module {
 	public String name() {return "actback";}
+	public boolean isListener() {return true;}
 	
 	public void onAction(ActionEvent<PircBotX> event) {
 		if (Data.isBlacklisted(event.getUser())) return;

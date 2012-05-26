@@ -54,6 +54,7 @@ public class ModuleRollback extends Module {
 	}
 	
 	public String name() {return "rollback";}
+	public boolean isListener() {return true;}
 	public void onEnable() {
 		File dir = new File("data","rollback"); dir.mkdir();
 		File[] files = dir.listFiles();

@@ -37,6 +37,7 @@ public class ModuleHighFive extends Module implements ActionListener {
 	}
 	
 	public String name() {return "highfive";}
+	public boolean isListener() {return true;}
 	public void onEnable() {
 		Data.config.setNotExists("hf-announce",true);
 		Data.config.setNotExists("hf-maxtime",1000*60*5);

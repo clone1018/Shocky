@@ -17,6 +17,7 @@ public class ModuleAutoKick extends Module {
 	private Map<String,Map<String,CheckerStructure>> data = Collections.synchronizedMap(new TreeMap<String,Map<String,CheckerStructure>>());
 	
 	public String name() {return "autokick";}
+	public boolean isListener() {return true;}
 	public void onEnable() {
 		Data.config.setNotExists("autokick-messages",5);
 		Data.config.setNotExists("autokick-delay",1000);

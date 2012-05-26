@@ -28,6 +28,7 @@ public class ModuleFactoid extends Module {
 	private static Pattern functionPattern = Pattern.compile("([a-zA-Z_][a-zA-Z0-9_]*)\\(.*?\\)");
 	
 	public String name() {return "factoid";}
+	public boolean isListener() {return true;}
 	public void onEnable() {
 		Data.config.setNotExists("factoid-char","?!");
 		Data.config.setNotExists("factoid-charraw","+");

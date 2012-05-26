@@ -71,6 +71,7 @@ public class ModuleYoutube extends Module {
 	}
 	
 	public String name() {return "youtube";}
+	public boolean isListener() {return true;}
 	public void onEnable() {
 		Data.config.setNotExists("yt-otherbot",false);
 		Command.addCommands(cmd = new CmdYoutube());

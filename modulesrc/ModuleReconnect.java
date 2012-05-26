@@ -15,6 +15,7 @@ public class ModuleReconnect extends Module implements ActionListener {
 	private List<PircBotX> bots = Collections.synchronizedList(new ArrayList<PircBotX>());
 	
 	public String name() {return "reconnect";}
+	public boolean isListener() {return true;}
 	public void onEnable() {
 		timers.clear();
 		bots.clear();

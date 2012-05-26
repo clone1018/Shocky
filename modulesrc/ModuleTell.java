@@ -30,6 +30,7 @@ public class ModuleTell extends Module {
 	protected Command cmd;
 	
 	public String name() {return "tell";}
+	public boolean isListener() {return true;}
 	public void onEnable() {
 		Command.addCommands(cmd = new CmdTell());
 		

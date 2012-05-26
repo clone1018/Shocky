@@ -19,6 +19,7 @@ public class ModuleNickPlusPlus extends Module {
 	}
 	
 	public String name() {return "nickplusplus";}
+	public boolean isListener() {return true;}
 	public void onEnable() {
 		Data.config.setNotExists("npp-announce",true);
 		config.load(new File("data","nickplusplus.cfg"));

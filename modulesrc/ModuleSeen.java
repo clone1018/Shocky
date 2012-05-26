@@ -15,6 +15,7 @@ public class ModuleSeen extends Module {
 	protected Command cmd;
 	
 	public String name() {return "seen";}
+	public boolean isListener() {return true;}
 	public void onEnable() {
 		(config = new Config()).load(new File("data","seen.cfg"));
 		Command.addCommands(cmd = new CmdSeen());

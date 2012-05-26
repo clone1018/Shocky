@@ -16,6 +16,7 @@ public class ModuleSamantha extends Module  {
 
 	@Override
 	public String name() {return "samantha";}
+	public boolean isListener() {return true;}
 
 	@Override
 	public void onEnable() {
