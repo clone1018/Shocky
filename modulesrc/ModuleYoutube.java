@@ -15,6 +15,7 @@ import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
+import pl.shockah.shocky.cmds.CommandCallback;
 
 public class ModuleYoutube extends Module {
 	protected Command cmd;
@@ -139,10 +140,11 @@ public class ModuleYoutube extends Module {
 		}
 		public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command()) || cmd.equals("you") || cmd.equals("yt") || cmd.equals("y");}
 		
-		public void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message) {
+		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			String[] args = message.split(" ");
 			if (args.length == 1) {
-				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,help(bot,type,channel,sender));
+				callback.type = EType.Notice;
+				callback.append(help(bot,type,channel,sender));
 				return;
 			}
 			
@@ -154,9 +156,8 @@ public class ModuleYoutube extends Module {
 			
 			String search = getVideoSearch(sb.toString(),!Data.config.getBoolean("yt-otherbot"),true);
 			if (search != null && !search.isEmpty()) {
-				String msg = (type == EType.Channel ? sender.getNick()+": " : "")+search;
-				msg = Utils.mungeAllNicks(channel,msg,sender.getNick());
-				Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,msg);
+				search = Utils.mungeAllNicks(channel,search,sender.getNick());
+				callback.append(search);
 			}
 		}
 	}

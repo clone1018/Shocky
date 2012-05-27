@@ -4,7 +4,6 @@ import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 import pl.shockah.shocky.Data;
-import pl.shockah.shocky.Shocky;
 
 public class CmdBlacklist extends Command {
 	public String command() {return "blacklist";}
@@ -17,9 +16,10 @@ public class CmdBlacklist extends Command {
 	}
 	public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command());}
 	
-	public void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message) {
+	public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 		if (!canUseController(bot,type,sender)) return;
 		String[] args = message.split(" ");
+		callback.type = EType.Notice;
 		
 		if (args.length == 1) {
 			StringBuilder sb = new StringBuilder();
@@ -27,7 +27,7 @@ public class CmdBlacklist extends Command {
 				if (sb.length() != 0) sb.append(", ");
 				sb.append(blacklisted);
 			}
-			Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,sb.toString());
+			callback.append(sb);
 			return;
 		}
 		
@@ -35,23 +35,23 @@ public class CmdBlacklist extends Command {
 			String s = args[2].toLowerCase();
 			if (args[1].toLowerCase().equals("add")) {
 				if (Data.blacklistNicks.contains(s)) {
-					Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,s+" is already in blacklist");
+					callback.append(s+" is already in blacklist");
 				} else {
 					Data.blacklistNicks.add(s);
-					Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,"Added");
+					callback.append("Added");
 				}
 				return;
 			} else if (args[1].toLowerCase().equals("remove")) {
 				if (!Data.blacklistNicks.contains(s)) {
-					Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,s+" isn't in blacklist");
+					callback.append(s+" isn't in blacklist");
 				} else {
 					Data.blacklistNicks.remove(s);
-					Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,"Removed");
+					callback.append("Removed");
 				}
 				return;
 			}
 		}
 		
-		Shocky.sendNotice(bot,sender,help(bot,type,channel,sender));
+		callback.append(help(bot,type,channel,sender));
 	}
 }

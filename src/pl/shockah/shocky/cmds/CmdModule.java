@@ -10,7 +10,6 @@ import pl.shockah.StringTools;
 import pl.shockah.shocky.Data;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.ModuleSource;
-import pl.shockah.shocky.Shocky;
 
 public class CmdModule extends Command {
 	public String command() {return "module";}
@@ -28,8 +27,9 @@ public class CmdModule extends Command {
 	}
 	public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command());}
 	
-	public void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message) {
+	public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 		String[] args = message.split(" ");
+		callback.type = EType.Notice;
 		
 		if (args.length == 1) {
 			ArrayList<Module> modules = Module.getModules();
@@ -40,7 +40,7 @@ public class CmdModule extends Command {
 				sb.append(module.name());
 				sb.append(Colors.BLACK);
 			}
-			Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,sb.toString());
+			callback.append(sb);
 			return;
 		}
 		
@@ -53,13 +53,13 @@ public class CmdModule extends Command {
 					if (sb.length() != 0) sb.append(", ");
 					sb.append(module.name());
 				}
-				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,sb.toString());
+				callback.append(sb);
 				return;
 			} else if (args[1].toLowerCase().equals("loadnew")) {
 				if (!canUseController(bot,type,sender)) return;
 				ArrayList<Module> modules = Module.loadNewModules();
 				if (modules.isEmpty()) {
-					Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,"No new modules found");
+					callback.append("No new modules found");
 				} else {
 					StringBuilder sb = new StringBuilder();
 					sb.append("Loaded modules: ");
@@ -67,14 +67,14 @@ public class CmdModule extends Command {
 						if (i != 0) sb.append(", ");
 						sb.append(modules.get(i).name());
 					}
-					Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,sb.toString());
+					callback.append(sb);
 				}
 				return;
 			} else if (args[1].toLowerCase().equals("reloadall")) {
 				if (!canUseController(bot,type,sender)) return;
 				ArrayList<Module> modules = Module.getModules(true);
 				for (Module module : modules) Module.reload(module);
-				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,"Reloaded all modules");
+				callback.append("Reloaded all modules");
 				return;
 			}
 		}
@@ -84,23 +84,23 @@ public class CmdModule extends Command {
 		if (args.length == 3) {
 			Module module = Module.getModule(args[2]);
 			if (module == null) {
-				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,"No such module");
+				callback.append("No such module");
 				return;
 			}
 			
 			if (args[1].toLowerCase().equals("on")) {
-				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,Module.enable(module) ? "Enabled" : "Failed");
+				callback.append(Module.enable(module) ? "Enabled" : "Failed");
 				Data.config.set("module-"+module.name(),true);
 				return;
 			} else if (args[1].toLowerCase().equals("off")) {
-				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,Module.disable(module) ? "Disabled" : "Failed");
+				callback.append(Module.disable(module) ? "Disabled" : "Failed");
 				Data.config.set("module-"+module.name(),false);
 				return;
 			} else if (args[1].toLowerCase().equals("reload")) {
-				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,Module.reload(module) ? "Reloaded" : "Failed");
+				callback.append(Module.reload(module) ? "Reloaded" : "Failed");
 				return;
 			} else if (args[1].toLowerCase().equals("unload")) {
-				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,Module.unload(module) ? "Unloaded" : "Failed");
+				callback.append(Module.unload(module) ? "Unloaded" : "Failed");
 				return;
 			}
 		}
@@ -109,12 +109,12 @@ public class CmdModule extends Command {
 			if (args[1].toLowerCase().equals("loadhttp")) {
 				try {
 					URL url = new URL(StringTools.implode(args,2," "));
-					Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,Module.load(new ModuleSource<URL>(url)) != null ? "Loaded" : "Failed");
+					callback.append(Module.load(new ModuleSource<URL>(url)) != null ? "Loaded" : "Failed");
 				} catch (Exception e) {e.printStackTrace();}
 				return;
 			}
 		}
 		
-		Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,help(bot,type,channel,sender));
+		callback.append(help(bot,type,channel,sender));
 	}
 }

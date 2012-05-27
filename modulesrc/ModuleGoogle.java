@@ -7,8 +7,8 @@ import org.pircbotx.User;
 import pl.shockah.HTTPQuery;
 import pl.shockah.StringTools;
 import pl.shockah.shocky.Module;
-import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.cmds.Command;
+import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Command.EType;
 
 public class ModuleGoogle extends Module {
@@ -29,10 +29,11 @@ public class ModuleGoogle extends Module {
 		Command.removeCommands(cmd2);
 	}
 	
-	public void doSearch(Command cmd, PircBotX bot, EType type, Channel channel, User sender, String message) {
+	public void doSearch(Command cmd, PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 		String[] args = message.split(" ");
 		if (args.length == 1) {
-			Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,cmd.help(bot,type,channel,sender));
+			callback.type = EType.Notice;
+			callback.append(cmd.help(bot,type,channel,sender));
 			return;
 		}
 		
@@ -57,7 +58,7 @@ public class ModuleGoogle extends Module {
 			JSONObject json = new JSONObject(line);
 			JSONArray results = json.getJSONObject("responseData").getJSONArray("results");
 			if (results.length() == 0) {
-				Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,"No results.");
+				callback.append("No results.");
 				return;
 			}
 			JSONObject r = results.getJSONObject(0);
@@ -71,7 +72,7 @@ public class ModuleGoogle extends Module {
 				result.append(content);
 			else
 				result.append("No description available.");
-			Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,result.toString());
+			callback.append(result);
 		} catch (Exception e) {e.printStackTrace();}
 	}
 	
@@ -85,8 +86,8 @@ public class ModuleGoogle extends Module {
 		}
 		public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command()) || cmd.equals("g");}
 		@Override
-		public void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message) {
-			doSearch(this, bot, type, channel, sender, message);
+		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
+			doSearch(this, bot, type, callback, channel, sender, message);
 		}
 	}
 	
@@ -100,8 +101,8 @@ public class ModuleGoogle extends Module {
 		}
 		public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command()) || cmd.equals("gi");}
 		@Override
-		public void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message) {
-			doSearch(this, bot, type, channel, sender, message);
+		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
+			doSearch(this, bot, type, callback, channel, sender, message);
 		}
 	}
 }

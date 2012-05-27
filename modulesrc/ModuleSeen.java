@@ -6,9 +6,9 @@ import org.pircbotx.User;
 import org.pircbotx.hooks.events.MessageEvent;
 import pl.shockah.Config;
 import pl.shockah.shocky.Module;
-import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
+import pl.shockah.shocky.cmds.CommandCallback;
 
 public class ModuleSeen extends Module {
 	private Config config;
@@ -40,20 +40,21 @@ public class ModuleSeen extends Module {
 		}
 		public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command());}
 		
-		public void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message) {
+		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			String[] args = message.split(" ");
 			if (args.length != 2) {
-				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,help(bot,type,channel,sender));
+				callback.type = EType.Notice;
+				callback.append(help(bot,type,channel,sender));
 				return;
 			}
 			
 			String low = args[1].toLowerCase();
-			if (low.equals(bot.getNick().toLowerCase())) Shocky.send(bot,type,channel,sender,"Are your glasses not strong enough?");
-			else if (low.equals(sender.getNick().toLowerCase())) Shocky.send(bot,type,channel,sender,"Schizophrenia, eh?");
+			if (low.equals(bot.getNick().toLowerCase())) callback.append("Are your glasses not strong enough?");
+			else if (low.equals(sender.getNick().toLowerCase())) callback.append("Schizophrenia, eh?");
 			else {
 				if (config.exists("t_"+low)) {
-					Shocky.send(bot,type,channel,sender,args[1]+" was last active "+Utils.timeAgo(new Date(config.getLong("t_"+low)))+" in "+config.getString("c_"+low)+" and said: "+config.getString("m_"+low));
-				} else Shocky.send(bot,type,channel,sender,"I've never seen "+args[1]);
+					callback.append(args[1]+" was last active "+Utils.timeAgo(new Date(config.getLong("t_"+low)))+" in "+config.getString("c_"+low)+" and said: "+config.getString("m_"+low));
+				} else callback.append("I've never seen "+args[1]);
 			}
 		}
 	}

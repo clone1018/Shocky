@@ -12,9 +12,10 @@ public class CmdSave extends Command {
 	}
 	public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command());}
 	
-	public void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message) {
+	public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 		if (!canUseController(bot,type,sender)) return;
+		callback.type = EType.Notice;
 		Shocky.dataSave();
-		Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,"Saved");
+		callback.append("Saved");
 	}
 }

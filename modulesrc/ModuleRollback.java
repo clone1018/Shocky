@@ -29,8 +29,8 @@ import pl.shockah.HTTPQuery;
 import pl.shockah.StringTools;
 import pl.shockah.shocky.Data;
 import pl.shockah.shocky.Module;
-import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.cmds.Command;
+import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.events.*;
 import pl.shockah.shocky.lines.*;
 
@@ -253,9 +253,10 @@ public class ModuleRollback extends Module {
 		}
 		public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command()) || cmd.equals("pb");}
 		
-		public void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message) {
+		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			String[] args = message.split(" ");
 			String pbLink = "", regex = null;
+			callback.type = EType.Notice;
 			
 			for (int i = args.length-1; i > 0; i--) {
 				if (args[i].equals("|")) {
@@ -266,7 +267,7 @@ public class ModuleRollback extends Module {
 			}
 			
 			if (args.length < 2 || args.length > 4) {
-				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,help(bot,type,channel,sender));
+				callback.append(help(bot,type,channel,sender));
 				return;
 			}
 			
@@ -284,7 +285,7 @@ public class ModuleRollback extends Module {
 					aLines = args[3];
 				}
 				if (aChannel == null) {
-					Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,help(bot,type,channel,sender));
+					callback.append(help(bot,type,channel,sender));
 					return;
 				}
 				aChannel = aChannel.toLowerCase();
@@ -298,17 +299,20 @@ public class ModuleRollback extends Module {
 					else list = getRollbackLines(aChannel,aUser,regex,aLines.charAt(0) != '-',Math.abs(Integer.parseInt(aLines)),0);
 					
 					if (list.isEmpty()) {
-						Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,"Nothing to upload");
+						callback.append("Nothing to upload");
 						return;
 					}
 					pbLink = getLink(list);
-				} else Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,"No "+aChannel+" archive");
+				} else callback.append("No "+aChannel+" archive");
 			} else {
-				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,help(bot,type,channel,sender));
+				callback.append(help(bot,type,channel,sender));
 				return;
 			}
 			
-			if (!pbLink.isEmpty()) Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,(type == EType.Channel ? sender.getNick()+": " : "")+pbLink);
+			if (!pbLink.isEmpty()) {
+				callback.type = EType.Channel;
+				callback.append(pbLink);
+			}
 		}
 		
 		public String getLink(ArrayList<Line> lines) {

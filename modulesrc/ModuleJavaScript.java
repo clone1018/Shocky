@@ -21,6 +21,7 @@ import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
+import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Command.EType;
 
 public class ModuleJavaScript extends Module {
@@ -85,7 +86,7 @@ public class ModuleJavaScript extends Module {
 			return cmd.equals(command()) || cmd.equals("js");
 		}
 
-		public void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message) {
+		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			String[] args = message.split(" ");
 			if (args.length < 2) {
 				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,help(bot,type,channel,sender));
@@ -95,7 +96,7 @@ public class ModuleJavaScript extends Module {
 			System.out.println(message);
 			String output = parse(bot,type,channel,sender,StringTools.implode(args,1," "));
 			if (output != null && !output.isEmpty())
-				Shocky.send(bot,type,channel,sender,output);
+				callback.append(output);
 		}
 	}
 	

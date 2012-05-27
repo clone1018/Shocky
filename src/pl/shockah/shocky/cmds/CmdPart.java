@@ -4,7 +4,6 @@ import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 import pl.shockah.shocky.MultiChannel;
-import pl.shockah.shocky.Shocky;
 
 public class CmdPart extends Command {
 	public String command() {return "part";}
@@ -19,8 +18,9 @@ public class CmdPart extends Command {
 	}
 	public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command());}
 	
-	public void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message) {
+	public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 		String[] args = message.split(" ");
+		callback.type = EType.Notice;
 		if (args.length == 1) {
 			if (type == EType.Channel) {
 				if (!canUseAny(bot,type,channel,sender)) return;
@@ -39,7 +39,7 @@ public class CmdPart extends Command {
 		} else if (args.length == 2) {
 			Channel c = MultiChannel.get(args[1]);
 			if (c == null) {
-				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,"Not in channel "+args[1]);
+				callback.append("Not in channel "+args[1]);
 				return;
 			}
 			
@@ -50,6 +50,6 @@ public class CmdPart extends Command {
 			return;
 		}
 		
-		Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,help(bot,type,channel,sender));
+		callback.append(help(bot,type,channel,sender));
 	}
 }

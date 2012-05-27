@@ -13,9 +13,9 @@ import pl.shockah.BinBuffer;
 import pl.shockah.BinFile;
 import pl.shockah.StringTools;
 import pl.shockah.shocky.Module;
-import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
+import pl.shockah.shocky.cmds.CommandCallback;
 
 public class ModuleQuote extends Module {
 	protected Command cmd, cmdAdd, cmdRemove;
@@ -76,10 +76,11 @@ public class ModuleQuote extends Module {
 			return cmd.equals(command()) || cmd.equals("q");
 		}
 		
-		public void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message) {
+		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			String[] args = message.split(" ");
 			if (args.length == 1 && type != EType.Channel) {
-				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,help(bot,type,channel,sender));
+				callback.type = EType.Notice;
+				callback.append(help(bot,type,channel,sender));
 				return;
 			}
 			
@@ -105,7 +106,8 @@ public class ModuleQuote extends Module {
 				aId = Integer.parseInt(args[3]);
 			}
 			if (aChannel == null) {
-				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,help(bot,type,channel,sender));
+				callback.type = EType.Notice;
+				callback.append(help(bot,type,channel,sender));
 				return;
 			}
 			
@@ -113,7 +115,7 @@ public class ModuleQuote extends Module {
 			ArrayList<Quote> list = new ArrayList<Quote>();
 			for (Quote quote : quotes.get(aChannel)) if (aNick == null || quote.nicks.contains(aNick)) list.add(quote);
 			if (list.isEmpty()) {
-				Shocky.send(bot,type,channel,sender,"No quotes found");
+				callback.append("No quotes found");
 				return;
 			}
 			
@@ -122,7 +124,7 @@ public class ModuleQuote extends Module {
 			aId = Math.min(Math.max(aId,1),list.size()+1);
 			
 			String quote = Utils.mungeAllNicks(channel, list.get(aId-1).quote);
-			Shocky.send(bot,type,channel,sender,"["+aChannel+": "+(aId)+"/"+(list.size())+"] "+quote);
+			callback.append("["+aChannel+": "+(aId)+"/"+(list.size())+"] "+quote);
 		}
 	}
 	public class CmdQuoteAdd extends Command {
@@ -138,10 +140,11 @@ public class ModuleQuote extends Module {
 			return cmd.equals(command()) || cmd.equals("qadd");
 		}
 		
-		public void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message) {
+		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			String[] args = message.split(" ");
+			callback.type = EType.Notice;
 			if (args.length < 3) {
-				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,help(bot,type,channel,sender));
+				callback.append(help(bot,type,channel,sender));
 				return;
 			}
 			
@@ -149,7 +152,7 @@ public class ModuleQuote extends Module {
 			String quote = StringTools.implode(args,2," ");
 			if (!quotes.containsKey(channel.getName())) quotes.put(channel.getName(),new ArrayList<Quote>());
 			quotes.get(channel.getName()).add(new Quote(nicks,quote));
-			Shocky.sendNotice(bot,sender,"Done.");
+			callback.append("Done.");
 		}
 	}
 	
@@ -166,11 +169,12 @@ public class ModuleQuote extends Module {
 			return cmd.equals(command()) || cmd.equals("qdel");
 		}
 		
-		public void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message) {
+		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			if (!canUseController(bot,type,sender)) return;
 			String[] args = message.split(" ");
+			callback.type = EType.Notice;
 			if (args.length == 1 && type != EType.Channel) {
-				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,help(bot,type,channel,sender));
+				callback.append(help(bot,type,channel,sender));
 				return;
 			}
 			
@@ -196,12 +200,12 @@ public class ModuleQuote extends Module {
 				aId = Integer.parseInt(args[3]);
 			}
 			if (aChannel == null) {
-				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,help(bot,type,channel,sender));
+				callback.append(help(bot,type,channel,sender));
 				return;
 			}
 			
 			if (aId == Integer.MIN_VALUE) {
-				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,"Please specify a number.");
+				callback.append("Please specify a number.");
 				return;
 			}
 			
@@ -209,7 +213,7 @@ public class ModuleQuote extends Module {
 			ArrayList<Quote> list = new ArrayList<Quote>();
 			for (Quote quote : quotes.get(aChannel)) if (aNick == null || quote.nicks.contains(aNick)) list.add(quote);
 			if (list.isEmpty()) {
-				Shocky.send(bot,type,channel,sender,"No quotes found");
+				callback.append("No quotes found");
 				return;
 			}
 			
@@ -222,7 +226,7 @@ public class ModuleQuote extends Module {
 				if (quote2.equals(quote))
 					quoteIter.remove();
 			}
-			Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,"Removed quote: "+quote.quote);
+			callback.append("Removed quote: "+quote.quote);
 		}
 	}
 	

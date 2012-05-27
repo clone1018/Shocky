@@ -6,8 +6,8 @@ import org.pircbotx.User;
 import pl.shockah.HTTPQuery;
 import pl.shockah.StringTools;
 import pl.shockah.shocky.Module;
-import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.cmds.Command;
+import pl.shockah.shocky.cmds.CommandCallback;
 
 public class ModuleQuestionParty extends Module {
 	protected Command cmd;
@@ -55,8 +55,8 @@ public class ModuleQuestionParty extends Module {
 		}
 		public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command()) || cmd.equals("qparty") || cmd.equals("qp");}
 		
-		public void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message) {
-			Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,getQ());
+		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
+			callback.append(getQ());
 		}
 	}
 }

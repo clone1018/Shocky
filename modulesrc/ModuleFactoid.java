@@ -12,6 +12,7 @@ import pl.shockah.shocky.*;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.Command.EType;
+import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.lines.Line;
 import pl.shockah.shocky.lines.LineMessage;
 import pl.shockah.shocky.sql.CriterionNumber;
@@ -204,7 +205,7 @@ public class ModuleFactoid extends Module {
 			public String result(String arg) throws Exception {
 				byte[] array = arg.getBytes("UTF-8");
 				for (int i = 0; i < array.length; i++) array[i] = (byte) (~array[i] - 0x80 & 0xFF);
-				return new String(array, "UTF-8").replace("[\\r\\n]", "");
+				return new String(array, "UTF-8").replaceAll("[\\r\\n]", "");
 			}
 		};
 		functions.put(func.name(), func);
@@ -419,7 +420,10 @@ public class ModuleFactoid extends Module {
 			Command cmd = Command.getCommand(bot,EType.Channel,""+Data.config.getString("main-cmdchar").charAt(0)+raw.substring(5));
 			if (cmd != null && !(cmd instanceof CmdFactoid)) {
 				raw = parseVariables(bot, channel, sender, message, raw);
-				cmd.doCommand(bot,EType.Channel,channel,sender,raw.substring(5));
+				CommandCallback callback = new CommandCallback();
+				cmd.doCommand(bot,EType.Channel,callback,channel,sender,raw.substring(5));
+				if (callback.type == EType.Channel)
+					return callback.toString();
 			}
 			return "";
 		} else {
@@ -654,10 +658,11 @@ public class ModuleFactoid extends Module {
 			return cmd.equals(command()) || cmd.equals("rem") || cmd.equals("r");
 		}
 		
-		public void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message) {
+		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			String[] args = message.split(" ");
+			callback.type = EType.Notice;
 			if (args.length < 3 || (args.length == 3 && args[1].equals("."))) {
-				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,help(bot,type,channel,sender));
+				callback.append(help(bot,type,channel,sender));
 				return;
 			}
 			
@@ -666,7 +671,7 @@ public class ModuleFactoid extends Module {
 			String rem = StringTools.implode(args,args[1].equals(".") ? 3 : 2," ");
 			
 			Factoid f = getLatest(channel.getName(),name,true);
-			if (f != null && f.locked) Shocky.sendNotice(bot,sender,"Factoid is locked"); else {
+			if (f != null && f.locked) callback.append("Factoid is locked"); else {
 				QueryInsert q = new QueryInsert(SQL.getTable("factoid"));
 				q.add("channel",prefix);
 				q.add("factoid",name);
@@ -674,7 +679,7 @@ public class ModuleFactoid extends Module {
 				q.add("rawtext",rem);
 				q.add("stamp",new Date().getTime()/1000);
 				SQL.insert(q);
-				Shocky.sendNotice(bot,sender,"Done.");
+				callback.append("Done.");
 			}
 		}
 	}
@@ -691,10 +696,11 @@ public class ModuleFactoid extends Module {
 			return cmd.equals(command()) || cmd.equals("f");
 		}
 		
-		public void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message) {
+		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			String[] args = message.split(" ");
+			callback.type = EType.Notice;
 			if (args.length < 2 || (args.length == 2 && args[1].equals("."))) {
-				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,help(bot,type,channel,sender));
+				callback.append(help(bot,type,channel,sender));
 				return;
 			}
 			
@@ -702,8 +708,8 @@ public class ModuleFactoid extends Module {
 			String name = args[args[1].equals(".") ? 2 : 1].toLowerCase();
 			
 			Factoid f = getLatest(channel.getName(),name);
-			if (f == null) Shocky.sendNotice(bot,sender,"No such factoid"); else {
-				if (f.locked) Shocky.sendNotice(bot,sender,"Factoid is locked");
+			if (f == null) callback.append("No such factoid"); else {
+				if (f.locked) callback.append("Factoid is locked");
 				else {
 					QueryInsert q = new QueryInsert(SQL.getTable("factoid"));
 					q.add("channel",prefix);
@@ -732,8 +738,9 @@ public class ModuleFactoid extends Module {
 			return cmd.equals(command()) || cmd.equals("fcmd");
 		}
 		
-		public void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message) {
+		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			if (!canUseController(bot,type,sender)) return;
+			callback.type = EType.Notice;
 			
 			String[] args = message.split(" ");
 			if (args.length == 1) {
@@ -748,7 +755,7 @@ public class ModuleFactoid extends Module {
 					}
 					sb.append(sb2.toString()+"->"+cmd.factoid);
 				}
-				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,sb.toString());
+				callback.append(sb);
 				return;
 			} else if (args.length == 3 && args[1].equals("remove")) {
 				for (int i = 0; i < fcmds.size(); i++) {
@@ -756,7 +763,7 @@ public class ModuleFactoid extends Module {
 					for (String s : c.cmds) if (s.equals(args[2])) {
 						Command.removeCommands(fcmds.get(i));
 						fcmds.remove(i);
-						Shocky.sendNotice(bot,sender,"Removed.");
+						callback.append("Removed.");
 						return;
 					}
 				}
@@ -773,7 +780,7 @@ l1:				for (int i = 0; i < fcmds.size(); i++) {
 				CmdFactoid c = new CmdFactoid(args[2],args[3].toLowerCase());
 				fcmds.add(c);
 				Command.addCommands(c);
-				Shocky.sendNotice(bot,sender,"Added.");
+				callback.append("Added.");
 				return;
 			}
 			
@@ -798,7 +805,7 @@ l1:				for (int i = 0; i < fcmds.size(); i++) {
 			return false;
 		}
 		
-		public void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message) {
+		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			String[] args = message.split(" ");
 			onMessage(bot,channel,sender,""+Data.config.getString("factoid-char").charAt(0)+factoid+(args.length > 1 ? " "+StringTools.implode(args,1," ") : ""));
 		}
@@ -816,8 +823,9 @@ l1:				for (int i = 0; i < fcmds.size(); i++) {
 			return cmd.equals(command()) || cmd.equals("fmanage") || cmd.equals("fmng");
 		}
 		
-		public void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message) {
+		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			if (!canUseAny(bot,type,channel,sender)) return;
+			callback.type = EType.Notice;
 			
 			String[] args = message.split(" ");
 			if (args.length == 3 || args.length == 4) {
@@ -828,11 +836,11 @@ l1:				for (int i = 0; i < fcmds.size(); i++) {
 						if ((local && canUseOp(bot,type,channel,sender)) || (!local && canUseController(bot,type,sender))) {
 							Factoid f = getLatest(local ? channel.getName() : null,factoid,true);
 							if (f == null) {
-								Shocky.sendNotice(bot,sender,"No such factoid");
+								callback.append("No such factoid");
 								return;
 							}
 							if (f.locked) {
-								Shocky.sendNotice(bot,sender,"Already locked");
+								callback.append("Already locked");
 								return;
 							}
 							
@@ -842,18 +850,18 @@ l1:				for (int i = 0; i < fcmds.size(); i++) {
 							q.addOrder("stamp",false);
 							q.setLimitCount(1);
 							SQL.update(q);
-							Shocky.sendNotice(bot,sender,"Done");
+							callback.append("Done");
 							return;
 						}
 					} else if (args[1].equals("unlock")) {
 						if ((local && canUseOp(bot,type,channel,sender)) || (!local && canUseController(bot,type,sender))) {
 							Factoid f = getLatest(local ? channel.getName() : null,factoid,true);
 							if (f == null) {
-								Shocky.sendNotice(bot,sender,"No such factoid");
+								callback.append("No such factoid");
 								return;
 							}
 							if (!f.locked) {
-								Shocky.sendNotice(bot,sender,"Already unlocked");
+								callback.append("Already unlocked");
 								return;
 							}
 							
@@ -863,14 +871,14 @@ l1:				for (int i = 0; i < fcmds.size(); i++) {
 							q.addOrder("stamp",false);
 							q.setLimitCount(1);
 							SQL.update(q);
-							Shocky.sendNotice(bot,sender,"Done");
+							callback.append("Done");
 							return;
 						}
 					}
 				}
 			}
 			
-			Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,help(bot,type,channel,sender));
+			callback.append(help(bot,type,channel,sender));
 		}
 	}
 }

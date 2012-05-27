@@ -4,8 +4,8 @@ import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 import pl.shockah.shocky.Module;
-import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.cmds.Command;
+import pl.shockah.shocky.cmds.CommandCallback;
 
 public class ModuleSaspiron extends Module {
 	protected Command cmd;
@@ -33,7 +33,7 @@ public class ModuleSaspiron extends Module {
 		
 		protected final String[] three = new String[]{"was","is","can","but","it"};
 		protected final String[] four = new String[]{"awesome","fast","random","skrewed","brocken","misslead","fucked up"};
-		public void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message) {
+		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			String[] args = message.split(" ");
 			ArrayList<String> TheWords = new ArrayList<String>();
 			ArrayList<String> TheOtherWords = new ArrayList<String>();
@@ -54,7 +54,7 @@ public class ModuleSaspiron extends Module {
 				}
 			}
 			
-			Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,sb.toString());
+			callback.append(sb);
 		}
 	}
 }

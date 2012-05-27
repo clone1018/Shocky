@@ -57,7 +57,7 @@ public abstract class Command implements Comparable<Command> {
 	public abstract String help(PircBotX bot, EType type, Channel channel, User sender);
 	public abstract boolean matches(PircBotX bot, EType type, String cmd);
 	public void visible(PircBotX bot, EType type, Channel channel, User sender) {}
-	public abstract void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message);
+	public abstract void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message);
 	
 	public static boolean isController(PircBotX bot, EType type, User user) {
 		if (bot == null) return true;

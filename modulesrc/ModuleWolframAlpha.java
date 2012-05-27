@@ -6,9 +6,9 @@ import org.pircbotx.User;
 import pl.shockah.HTTPQuery;
 import pl.shockah.XMLObject;
 import pl.shockah.shocky.Module;
-import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
+import pl.shockah.shocky.cmds.CommandCallback;
 
 public class ModuleWolframAlpha extends Module {
 	private static final String apiKey = "J5A2WW-QGK5AEAKTY";
@@ -71,7 +71,7 @@ public class ModuleWolframAlpha extends Module {
 		}
 		public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command()) || cmd.equals("wolfram") || cmd.equals("wa");}
 		
-		public void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message) {
+		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			String[] args = message.split(" ");
 			StringBuilder sb = new StringBuilder();
 			for (int i = 1; i < args.length; i++) {
@@ -81,9 +81,8 @@ public class ModuleWolframAlpha extends Module {
 			
 			String result = getResult(sb.toString());
 			if (result == null) return;
-			String msg = (type == EType.Channel ? sender.getNick()+": " : "")+result;
-			msg = Utils.mungeAllNicks(channel,msg,sender.getNick());
-			Shocky.send(bot,type,EType.Channel,EType.Notice,EType.Notice,EType.Console,channel,sender,msg);
+			result = Utils.mungeAllNicks(channel,result,sender.getNick());
+			callback.append(result);
 		}
 	}
 }

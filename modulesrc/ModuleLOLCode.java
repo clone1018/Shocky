@@ -7,6 +7,7 @@ import com.lolcode.parser.*;
 import pl.shockah.StringTools;
 import pl.shockah.shocky.*;
 import pl.shockah.shocky.cmds.Command;
+import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Command.EType;
 
 public class ModuleLOLCode extends Module {
@@ -51,7 +52,7 @@ public class ModuleLOLCode extends Module {
 			return cmd.equals(command()) || cmd.equals("lol");
 		}
 		
-		public void doCommand(PircBotX bot, EType type, Channel channel, User sender, String message) {
+		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			String[] args = message.split(" ");
 			if (args.length < 2) {
 				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,help(bot,type,channel,sender));
@@ -61,7 +62,7 @@ public class ModuleLOLCode extends Module {
 			System.out.println(message);
 			String out = parse(bot,type,channel,sender,StringTools.implode(args,1," "));
 			if (out != null && out.length()>0)
-				Shocky.send(bot,type,channel,sender,out);
+				callback.append(out);
 		}
 	}
 	
