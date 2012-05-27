@@ -204,7 +204,7 @@ public class ModuleFactoid extends Module {
 			public String result(String arg) throws Exception {
 				byte[] array = arg.getBytes("UTF-8");
 				for (int i = 0; i < array.length; i++) array[i] = (byte) (~array[i] - 0x80 & 0xFF);
-				return new String(array, "UTF-8");
+				return new String(array, "UTF-8").replace("[\\r\\n]", "");
 			}
 		};
 		functions.put(func.name(), func);
@@ -218,6 +218,23 @@ public class ModuleFactoid extends Module {
 		func = new Function(){
 			public String name() {return "odd";}
 			public String result(String arg) {return Utils.odd(arg);}
+		};
+		functions.put(func.name(), func);
+		
+		func = new Function(){
+			public String name() {return "rot13";}
+			public String result(String arg) {
+				char[] out = new char[arg.length()];
+				for (int i = 0; i < arg.length(); i++) {
+					char c = arg.charAt(i);
+					if (c >= 'a' && c <= 'm') c += 13;
+					else if (c >= 'n' && c <= 'z') c -= 13;
+					else if (c >= 'A' && c <= 'M') c += 13;
+					else if (c >= 'A' && c <= 'Z') c -= 13;
+					out[i] = c;
+				}
+				return new String(out);
+			}
 		};
 		functions.put(func.name(), func);
 	}
