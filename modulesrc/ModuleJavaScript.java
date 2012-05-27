@@ -1,5 +1,7 @@
+import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Random;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -17,6 +19,7 @@ import org.pircbotx.User;
 import pl.shockah.StringTools;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Shocky;
+import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.Command.EType;
 
@@ -40,17 +43,17 @@ public class ModuleJavaScript extends Module {
 		engine.put("channel", channel.getName());
 		engine.put("bot", bot.getNick());
 		engine.put("sender", sender.getNick());
-		User[] users = channel.getUsers().toArray(new User[channel.getUsers().size()]);
-		engine.put("randnick", users[new Random().nextInt(users.length)].getNick());
+		
+		Sandbox sandbox = new Sandbox(channel.getUsers().toArray(new User[0]));
+		engine.put("bot", sandbox);
 
-		JSRunner r = new JSRunner();
-		r.setEngine(engine, code);
+		JSRunner r = new JSRunner(engine, code);
 
-		String output = "";
+		String output = null;
 		final ExecutorService service = Executors.newFixedThreadPool(1);
 		try {
-		    Future<Object> f = service.submit(Executors.callable(r));
-		    f.get(30, TimeUnit.SECONDS);
+		    Future<String> f = service.submit(r);
+		    output = f.get(30, TimeUnit.SECONDS);
 		}
 		catch(TimeoutException e) {
 		    output = "Script timed out";
@@ -61,8 +64,8 @@ public class ModuleJavaScript extends Module {
 		finally {
 		    service.shutdown();
 		}
-		if(output == null || output.length() < 1)
-			output = r.output;
+		if (output == null || output.isEmpty())
+			return null;
 		
 		StringBuilder sb = new StringBuilder();
 		for(String line : output.split("\n")) {
@@ -90,43 +93,78 @@ public class ModuleJavaScript extends Module {
 			}
 
 			System.out.println(message);
-			Shocky.send(bot,type,channel,sender,parse(bot,type,channel,sender,StringTools.implode(args,1," ")));
+			String output = parse(bot,type,channel,sender,StringTools.implode(args,1," "));
+			if (output != null && !output.isEmpty())
+				Shocky.send(bot,type,channel,sender,output);
 		}
 	}
 	
-	public class JSRunner implements Runnable {
+	public class Sandbox {
+		private Random rnd = new Random();
+		private final User[] users;
 		
-		protected ScriptEngine engine;
-		public String output = "Unknown error occurred";
-		protected String code = "";
-		public boolean finished = false;
+		public Sandbox(User[] users) {
+			this.users = users;
+		}
 		
-		public void setEngine(ScriptEngine e, String c) {
+		public String randnick() {
+			return users[rnd.nextInt(users.length)].getNick();
+		}
+		
+		public String format(String format, Object... args) {
+			return String.format(format, args);
+		}
+		
+		public String munge(String in) {
+			return Utils.mungeNick(in);
+		}
+		
+		public String odd(String in) {
+			return Utils.odd(in);
+		}
+		
+		public String flip(String in) {
+			return Utils.flip(in);
+		}
+		
+		public String reverse(String in) {
+			return new StringBuilder(in).reverse().toString();
+		}
+		
+		public String toString() {
+			return "Yes it is a bot";
+		}
+	}
+	
+	public class JSRunner implements Callable<String> {
+		
+		private final ScriptEngine engine;
+		private final String code;
+		
+		public JSRunner(ScriptEngine e, String c) {
 			engine = e;
 			code = c;
 		}
 
 		@Override
-		public void run() {
-			StringWriter writer = new StringWriter();
-			StringWriter errorWriter = new StringWriter();
+		public String call() throws Exception {
+			StringWriter sw = new StringWriter();
+			PrintWriter pw = new PrintWriter(sw);
 			ScriptContext context = engine.getContext();
-			context.setWriter(writer);
-			context.setErrorWriter(errorWriter);
-			engine.setContext(context);
+			context.setWriter(pw);
+			context.setErrorWriter(pw);
 			
 			try {
 				Object out = engine.eval(code);
-				output = writer.toString();
-				if(out != null && output.length() < 1)
-					output = (String) out;
-				String errors = errorWriter.toString();
-				if(errors != null && errors.length() > 0)
-					output = errors;
+				if (sw.getBuffer().length() != 0)
+					return sw.toString();
+				if (out != null)
+					return out.toString();
 			}
 			catch(ScriptException ex) {
-				output = ex.getMessage();
+				return ex.getMessage();
 			}
+			return null;
 		}
 		
 	}
