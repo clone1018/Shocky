@@ -362,6 +362,7 @@ public class ModuleFactoid extends Module {
 		}
 		ScriptModule sModule = Module.getScriptingModule(type);
 		if (sModule != null) {
+			raw = parseVariables(bot, channel, sender, message, raw);
 			return sModule.parse(bot, EType.Channel, channel, sender, raw, message);
 		} else if (type != null && type.contentEquals("cmd")) {
 			Command cmd = Command.getCommand(bot,EType.Channel,Data.config.getString("main-cmdchar").charAt(0)+raw);
