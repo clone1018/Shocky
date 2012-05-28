@@ -355,7 +355,7 @@ public class ModuleFactoid extends Module {
 		String type = null;
 		if (raw.startsWith("<")) {
 			int closingIndex = raw.indexOf(">");
-			if (closingIndex != 0) {
+			if (closingIndex != -1) {
 				type = raw.substring(1, closingIndex);
 				raw = raw.substring(closingIndex+1);
 			}
