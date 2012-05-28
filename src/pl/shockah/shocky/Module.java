@@ -3,12 +3,16 @@ package pl.shockah.shocky;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
 import org.pircbotx.PircBotX;
 
 public abstract class Module extends ListenerAdapter implements Comparable<Module> {
 	private static final List<Module> modules = Collections.synchronizedList(new ArrayList<Module>()), modulesOn = Collections.synchronizedList(new ArrayList<Module>());
 	private static final List<ModuleLoader> loaders = Collections.synchronizedList(new ArrayList<ModuleLoader>());
+	private static final Map<String, ScriptModule> scriptingModules = Collections.synchronizedMap(new HashMap<String,ScriptModule>());
 	
 	static {
 		Module.registerModuleLoader(new ModuleLoader.Java());
@@ -46,6 +50,10 @@ public abstract class Module extends ListenerAdapter implements Comparable<Modul
 			}
 			
 			modules.add(module);
+			if (module instanceof ScriptModule) {
+				ScriptModule sModule = (ScriptModule)module;
+				scriptingModules.put(sModule.identifier(), sModule);
+			}
 			Data.config.setNotExists("module-"+module.name(),true);
 			if (Data.config.getBoolean("module-"+module.name())) enable(module);
 		}
@@ -58,6 +66,10 @@ public abstract class Module extends ListenerAdapter implements Comparable<Modul
 			disable(module);
 		}
 		modules.remove(module);
+		if (module instanceof ScriptModule) {
+			ScriptModule sModule = (ScriptModule)module;
+			scriptingModules.remove(sModule.identifier());
+		}
 		module.loader.unloadModule(module);
 		return true;
 	}
@@ -111,6 +123,11 @@ public abstract class Module extends ListenerAdapter implements Comparable<Modul
 		ArrayList<Module> ret = getModules();
 		for (int i = 0; i < ret.size(); i++) if (modulesOn.contains(ret.get(i)) != enabled) ret.remove(i--);
 		return ret;
+	}
+	
+	public static ScriptModule getScriptingModule(String id) {
+		if (scriptingModules.containsKey(id)) return scriptingModules.get(id);
+		return null;
 	}
 	
 	private ModuleLoader loader;

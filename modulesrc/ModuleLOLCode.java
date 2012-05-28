@@ -10,10 +10,11 @@ import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Command.EType;
 
-public class ModuleLOLCode extends Module {
+public class ModuleLOLCode extends ScriptModule {
 	protected Command cmd;
 	
 	public String name() {return "lolcode";}
+	public String identifier() {return "lol";}
 	public void onEnable() {
 		Command.addCommands(cmd = new CmdLOLCode());
 	}
@@ -21,7 +22,7 @@ public class ModuleLOLCode extends Module {
 		Command.removeCommands(cmd);
 	}
 	
-	public String parse(PircBotX bot, EType type, Channel channel, User sender, String code) {
+	public String parse(PircBotX bot, EType type, Channel channel, User sender, String code, String message) {
 		if (code == null) return "";
 		String lines = code.replace(';', '\n').replace('>', '\t');
 		
@@ -60,7 +61,7 @@ public class ModuleLOLCode extends Module {
 			}
 			
 			System.out.println(message);
-			String out = parse(bot,type,channel,sender,StringTools.implode(args,1," "));
+			String out = parse(bot,type,channel,sender,StringTools.implode(args,1," "),null);
 			if (out != null && out.length()>0)
 				callback.append(out);
 		}

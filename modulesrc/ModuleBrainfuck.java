@@ -5,15 +5,16 @@ import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 import pl.shockah.StringTools;
 import pl.shockah.ZeroInputStream;
-import pl.shockah.shocky.Module;
+import pl.shockah.shocky.ScriptModule;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Command.EType;
 
-public class ModuleBrainfuck extends Module {
+public class ModuleBrainfuck extends ScriptModule {
 	protected Command cmd;
 	
 	public String name() {return "brainfuck";}
+	public String identifier() {return "bf";}
 	public void onEnable() {
 		Command.addCommands(cmd = new CmdBrainfuck());
 	}
@@ -21,7 +22,7 @@ public class ModuleBrainfuck extends Module {
 		Command.removeCommands(cmd);
 	}
 	
-	public String parse(PircBotX bot, EType type, Channel channel, User sender, String code) {
+	public String parse(PircBotX bot, EType type, Channel channel, User sender, String code, String message) {
 		if (code == null) return "";
 		
 		try {
@@ -50,7 +51,7 @@ public class ModuleBrainfuck extends Module {
 				return;
 			}
 			
-			callback.append(parse(bot,type,channel,sender,StringTools.implode(args,1," ")));
+			callback.append(parse(bot,type,channel,sender,StringTools.implode(args,1," "),null));
 		}
 	}
 }

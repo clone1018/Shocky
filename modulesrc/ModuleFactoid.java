@@ -350,78 +350,25 @@ public class ModuleFactoid extends Module {
 	}
 	
 	public String parse(PircBotX bot, Channel channel, User sender, String message, String raw) {
-		if (raw.startsWith("<noreply>")) {
+		if (raw.startsWith("<noreply>"))
 			return "";
-		} else if (raw.startsWith("<php>")) {
-			String code = raw.substring(5);
-			String[] args = message.split(" ");
-			String argsImp = StringTools.implode(args,1," "); if (argsImp == null) argsImp = "";
-			
-			StringBuilder sb = new StringBuilder("$channel = \""+channel.getName()+"\"; $bot = \""+bot.getNick().replace("\"","\\\"")+"\"; $sender = \""+sender.getNick().replace("\"","\\\"")+"\";");
-			sb.append(" $argc = "+(args.length-1)+"; $args = \""+argsImp.replace("\"","\\\"")+"\"; $ioru = \""+(args.length-1 == 0 ? sender.getNick() : argsImp).replace("\"","\\\"")+"\";");
-			
-			User[] users = channel.getUsers().toArray(new User[channel.getUsers().size()]);
-			sb.append(" $randnick = \""+users[new Random().nextInt(users.length)].getNick().replace("\"","\\\"")+"\";");
-			
-			sb.append("$arg = array(");
-			for (int i = 1; i < args.length; i++) {
-				if (i != 1) sb.append(",");
-				sb.append("\""+args[i].replace("\"","\\\"")+"\"");
+		String type = null;
+		if (raw.startsWith("<")) {
+			int closingIndex = raw.indexOf(">");
+			if (closingIndex != 0) {
+				type = raw.substring(1, closingIndex);
+				raw = raw.substring(closingIndex+1);
 			}
-			sb.append(");");
-			
-			code = sb.toString()+" "+code;
-			
-			HTTPQuery q = new HTTPQuery(Data.config.getString("php-url")+"?"+HTTPQuery.parseArgs("code",code));
-			q.connect(true,false);
-			
-			sb = new StringBuilder();
-			for (String line : q.read()) {
-				if (sb.length() != 0) sb.append(" | ");
-				sb.append(line);
-			}
-			
-			return StringTools.limitLength(sb);
-		} else if (raw.startsWith("<py>")) {
-			String code = raw.substring(4);
-			String[] args = message.split(" ");
-			String argsImp = StringTools.implode(args,1," "); if (argsImp == null) argsImp = "";
-			
-			StringBuilder sb = new StringBuilder("channel = \""+channel.getName()+"\"; bot = \""+bot.getNick().replace("\"","\\\"")+"\"; sender = \""+sender.getNick().replace("\"","\\\"")+"\";");
-			sb.append(" argc = "+(args.length-1)+"; args = \""+argsImp.replace("\"","\\\"")+"\"; ioru = \""+(args.length-1 == 0 ? sender.getNick() : argsImp).replace("\"","\\\"")+"\";");
-			
-			User[] users = channel.getUsers().toArray(new User[channel.getUsers().size()]);
-			sb.append(" randnick = \""+users[new Random().nextInt(users.length)].getNick().replace("\"","\\\"")+"\";");
-			
-			sb.append("arg = [");
-			for (int i = 1; i < args.length; i++) {
-				if (i != 1) sb.append(",");
-				sb.append("\""+args[i].replace("\"","\\\"")+"\"");
-			}
-			sb.append("];");
-			
-			code = sb.toString()+" "+code;
-			
-			HTTPQuery q = new HTTPQuery(Data.config.getString("python-url")+"?"+HTTPQuery.parseArgs("statement",code),"GET");
-			q.connect(true,false);
-			
-			sb = new StringBuilder();
-			ArrayList<String> result = q.read();
-			if (result.size()>0 && result.get(0).contentEquals("Traceback (most recent call last):"))
-				return result.get(result.size()-1);
-			
-			for (String line : result) {
-				if (sb.length() != 0) sb.append(" | ");
-				sb.append(line);
-			}
-			
-			return StringTools.limitLength(sb);
-		} else if (raw.startsWith("<cmd>")) {
-			Command cmd = Command.getCommand(bot,EType.Channel,""+Data.config.getString("main-cmdchar").charAt(0)+raw.substring(5));
+		}
+		ScriptModule sModule = Module.getScriptingModule(type);
+		if (sModule != null) {
+			return sModule.parse(bot, EType.Channel, channel, sender, raw, message);
+		} else if (type.contentEquals("cmd")) {
+			Command cmd = Command.getCommand(bot,EType.Channel,Data.config.getString("main-cmdchar").charAt(0)+raw);
 			if (cmd != null && !(cmd instanceof CmdFactoid)) {
 				raw = parseVariables(bot, channel, sender, message, raw);
 				CommandCallback callback = new CommandCallback();
-				cmd.doCommand(bot,EType.Channel,callback,channel,sender,raw.substring(5));
+				cmd.doCommand(bot,EType.Channel,callback,channel,sender,raw);
 				if (callback.type == EType.Channel)
 					return callback.toString();
 			}

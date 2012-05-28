@@ -168,12 +168,13 @@ public class Shocky extends ListenerAdapter {
 		if (cmd != null) {
 			CommandCallback callback = new CommandCallback();
 			cmd.doCommand(event.getBot(),Command.EType.Channel,callback,event.getChannel(),event.getUser(),event.getMessage());
-			if (callback.length()>0 && callback.type == EType.Channel) {
-				callback.insert(0,": ");
-				callback.insert(0,event.getUser().getNick());
-			}
-			if (callback.length()>0)
+			if (callback.length()>0) {
+				if (callback.type == EType.Channel) {
+					callback.insert(0,": ");
+					callback.insert(0,event.getUser().getNick());
+				}
 				send(event.getBot(),callback.type==EType.Notice?EType.Notice:Command.EType.Channel,event.getChannel(),event.getUser(),callback.toString());
+			}
 		}
 	}
 	public void onPrivateMessage(PrivateMessageEvent<PircBotX> event) {

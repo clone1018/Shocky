@@ -1,5 +1,6 @@
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -17,17 +18,18 @@ import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 import pl.shockah.StringTools;
-import pl.shockah.shocky.Module;
+import pl.shockah.shocky.ScriptModule;
 import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Command.EType;
 
-public class ModuleJavaScript extends Module {
+public class ModuleJavaScript extends ScriptModule {
 	protected Command cmd;
 
 	public String name() {return "javascript";}
+	public String identifier() {return "js";}
 	public void onEnable() {
 		Command.addCommands(cmd = new CmdJavascript());
 	}
@@ -35,11 +37,20 @@ public class ModuleJavaScript extends Module {
 		Command.removeCommands(cmd);
 	}
 
-	public String parse(final PircBotX bot, EType type, Channel channel, User sender, String code) {
+	public String parse(final PircBotX bot, EType type, Channel channel, User sender, String code, String message) {
 		if (code == null) return "";
 		
 		ScriptEngineManager mgr = new ScriptEngineManager();
 		ScriptEngine engine = mgr.getEngineByName("JavaScript");
+		
+		if (message != null) {
+			String[] args = message.split(" ");
+			String argsImp = StringTools.implode(args,1," "); if (argsImp == null) argsImp = "";
+			engine.put("argc",(args.length-1));
+			engine.put("args",argsImp.replace("\"","\\\""));
+			engine.put("ioru",(args.length-1 == 0 ? sender.getNick() : argsImp).replace("\"","\\\""));
+			engine.put("arg",Arrays.copyOfRange(args, 1, args.length));
+		}
 		
 		engine.put("channel", channel.getName());
 		engine.put("bot", bot.getNick());
@@ -94,7 +105,7 @@ public class ModuleJavaScript extends Module {
 			}
 
 			System.out.println(message);
-			String output = parse(bot,type,channel,sender,StringTools.implode(args,1," "));
+			String output = parse(bot,type,channel,sender,StringTools.implode(args,1," "),null);
 			if (output != null && !output.isEmpty())
 				callback.append(output);
 		}
