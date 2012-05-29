@@ -22,7 +22,6 @@ import com.sun.xml.internal.messaging.saaj.util.ByteOutputStream;
 
 import pl.shockah.StringTools;
 import pl.shockah.shocky.ScriptModule;
-import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Command.EType;
@@ -49,7 +48,9 @@ public class ModuleLua extends ScriptModule {
 		env.load(new PackageLib());
 		env.load(new TableLib());
 		env.load(new StringLib());
+		env.load(new BotLib());
 		env.load(new JseMathLib());
+		
 		LuaThread.setGlobals(env);
 	}
 	@Override
@@ -147,22 +148,6 @@ public class ModuleLua extends ScriptModule {
 		
 		public String randnick() {
 			return users[rnd.nextInt(users.length)].getNick();
-		}
-		
-		public String munge(String in) {
-			return Utils.mungeNick(in);
-		}
-		
-		public String odd(String in) {
-			return Utils.odd(in);
-		}
-		
-		public String flip(String in) {
-			return Utils.flip(in);
-		}
-		
-		public String reverse(String in) {
-			return new StringBuilder(in).reverse().toString();
 		}
 		
 		public String toString() {
