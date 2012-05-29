@@ -1,13 +1,12 @@
-import java.io.FilePermission;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.security.Permission;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -25,10 +24,15 @@ import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Command.EType;
+import pl.shockah.shocky.threads.SandboxSecurityManager;
+import pl.shockah.shocky.threads.SandboxThreadFactory;
+import pl.shockah.shocky.threads.SandboxThreadGroup;
 
 public class ModuleJavaScript extends ScriptModule {
 	protected Command cmd;
-	protected SecurityManager secure = new JSSecurityManager();
+	protected SecurityManager secure = new SandboxSecurityManager();
+	ThreadGroup sandboxGroup = new SandboxThreadGroup("javascript");
+	ThreadFactory sandboxFactory = new SandboxThreadFactory(sandboxGroup);
 
 	public String name() {return "javascript";}
 	public String identifier() {return "js";}
@@ -66,7 +70,7 @@ public class ModuleJavaScript extends ScriptModule {
 		SecurityManager sysSecure = System.getSecurityManager();
 		System.setSecurityManager(secure);
 		String output = null;
-		final ExecutorService service = Executors.newFixedThreadPool(1);
+		final ExecutorService service = Executors.newFixedThreadPool(1,sandboxFactory);
 		try {
 		    Future<String> f = service.submit(r);
 		    output = f.get(30, TimeUnit.SECONDS);
@@ -153,26 +157,6 @@ public class ModuleJavaScript extends ScriptModule {
 			return "Yes it is a bot";
 		}
 	}
-	
-	private static class JSSecurityManager extends SecurityManager 
-    {
-    	@Override
-    	public void checkPermission(Permission perm) 
-    	{
-    		if (perm instanceof FilePermission)
-    			throw new SecurityException();
-    	}
-    	@Override
-    	public void checkPermission(Permission perm, Object context) 
-    	{
-    		if (perm instanceof FilePermission)
-    			throw new SecurityException();
-    	}
-    	@Override
-    	public void checkExit(int status) {
-    		throw new SecurityException();
-    	}
-    }
 	
 	public class JSRunner implements Callable<String> {
 		
