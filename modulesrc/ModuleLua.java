@@ -1,6 +1,7 @@
+import java.io.ByteArrayInputStream;
 import java.io.FilePermission;
-import java.io.PrintWriter;
-import java.io.StringWriter;
+import java.io.PrintStream;
+import java.nio.charset.Charset;
 import java.security.Permission;
 import java.util.Arrays;
 import java.util.Random;
@@ -11,14 +12,16 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import javax.script.ScriptContext;
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
-import javax.script.ScriptException;
-
+import org.luaj.vm2.*;
+import org.luaj.vm2.compiler.LuaC;
+import org.luaj.vm2.lib.*;
+import org.luaj.vm2.lib.jse.*;
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
+
+import com.sun.xml.internal.messaging.saaj.util.ByteOutputStream;
+
 import pl.shockah.StringTools;
 import pl.shockah.shocky.ScriptModule;
 import pl.shockah.shocky.Utils;
@@ -26,42 +29,56 @@ import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Command.EType;
 
-public class ModuleJavaScript extends ScriptModule {
+public class ModuleLua extends ScriptModule {
 	protected Command cmd;
-	protected SecurityManager secure = new JSSecurityManager();
+	protected SecurityManager secure = new LuaSecurityManager();
+	LuaTable env = null;
 
-	public String name() {return "javascript";}
-	public String identifier() {return "js";}
+	@Override
+	public String name() {return "lua";}
+	@Override
+	public String identifier() {return "lua";}
+	@Override
 	public void onEnable() {
-		Command.addCommands(cmd = new CmdJavascript());
+		Command.addCommands(cmd = new CmdLua());
+		env = new LuaTable();
+		env.load(new JseBaseLib());
+		env.load(new PackageLib());
+		env.load(new TableLib());
+		env.load(new StringLib());
+		env.load(new JseMathLib());
+		LuaThread.setGlobals(env);
 	}
+	@Override
 	public void onDisable() {
 		Command.removeCommands(cmd);
 	}
 
-	public String parse(final PircBotX bot, EType type, Channel channel, User sender, String code, String message) {
+	@Override
+	public String parse(PircBotX bot, EType type, Channel channel, User sender, String code, String message) {
 		if (code == null) return "";
-		
-		ScriptEngineManager mgr = new ScriptEngineManager();
-		ScriptEngine engine = mgr.getEngineByName("JavaScript");
 		
 		if (message != null) {
 			String[] args = message.split(" ");
 			String argsImp = StringTools.implode(args,1," "); if (argsImp == null) argsImp = "";
-			engine.put("argc",(args.length-1));
-			engine.put("args",argsImp.replace("\"","\\\""));
-			engine.put("ioru",(args.length-1 == 0 ? sender.getNick() : argsImp).replace("\"","\\\""));
-			engine.put("arg",Arrays.copyOfRange(args, 1, args.length));
+			env.set("argc",(args.length-1));
+			env.set("args",argsImp.replace("\"","\\\""));
+			env.set("ioru",(args.length-1 == 0 ? sender.getNick() : argsImp).replace("\"","\\\""));
+			//env.set("arg",CoerceJavaToLua.coerce(Arrays.copyOfRange(args, 1, args.length)));
+			LuaTable arg = new LuaTable();
+			for (int i = 1; i < args.length; i++)
+				arg.set(i, args[i]);
+			env.set("arg",arg);
 		}
 		
-		engine.put("channel", channel.getName());
-		engine.put("bot", bot.getNick());
-		engine.put("sender", sender.getNick());
+		env.set("channel", channel.getName());
+		env.set("bot", bot.getNick());
+		env.set("sender", sender.getNick());
 		
 		Sandbox sandbox = new Sandbox(channel.getUsers().toArray(new User[0]));
-		engine.put("bot", sandbox);
+		env.set("bot", CoerceJavaToLua.coerce(sandbox));
 
-		JSRunner r = new JSRunner(engine, code);
+		LuaRunner r = new LuaRunner(code);
 
 		SecurityManager sysSecure = System.getSecurityManager();
 		System.setSecurityManager(secure);
@@ -85,21 +102,21 @@ public class ModuleJavaScript extends ScriptModule {
 			return null;
 		
 		StringBuilder sb = new StringBuilder();
-		for(String line : output.split("\n")) {
+		for(String line : output.split("[\r\n]+")) {
 			if (sb.length() != 0) sb.append(" | ");
 			sb.append(line);
 		}
 
 		return StringTools.limitLength(sb);
 	}
-
-	public class CmdJavascript extends Command {
-		public String command() {return "javascript";}
+	
+	public class CmdLua extends Command {
+		public String command() {return "lua";}
 		public String help(PircBotX bot, EType type, Channel channel, User sender) {
-			return "javascript/js\njavascript {code} - runs JavaScript code";
+			return "lua\nlua {code} - runs Lua code";
 		}
 		public boolean matches(PircBotX bot, EType type, String cmd) {
-			return cmd.equals(command()) || cmd.equals("js");
+			return cmd.equals(command());
 		}
 
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
@@ -129,10 +146,6 @@ public class ModuleJavaScript extends ScriptModule {
 			return users[rnd.nextInt(users.length)].getNick();
 		}
 		
-		public String format(String format, Object... args) {
-			return String.format(format, args);
-		}
-		
 		public String munge(String in) {
 			return Utils.mungeNick(in);
 		}
@@ -154,7 +167,7 @@ public class ModuleJavaScript extends ScriptModule {
 		}
 	}
 	
-	private static class JSSecurityManager extends SecurityManager 
+	private static class LuaSecurityManager extends SecurityManager 
     {
     	@Override
     	public void checkPermission(Permission perm) 
@@ -174,32 +187,30 @@ public class ModuleJavaScript extends ScriptModule {
     	}
     }
 	
-	public class JSRunner implements Callable<String> {
+	public class LuaRunner implements Callable<String> {
 		
-		private final ScriptEngine engine;
 		private final String code;
 		
-		public JSRunner(ScriptEngine e, String c) {
-			engine = e;
+		public LuaRunner(String c) {
 			code = c;
 		}
 
 		@Override
 		public String call() throws Exception {
-			StringWriter sw = new StringWriter();
-			PrintWriter pw = new PrintWriter(sw);
-			ScriptContext context = engine.getContext();
-			context.setWriter(pw);
-			context.setErrorWriter(pw);
+			ByteOutputStream sw = new ByteOutputStream();
+			PrintStream pw = new PrintStream(sw);
+			BaseLib.instance.STDERR = pw;
+			BaseLib.instance.STDOUT = pw;
 			
 			try {
-				Object out = engine.eval(code);
-				if (sw.getBuffer().length() != 0)
-					return sw.toString();
+				LuaFunction func = LuaC.instance.load(new ByteArrayInputStream(code.getBytes()), "script", env);
+				Object out = func.invoke();
+				if (sw.size() != 0)
+					return new String(sw.getBytes(),0,sw.size(),Charset.forName("UTF-8"));
 				if (out != null)
 					return out.toString();
 			}
-			catch(ScriptException ex) {
+			catch(LuaError ex) {
 				return ex.getMessage();
 			}
 			return null;

@@ -10,5 +10,6 @@
 	</classpathentry>
 	<classpathentry kind="lib" path="libs/pircbotx-1.7.jar"/>
 	<classpathentry kind="lib" path="libs/LOLCODE-0.11.jar"/>
+	<classpathentry kind="lib" path="libs/luaj-jse-2.0.2.jar" sourcepath="libs/luaj-sources-2.0.2.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

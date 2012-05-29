@@ -1,4 +1,8 @@
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+
 import org.faabtech.brainfuck.BrainfuckEngine;
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
@@ -26,10 +30,18 @@ public class ModuleBrainfuck extends ScriptModule {
 		if (code == null) return "";
 		
 		try {
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			BrainfuckEngine bfe = new BrainfuckEngine(0,baos,new ZeroInputStream());
+			OutputStream os = new ByteArrayOutputStream();
+			InputStream is;
+			if (message == null)
+				is = new ZeroInputStream();
+			else {
+				String[] args = message.split(" ");
+				String argsImp = StringTools.implode(args,1," "); if (argsImp == null) argsImp = "";
+				is = new ByteArrayInputStream(argsImp.getBytes());
+			}
+			BrainfuckEngine bfe = new BrainfuckEngine(code.length(),os,is);
 			bfe.interpret(code);
-			return StringTools.limitLength(baos.toString());
+			return StringTools.limitLength(os.toString());
 		} catch (Exception e) {e.printStackTrace();}
 		return "";
 	}
