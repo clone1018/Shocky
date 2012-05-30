@@ -51,7 +51,8 @@ public class JSONLib extends VarArgFunction {
 			} catch (UnsupportedEncodingException e) {
 				e.printStackTrace();
 			}
-		case 3:
+				//$FALL-THROUGH$
+			case 3:
 			boolean urlEncode = true;
 			if (args.narg() == 2)
 				urlEncode = args.checkboolean(2);
