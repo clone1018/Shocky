@@ -21,6 +21,7 @@ import org.pircbotx.User;
 import com.sun.xml.internal.messaging.saaj.util.ByteOutputStream;
 
 import pl.shockah.StringTools;
+import pl.shockah.ZeroInputStream;
 import pl.shockah.shocky.ScriptModule;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
@@ -48,8 +49,10 @@ public class ModuleLua extends ScriptModule {
 		env.load(new PackageLib());
 		env.load(new TableLib());
 		env.load(new StringLib());
-		env.load(new BotLib());
 		env.load(new JseMathLib());
+		
+		env.load(new BotLib());
+		env.load(new JSONLib());
 		
 		LuaThread.setGlobals(env);
 	}
@@ -68,7 +71,6 @@ public class ModuleLua extends ScriptModule {
 			env.set("argc",(args.length-1));
 			env.set("args",argsImp.replace("\"","\\\""));
 			env.set("ioru",(args.length-1 == 0 ? sender.getNick() : argsImp).replace("\"","\\\""));
-			//env.set("arg",CoerceJavaToLua.coerce(Arrays.copyOfRange(args, 1, args.length)));
 			LuaTable arg = new LuaTable();
 			for (int i = 1; i < args.length; i++)
 				arg.set(i, args[i]);
@@ -169,6 +171,7 @@ public class ModuleLua extends ScriptModule {
 			PrintStream pw = new PrintStream(sw);
 			BaseLib.instance.STDERR = pw;
 			BaseLib.instance.STDOUT = pw;
+			BaseLib.instance.STDIN = new ZeroInputStream();
 			
 			try {
 				LuaFunction func = LuaC.instance.load(new ByteArrayInputStream(code.getBytes()), "script", env);
