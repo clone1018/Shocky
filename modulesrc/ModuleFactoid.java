@@ -3,7 +3,6 @@ import java.lang.reflect.Method;
 import java.util.*;
 import java.util.regex.*;
 import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.json.JSONArray;
 import org.json.JSONObject;
 import org.pircbotx.*;
 import org.pircbotx.hooks.events.MessageEvent;
@@ -40,7 +39,8 @@ public class ModuleFactoid extends Module {
 		
 		SQL.raw("CREATE TABLE IF NOT EXISTS "+SQL.getTable("factoid")+" (channel TEXT NOT NULL,factoid TEXT,author TEXT,rawtext TEXT,stamp INT(10) UNSIGNED NOT NULL,locked INT(1) UNSIGNED NOT NULL DEFAULT 0,forgotten INT(1) UNSIGNED NOT NULL DEFAULT 0)");
 		
-		if (new File("data","factoid.cfg").exists()) {
+		/* old code for importing factoids in old format
+		 * if (new File("data","factoid.cfg").exists()) {
 			Config config = new Config();
 			config.load(new File("data","factoid.cfg"));
 			
@@ -66,9 +66,10 @@ public class ModuleFactoid extends Module {
 			}
 			
 			new File("data","factoid.cfg").delete();
-		}
+		}*/
 		
-		if (new File("data","crowdb.txt").exists()) {
+		/* old code for importing crow's factoids
+		 * if (new File("data","crowdb.txt").exists()) {
 			ArrayList<String> odd = new ArrayList<String>();
 			try {
 				JSONArray base = new JSONArray(FileLine.readString(new File("data","crowdb.txt")));
@@ -122,9 +123,10 @@ public class ModuleFactoid extends Module {
 			
 			FileLine.write(new File("data","crowdbodd.txt"),odd);
 			new File("data","crowdb.txt").delete();
-		}
+		}*/
 		
-		if (new File("data","crowdbodd.txt").exists()) {
+		/* old code for importing crow's factoids
+		 * if (new File("data","crowdbodd.txt").exists()) {
 			ArrayList<String> lines = FileLine.read(new File("data","crowdbodd.txt"));
 			ArrayList<String> odd2 = new ArrayList<String>();
 			
@@ -149,7 +151,7 @@ public class ModuleFactoid extends Module {
 			
 			FileLine.write(new File("data","crowdbodd2.txt"),odd2);
 			new File("data","crowdbodd.txt").delete();
-		}
+		}*/
 		
 		ArrayList<String> lines = FileLine.read(new File("data","factoidCmd.cfg"));
 		for (int i = 0; i < lines.size(); i += 2) fcmds.add(new CmdFactoid(lines.get(i),lines.get(i+1)));

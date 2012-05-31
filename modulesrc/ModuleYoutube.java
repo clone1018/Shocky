@@ -4,6 +4,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.json.JSONObject;
 import org.pircbotx.Channel;
+import org.pircbotx.Colors;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 import org.pircbotx.hooks.events.ActionEvent;
@@ -64,9 +65,10 @@ public class ModuleYoutube extends Module {
 			
 			int iDh = vDuration/3600, iDm = (vDuration/60) % 60, iDs = vDuration % 60;
 			
-			return (data ? vTitle+" | length "+(vDuration >= 3600 ? iDh+"h " : "")+(vDuration >= 60 ? iDm+"m " : "")+iDs+"s | rated "
-				+(vRating != -1 ? String.format("%.2f",vRating).replace(",",".")+"/5.00 | " : "")+vViewCount+" view"+(vViewCount != 1 ? "s" : "")
-				+" | by "+vUploader+(url ? " | " : "") : "")+(url ? "http://youtu.be/"+vID : "");
+			return (data ? Colors.BOLD+vTitle+Colors.NORMAL+" | length "+Colors.BOLD+(vDuration >= 3600 ? iDh+"h " : "")+(vDuration >= 60 ? iDm+"m " : "")+iDs+"s"+Colors.NORMAL+" | rated "
+				+(vRating != -1 ? Colors.BOLD+String.format("%.2f",vRating).replace(",",".")+"/5.00"+Colors.NORMAL+" | " : "")
+				+Colors.BOLD+vViewCount+Colors.NORMAL+" view"+(vViewCount != 1 ? "s" : "")+" | by "+Colors.BOLD+vUploader+Colors.NORMAL
+				+(url ? " | " : "") : "")+(url ? "http://youtu.be/"+vID : "");
 		} catch (Exception e) {e.printStackTrace();}
 		return null;
 	}

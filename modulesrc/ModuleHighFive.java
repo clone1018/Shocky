@@ -17,7 +17,6 @@ import pl.shockah.shocky.Shocky;
 public class ModuleHighFive extends Module implements ActionListener {
 	private Config config = new Config();
 	private HashMap<String,String> started = new HashMap<String,String>();
-	private HashMap<String,Boolean> way = new HashMap<String,Boolean>();
 	private HashMap<String,TimerClear> timers = new HashMap<String,TimerClear>();
 	
 	public int changeStat(String nick1, String nick2, int change) {
@@ -58,17 +57,13 @@ public class ModuleHighFive extends Module implements ActionListener {
 		String s = started.get(event.getChannel().getName());
 		if (s == null && (list.contains("o/") ^ list.contains("\\o"))) {
 			started.put(event.getChannel().getName(),event.getUser().getNick());
-			way.put(event.getChannel().getName(),list.contains("o/"));
 			TimerClear tc = new TimerClear(Data.config.getInt("hf-maxtime"),this,event.getChannel().getName());
 			timers.put(event.getChannel().getName(),tc); tc.start();
 		}
 		if (s != null && (list.contains("\\o") ^ list.contains("o/"))) {
-			if (list.contains("o/") == way.get(event.getChannel().getName())) return;
-			
 			if (event.getUser().equals(s) && event.getBot().getUserBot().getChannelsOpIn().contains(event.getChannel())) {
 				event.getBot().kick(event.getChannel(),event.getUser());
 				started.remove(event.getChannel().getName());
-				way.remove(event.getChannel().getName());
 				timers.get(event.getChannel().getName()).stop(); timers.remove(event.getChannel().getName());
 				return;
 			}
@@ -84,7 +79,6 @@ public class ModuleHighFive extends Module implements ActionListener {
 			}
 			
 			started.remove(event.getChannel().getName());
-			way.remove(event.getChannel().getName());
 			timers.get(event.getChannel().getName()).stop(); timers.remove(event.getChannel().getName());
 		}
 	}
@@ -105,7 +99,6 @@ public class ModuleHighFive extends Module implements ActionListener {
 		TimerClear tc = (TimerClear)e.getSource();
 		tc.stop();
 		started.remove(tc.channel);
-		way.remove(tc.channel);
 		timers.remove(tc.channel);
 	}
 	
