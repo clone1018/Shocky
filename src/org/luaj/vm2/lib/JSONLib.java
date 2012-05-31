@@ -8,7 +8,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.luaj.vm2.LuaError;
-import org.luaj.vm2.LuaString;
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Varargs;
@@ -30,10 +29,8 @@ public class JSONLib extends VarArgFunction {
 
 	public LuaValue init() {
 		LuaTable t = new LuaTable();
-		bind(t, JSONLib.class, new String[] {"json","url","irc"}, 1);
+		bind(t, JSONLib.class, new String[] {"json","get","url","irc"}, 1);
 		env.set("net", t);
-		if (LuaString.s_metatable == null)
-			LuaString.s_metatable = tableOf(new LuaValue[] { INDEX, t });
 		PackageLib.instance.LOADED.set("net", t);
 		return t;
 	}
@@ -44,37 +41,41 @@ public class JSONLib extends VarArgFunction {
 		case 0:
 			return init();
 		case 1:
-			return JSONLib.get(args);
+			return JSONLib.json(args);
 		case 2:
+			return JSONLib.get(args);
+		case 3:
 			try {
-				return LuaValue.valueOf(URLEncoder.encode(args.checkjstring(1), "UTF8"));
+				return valueOf(URLEncoder.encode(args.checkjstring(1), "UTF8"));
 			} catch (UnsupportedEncodingException e) {
 				e.printStackTrace();
 			}
-		case 3:
-			boolean urlEncode = true;
-			if (args.narg() == 2)
-				urlEncode = args.checkboolean(2);
-			return LuaValue.valueOf(StringTools.ircFormatted(args.checkjstring(1), urlEncode));
+		case 4:
+			return valueOf(StringTools.ircFormatted(args.checkjstring(1), args.optboolean(2, true)));
 		}
 		return NONE;
 	}
-
+	
 	public static Varargs get(Varargs args) {
 		try {
-			LuaString url = args.checkstring(1);
-			String post = null;
-			if (args.narg() == 2) {
-				post = args.checkstring(2).checkjstring();
-				if (post.isEmpty())
-					post = null;
-			}
-			HTTPQuery q = new HTTPQuery(url.checkjstring(), post != null ? "POST" : "GET");
+			String url = args.checkjstring(1);
+			String post = args.optjstring(2, null);
+			if (post != null && post.isEmpty())
+				post = null;
+			HTTPQuery q = new HTTPQuery(url, post != null ? "POST" : "GET");
 			q.connect(true, post != null);
 			if (post != null)
 				q.write(post);
-			String line = q.readWhole();
-			JSONObject json = new JSONObject(line);
+			return valueOf(q.readWhole());
+		} catch (Exception e) {
+			throw new LuaError(e);
+		}
+	}
+
+	public static Varargs json(Varargs args) {
+		try {
+			String content = args.checkjstring(1);
+			JSONObject json = new JSONObject(content);
 			return getJSONTable(json);
 		} catch (Exception e) {
 			throw new LuaError(e);
@@ -104,13 +105,13 @@ public class JSONLib extends VarArgFunction {
 	
 	private static LuaValue getValue(Object obj) throws JSONException {
 		if (obj instanceof Boolean)
-			return LuaValue.valueOf((Boolean)obj);
+			return valueOf((Boolean)obj);
 		else if (obj instanceof Integer)
-			return LuaValue.valueOf((Integer)obj);
+			return valueOf((Integer)obj);
 		else if (obj instanceof Double)
-			return LuaValue.valueOf((Double)obj);
+			return valueOf((Double)obj);
 		else if (obj instanceof String)
-			return LuaValue.valueOf((String)obj);
+			return valueOf((String)obj);
 		else if (obj instanceof JSONArray) {
 			return getJSONArray((JSONArray)obj);
 		} else if (obj instanceof JSONObject) {
