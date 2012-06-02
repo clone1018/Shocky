@@ -315,40 +315,67 @@ public class ModuleFactoid extends Module {
 				return;
 			}
 			
-			if (getLatest(channel.getName(),msg.split(" ")[0]) == null) return;
+			args = msg.split(" ");
+			String factoid = args[0].toLowerCase();
+			String[] chain = factoid.split(">");
 			
-			LinkedList<String> checkRecursive = new LinkedList<String>();
-			while (true) {
-				String factoid = msg.split(" ")[0].toLowerCase();
-				Factoid f = getLatest(channel.getName(),factoid,true);
-				if (f != null) {
-					if (f.forgotten) return;
-					String raw = f.rawtext;
-					if (raw.startsWith("<alias>")) {
-						raw = raw.substring(7);
-						msg = parseVariables(bot, channel, sender, msg, raw);
-						if (checkRecursive.contains(msg)) return;
-						checkRecursive.add(msg);
-						continue;
-					} else {
-						if (target != null) Shocky.overrideTarget.put(Thread.currentThread(),new ImmutablePair<Command.EType,Command.EType>(Command.EType.Channel,Command.EType.Notice));
-						String message = parse(bot,channel,sender,msg,raw);
-						if (message != null && message.length() > 0) {
-							if (target == null && ping != null) {
-								StringBuilder sb = new StringBuilder();
-								sb.append(ping);
-								sb.append(": ");
-								sb.append(message);
-								message = sb.toString();
-							}
-							Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),message);
-						}
-						if (target != null) Shocky.overrideTarget.remove(Thread.currentThread());
-						break;
-					}
-				} else return;
+			for (i = 0; i < chain.length; i++)
+				if (getLatest(channel.getName(),chain[i]) == null) return;
+
+			String message = StringTools.implode(args, 1," ");
+			
+			for (i = 0; i < chain.length; i++) {
+				msg = chain[i] + " " + message;
+				message = runFactoid(bot, channel, sender, msg);
 			}
+			
+			if (target != null)
+				Shocky.overrideTarget.put(Thread.currentThread(), new ImmutablePair<Command.EType, Command.EType>(Command.EType.Channel, Command.EType.Notice));
+			
+			if (message != null && message.length() > 0) {
+				if (target == null && ping != null) {
+					StringBuilder sb = new StringBuilder();
+					sb.append(ping);
+					sb.append(": ");
+					sb.append(message);
+					message = sb.toString();
+				}
+				Shocky.send(bot, Command.EType.Channel, channel, Shocky.getUser(target), message);
+			}
+			if (target != null)
+				Shocky.overrideTarget.remove(Thread .currentThread());
 		}
+	}
+	
+	public String runFactoid(PircBotX bot, Channel channel, User sender, String message) {
+		LinkedList<String> checkRecursive = new LinkedList<String>();
+		while (true) {
+			String factoid = message.split(" ")[0].toLowerCase();
+
+			Factoid f = getLatest(channel.getName(), factoid, true);
+			if (f != null) {
+				if (f.forgotten) {
+					message = "";
+					break;
+				}
+				String raw = f.rawtext;
+				if (raw.startsWith("<alias>")) {
+					raw = raw.substring(7);
+					message = parseVariables(bot, channel, sender, message, raw);
+					StringBuilder sb = new StringBuilder();
+					parseFunctions(message,sb);
+					message = sb.toString();
+					if (checkRecursive.contains(message))
+						break;
+					checkRecursive.add(message);
+					continue;
+				} else {
+					message = parse(bot, channel, sender, message, raw);
+					break;
+				}
+			} else break;
+		}
+		return message;
 	}
 	
 	public String parse(PircBotX bot, Channel channel, User sender, String message, String raw) {
@@ -467,10 +494,9 @@ public class ModuleFactoid extends Module {
 					}
 				}
 				Method method = module.getClass().getDeclaredMethod("getRollbackLines", Class.class, String.class, String.class, String.class, boolean.class, int.class, int.class);
-				int index = (user != null && sender != user) ? 1 : 2;
 				@SuppressWarnings("unchecked")
-				ArrayList<Line> lines = (ArrayList<Line>) method.invoke(module, LineMessage.class, channel.getName(), user != null ? user.getNick() : null, null, true, index, 0);
-				if (lines.size() == index) {
+				ArrayList<Line> lines = (ArrayList<Line>) method.invoke(module, LineMessage.class, channel.getName(), user != null ? user.getNick() : null, null, true, 1, 0);
+				if (lines.size() == 1) {
 					Line line = lines.get(0);
 					if (line instanceof LineMessage) {
 						StringBuilder msg = new StringBuilder(args[0]);

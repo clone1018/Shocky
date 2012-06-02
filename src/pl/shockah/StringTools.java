@@ -143,6 +143,7 @@ public class StringTools {
 			}
 		}
 		output = StringEscapeUtils.unescapeJava(output);
+		output = stripHTMLTags(output);
 		output = deleteWhitespace(output);
 		output = limitLength(output);
 		return output;
