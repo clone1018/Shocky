@@ -354,10 +354,8 @@ public class ModuleFactoid extends Module {
 
 			Factoid f = getLatest(channel.getName(), factoid, true);
 			if (f != null) {
-				if (f.forgotten) {
-					message = "";
+				if (f.forgotten)
 					break;
-				}
 				String raw = f.rawtext;
 				if (raw.startsWith("<alias>")) {
 					raw = raw.substring(7);
@@ -369,13 +367,10 @@ public class ModuleFactoid extends Module {
 						break;
 					checkRecursive.add(message);
 					continue;
-				} else {
-					message = parse(bot, channel, sender, message, raw);
-					break;
-				}
+				} else return parse(bot, channel, sender, message, raw);
 			} else break;
 		}
-		return message;
+		return "";
 	}
 	
 	public String parse(PircBotX bot, Channel channel, User sender, String message, String raw) {
@@ -423,6 +418,7 @@ public class ModuleFactoid extends Module {
 		}
 		message = escapedMsg.toString();
 		String[] args = message.split(" ");
+		int req = 0;
 		
 		Random rnd = null;
 		User[] users = null;
@@ -443,18 +439,19 @@ public class ModuleFactoid extends Module {
 			
 			boolean range = m.group(3) != null;
 			
-			if (tag.contentEquals("arg") && num1 < args.length && num2 < args.length) {
+			if (tag.contentEquals("arg")) {
 					if (range) {
 						int min = num1 != Integer.MIN_VALUE ? num1 : 1;
 						int max = num2 != Integer.MIN_VALUE ? num2 : args.length-1;
-						m.appendReplacement(ret, StringTools.implode(args, min, max, " "));
+						req = Math.max(req, Math.max(min, max));
+						if (args.length > req)
+							m.appendReplacement(ret, StringTools.implode(args, min, max, " "));
 					}
-					else if (num1 != Integer.MIN_VALUE)
-						m.appendReplacement(ret, args[num1]);
-			} else if (tag.contentEquals("req") && num1 != Integer.MIN_VALUE) {
-				if (args.length <= num1)
-					return String.format("This factoid requires at least %d args",num1);
-				m.appendReplacement(ret, "");
+					else if (num1 != Integer.MIN_VALUE) {
+						req = Math.max(req, num1);
+						if (args.length > req)
+							m.appendReplacement(ret, args[num1]);
+					}
 			}
 			else if (tag.contentEquals("inp"))
 				m.appendReplacement(ret, StringTools.implode(args,1," "));
@@ -475,6 +472,10 @@ public class ModuleFactoid extends Module {
 			}
 		}
 		m.appendTail(ret);
+		
+		if (args.length <= req)
+			return String.format("This factoid requires at least %d args",req);
+		
 		return ret.toString();
 	}
 	
