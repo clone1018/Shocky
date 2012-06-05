@@ -24,7 +24,7 @@ public class ModuleTwitter extends Module {
 		sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
 	}
 	
-	private final Pattern statusUrl = Pattern.compile("https?://twitter\\.com/(#!/)?[^/]+/status(es)?/[0-9]+");
+	private final Pattern statusUrl = Pattern.compile("https?://(?:www.)?(?:[a-z]+?\\.)?twitter\\.com/(#!/)?[^/]+/status(es)?/[0-9]+");
 	
 	public String name() {return "twitter";}
 	public boolean isListener() {return true;}
