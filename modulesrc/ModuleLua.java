@@ -121,9 +121,6 @@ public class ModuleLua extends ScriptModule {
 		public String help(PircBotX bot, EType type, Channel channel, User sender) {
 			return "lua\nlua {code} - runs Lua code";
 		}
-		public boolean matches(PircBotX bot, EType type, String cmd) {
-			return cmd.equals(command());
-		}
 
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			String[] args = message.split(" ");

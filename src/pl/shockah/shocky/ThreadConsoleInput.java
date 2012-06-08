@@ -14,12 +14,12 @@ public class ThreadConsoleInput extends Thread {
 		while (true) {
 			line = c.readLine();
 			if (line != null) {
-				Command cmd = Command.getCommand(null,Command.EType.Console,line);
-				if (cmd != null) {
-					CommandCallback callback = new CommandCallback();
+				CommandCallback callback = new CommandCallback();
+				Command cmd = Command.getCommand(null,null,Command.EType.Console,callback,line);
+				if (cmd != null)
 					cmd.doCommand(null,Command.EType.Console,callback,null,null,line);
-					Shocky.send(null,Command.EType.Console,null,null,callback.toString());
-				}
+				if (callback.length()>0)
+					Shocky.sendConsole(callback.toString());
 			}
 		}
 	}

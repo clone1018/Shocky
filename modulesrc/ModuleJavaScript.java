@@ -38,6 +38,7 @@ public class ModuleJavaScript extends ScriptModule {
 	public String identifier() {return "js";}
 	public void onEnable() {
 		Command.addCommands(cmd = new CmdJavascript());
+		Command.addCommand("js",cmd);
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd);
@@ -101,9 +102,6 @@ public class ModuleJavaScript extends ScriptModule {
 		public String command() {return "javascript";}
 		public String help(PircBotX bot, EType type, Channel channel, User sender) {
 			return "javascript/js\njavascript {code} - runs JavaScript code";
-		}
-		public boolean matches(PircBotX bot, EType type, String cmd) {
-			return cmd.equals(command()) || cmd.equals("js");
 		}
 
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {

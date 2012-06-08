@@ -1,11 +1,10 @@
 package pl.shockah.shocky.cmds;
 
-import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Map;
+
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
-import pl.shockah.shocky.Data;
 
 public class CmdHelp extends Command {
 	public String command() {return "help";}
@@ -13,12 +12,12 @@ public class CmdHelp extends Command {
 		StringBuilder sb = new StringBuilder();
 		sb.append("help {command} - shows command's help\n");
 		
-		ArrayList<Command> cmds = Command.getCommands();
-		Collections.sort(cmds);
-		for (int i = 0; i < cmds.size(); i++) {
-			Command cmd = cmds.get(i);
+		Map<String, Command> cmds = Command.getCommands();
+		int i = 0;
+		for (String name : cmds.keySet()) {
 			if (i != 0) sb.append(", ");
-			sb.append(cmd.command());
+			sb.append(name);
+			i++;
 		}
 		return sb.toString();
 	}
@@ -28,8 +27,9 @@ public class CmdHelp extends Command {
 		String[] args = message.split(" ");
 		callback.type = EType.Notice;
 		if (args.length == 2) {
-			Command cmd = Command.getCommand(bot,type,(type == EType.Channel ? Data.config.getString("main-cmdchar").charAt(0) : "")+args[1]);
-			callback.append(cmd == null ? "No such command" : cmd.help(bot,type,channel,sender));
+			Command cmd = Command.getCommand(bot,sender,type,callback,args[1]);
+			if (cmd != null)
+				callback.append(cmd.help(bot,type,channel,sender));
 			return;
 		}
 		callback.append(help(bot,type,channel,sender));

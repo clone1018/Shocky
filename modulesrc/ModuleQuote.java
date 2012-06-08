@@ -39,6 +39,9 @@ public class ModuleQuote extends Module {
 		}
 		
 		Command.addCommands(cmd = new CmdQuote(),cmdAdd = new CmdQuoteAdd(),cmdRemove = new CmdQuoteRemove());
+		Command.addCommand("q", cmd);
+		Command.addCommand("qadd", cmdAdd);
+		Command.addCommand("qdel", cmdRemove);
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd,cmdAdd,cmdRemove);
@@ -70,10 +73,6 @@ public class ModuleQuote extends Module {
 			sb.append("quote/q");
 			sb.append("\nquote [channel] [nick] [id] - shows a quote");
 			return sb.toString();
-		}
-		public boolean matches(PircBotX bot, EType type, String cmd) {
-			if (type != EType.Channel) return false;
-			return cmd.equals(command()) || cmd.equals("q");
 		}
 		
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
@@ -135,10 +134,6 @@ public class ModuleQuote extends Module {
 			sb.append("\nquoteadd {nick1};{nick2};(...) {quote} - adds a quote");
 			return sb.toString();
 		}
-		public boolean matches(PircBotX bot, EType type, String cmd) {
-			if (type != EType.Channel) return false;
-			return cmd.equals(command()) || cmd.equals("qadd");
-		}
 		
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			String[] args = message.split(" ");
@@ -163,10 +158,6 @@ public class ModuleQuote extends Module {
 			sb.append("quoteremove/qdel");
 			sb.append("\nquoteremove [channel] [nick] id - removes a quote");
 			return sb.toString();
-		}
-		public boolean matches(PircBotX bot, EType type, String cmd) {
-			if (type != EType.Channel) return false;
-			return cmd.equals(command()) || cmd.equals("qdel");
 		}
 		
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {

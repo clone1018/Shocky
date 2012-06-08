@@ -47,10 +47,7 @@ public class ModuleLOLCode extends ScriptModule {
 	public class CmdLOLCode extends Command {
 		public String command() {return "lolcode";}
 		public String help(PircBotX bot, EType type, Channel channel, User sender) {
-			return "lolcode/lol\nlolcode {code} - runs LOLCode code";
-		}
-		public boolean matches(PircBotX bot, EType type, String cmd) {
-			return cmd.equals(command()) || cmd.equals("lol");
+			return "lolcode\nlolcode {code} - runs LOLCode code";
 		}
 		
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {

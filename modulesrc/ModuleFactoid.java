@@ -1,8 +1,8 @@
 import java.io.File;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.regex.*;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.json.JSONObject;
 import org.pircbotx.*;
 import org.pircbotx.hooks.events.MessageEvent;
@@ -23,7 +23,7 @@ import pl.shockah.shocky.sql.SQL;
 
 public class ModuleFactoid extends Module {
 	protected Command cmdR, cmdF, cmdFCMD, cmdManage;
-	private ArrayList<CmdFactoid> fcmds = new ArrayList<CmdFactoid>();
+	private Map<CmdFactoid,String> fcmds = new HashMap<CmdFactoid,String>();
 	private HashMap<String,Function> functions = new HashMap<String,Function>();
 	private static Pattern functionPattern = Pattern.compile("([a-zA-Z_][a-zA-Z0-9_]*)\\(.*?\\)");
 	
@@ -33,6 +33,7 @@ public class ModuleFactoid extends Module {
 		Data.config.setNotExists("factoid-char","?!");
 		Data.config.setNotExists("factoid-charraw","+");
 		Data.config.setNotExists("factoid-charby","-");
+		Data.config.setNotExists("factoid-charchain",">");
 		Data.config.setNotExists("factoid-show",true);
 		Data.config.setNotExists("php-url","http://localhost/shocky/shocky.php");
 		Data.config.setNotExists("python-url","http://eval.appspot.com/eval");
@@ -153,11 +154,26 @@ public class ModuleFactoid extends Module {
 			new File("data","crowdbodd.txt").delete();
 		}*/
 		
-		ArrayList<String> lines = FileLine.read(new File("data","factoidCmd.cfg"));
-		for (int i = 0; i < lines.size(); i += 2) fcmds.add(new CmdFactoid(lines.get(i),lines.get(i+1)));
-		
 		Command.addCommands(cmdR = new CmdRemember(),cmdF = new CmdForget(),cmdFCMD = new CmdFactoidCmd(),cmdManage = new CmdManage());
-		Command.addCommands(fcmds.toArray(new Command[fcmds.size()]));
+		
+		Command.addCommand("r", cmdR);
+		Command.addCommand("f", cmdF);
+		Command.addCommand("fcmd", cmdFCMD);
+		Command.addCommand("fmanage", cmdManage);
+		Command.addCommand("fmng", cmdManage);
+		
+		ArrayList<String> lines = FileLine.read(new File("data","factoidCmd.cfg"));
+		for (int i = 0; i < lines.size(); i += 2) {
+			String name = lines.get(i);
+			String names[] = name.split(";");
+			String factoid = lines.get(i+1);
+			CmdFactoid cmd = new CmdFactoid(names[0],factoid);
+			fcmds.put(cmd, name);
+			Command.addCommand(cmd.command(), cmd);
+			for (int o = 1; o < names.length; o++) {
+				Command.addCommand(names[o],cmd);
+			}
+		}
 
 		Function func;
 		
@@ -243,20 +259,15 @@ public class ModuleFactoid extends Module {
 	}
 	public void onDisable() {
 		functions.clear();
-		Command.removeCommands(fcmds.toArray(new Command[fcmds.size()]));
+		Command.removeCommands(fcmds.keySet().toArray(new Command[0]));
 		fcmds.clear();
 		Command.removeCommands(cmdR,cmdF,cmdFCMD,cmdManage);
 	}
 	public void onDataSave() {
 		ArrayList<String> lines = new ArrayList<String>();
-		for (CmdFactoid fcmd : fcmds) {
-			StringBuilder sb = new StringBuilder();
-			for (String s : fcmd.cmds) {
-				if (sb.length() != 0) sb.append(";");
-				sb.append(s);
-			}
-			lines.add(sb.toString());
-			lines.add(fcmd.factoid);
+		for (Entry<CmdFactoid, String> fcmd : fcmds.entrySet()) {
+			lines.add(fcmd.getValue());
+			lines.add(fcmd.getKey().factoid);
 		}
 		FileLine.write(new File("data","factoidCmd.cfg"),lines);
 	}
@@ -270,7 +281,6 @@ public class ModuleFactoid extends Module {
 		String chars = Data.config.getString("factoid-char");
 		
 		for (int i = 0; i < chars.length(); i++) if (msg.charAt(0) == chars.charAt(i)) {
-			msg = new StringBuilder(msg).deleteCharAt(0).toString();
 			msg = redirectMessage(channel, sender, msg);
 			String charsraw = Data.config.getString("factoid-charraw");
 			String charsby = Data.config.getString("factoid-charby");
@@ -301,23 +311,35 @@ public class ModuleFactoid extends Module {
 			for (i = 0; i < charsraw.length(); i++) if (msg.charAt(0) == charsraw.charAt(i)) {
 				msg = new StringBuilder(msg).deleteCharAt(0).toString().split(" ")[0].toLowerCase();
 				Factoid f = getLatest(channel.getName(),msg,true);
-				if (target != null) Shocky.overrideTarget.put(Thread.currentThread(),new ImmutablePair<Command.EType,Command.EType>(Command.EType.Channel,Command.EType.Notice));
-				if (f != null && !f.forgotten) Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),msg+": "+f.rawtext);
-				if (target != null) Shocky.overrideTarget.remove(Thread.currentThread());
+				StringBuilder sb = new StringBuilder();
+				if (target == null && ping != null) {
+					sb.append(ping);
+					sb.append(": ");
+				}
+				sb.append(msg);
+				sb.append(": ");
+				sb.append(f.rawtext);
+				if (f != null && !f.forgotten) Shocky.send(bot,target != null?Command.EType.Notice:Command.EType.Channel,channel,Shocky.getUser(target),sb.toString());
 				return;
 			}
 			for (i = 0; i < charsby.length(); i++) if (msg.charAt(0) == charsby.charAt(i)) {
 				msg = new StringBuilder(msg).deleteCharAt(0).toString().split(" ")[0].toLowerCase();
 				Factoid f = getLatest(channel.getName(),msg,true);
-				if (target != null) Shocky.overrideTarget.put(Thread.currentThread(),new ImmutablePair<Command.EType,Command.EType>(Command.EType.Channel,Command.EType.Notice));
-				if (f != null && !f.forgotten) Shocky.send(bot,Command.EType.Channel,channel,Shocky.getUser(target),msg+", last edited by "+f.author);
-				if (target != null) Shocky.overrideTarget.remove(Thread.currentThread());
+				StringBuilder sb = new StringBuilder();
+				if (target == null && ping != null) {
+					sb.append(ping);
+					sb.append(": ");
+				}
+				sb.append(msg);
+				sb.append(", last edited by ");
+				sb.append(f.author);
+				if (f != null && !f.forgotten) Shocky.send(bot,target != null?Command.EType.Notice:Command.EType.Channel,channel,Shocky.getUser(target),sb.toString());
 				return;
 			}
 			
 			args = msg.split(" ");
 			String factoid = args[0].toLowerCase();
-			String[] chain = factoid.split(">");
+			String[] chain = factoid.split(Data.config.getString("factoid-charchain"));
 			
 			for (i = 0; i < chain.length; i++)
 				if (getLatest(channel.getName(),chain[i]) == null) return;
@@ -329,21 +351,15 @@ public class ModuleFactoid extends Module {
 				message = runFactoid(bot, channel, sender, msg);
 			}
 			
-			if (target != null)
-				Shocky.overrideTarget.put(Thread.currentThread(), new ImmutablePair<Command.EType, Command.EType>(Command.EType.Channel, Command.EType.Notice));
-			
 			if (message != null && message.length() > 0) {
+				StringBuilder sb = new StringBuilder(message);
 				if (target == null && ping != null) {
-					StringBuilder sb = new StringBuilder();
-					sb.append(ping);
-					sb.append(": ");
-					sb.append(message);
-					message = sb.toString();
+					sb.insert(0, ": ");
+					sb.insert(0, ping);
 				}
-				Shocky.send(bot, Command.EType.Channel, channel, Shocky.getUser(target), message);
+				
+				Shocky.send(bot, target != null?Command.EType.Notice:Command.EType.Channel, channel, Shocky.getUser(target), sb.toString());
 			}
-			if (target != null)
-				Shocky.overrideTarget.remove(Thread .currentThread());
 		}
 	}
 	
@@ -387,12 +403,13 @@ public class ModuleFactoid extends Module {
 		ScriptModule sModule = Module.getScriptingModule(type);
 		if (sModule != null) {
 			raw = parseVariables(bot, channel, sender, message, raw);
-			return sModule.parse(bot, EType.Channel, channel, sender, raw, message);
+			String parsed = sModule.parse(bot, EType.Channel, channel, sender, raw, message);
+			return parse(bot, channel, sender, message, parsed);
 		} else if (type != null && type.contentEquals("cmd")) {
-			Command cmd = Command.getCommand(bot,EType.Channel,Data.config.getString("main-cmdchar").charAt(0)+raw);
+			CommandCallback callback = new CommandCallback();
+			Command cmd = Command.getCommand(bot,sender,EType.Channel,callback,raw);
 			if (cmd != null && !(cmd instanceof CmdFactoid)) {
 				raw = parseVariables(bot, channel, sender, message, raw);
-				CommandCallback callback = new CommandCallback();
 				cmd.doCommand(bot,EType.Channel,callback,channel,sender,raw);
 				if (callback.type == EType.Channel)
 					return callback.toString();
@@ -402,6 +419,11 @@ public class ModuleFactoid extends Module {
 			raw = parseVariables(bot, channel, sender, message, raw);
 			StringBuilder output = new StringBuilder();
 			parseFunctions(raw,output);
+			if (type != null && type.contentEquals("action")) {
+				output.insert(0,"ACTION ");
+				output.insert(0,'\001');
+				output.append('\001');
+			}
 			return StringTools.limitLength(output);
 		}
 	}
@@ -494,24 +516,22 @@ public class ModuleFactoid extends Module {
 						}
 					}
 				}
-				Method method = module.getClass().getDeclaredMethod("getRollbackLines", Class.class, String.class, String.class, String.class, boolean.class, int.class, int.class);
+				Method method = module.getClass().getDeclaredMethod("getRollbackLines", Class.class, String.class, String.class, String.class, String.class, boolean.class, int.class, int.class);
 				@SuppressWarnings("unchecked")
-				ArrayList<Line> lines = (ArrayList<Line>) method.invoke(module, LineMessage.class, channel.getName(), user != null ? user.getNick() : null, null, true, 1, 0);
+				ArrayList<LineMessage> lines = (ArrayList<LineMessage>) method.invoke(module, LineMessage.class, channel.getName(), user != null ? user.getNick() : null, null, message, true, 1, 0);
 				if (lines.size() == 1) {
 					Line line = lines.get(0);
-					if (line instanceof LineMessage) {
-						StringBuilder msg = new StringBuilder(args[0]);
-						msg.append(' ');
-						msg.append(((LineMessage)line).text);
-						message = msg.toString();
-					}
+					StringBuilder msg = new StringBuilder(args[0]);
+					msg.append(' ');
+					msg.append(((LineMessage)line).text);
+					message = msg.toString();
 				}
 			}
 			} catch(Exception e) {
 				e.printStackTrace();
 			}
 		}
-		return message;
+		return message.substring(1);
 	}
 	
 	public void parseFunctions(String input, StringBuilder output) {
@@ -626,13 +646,9 @@ public class ModuleFactoid extends Module {
 		public String command() {return "remember";}
 		public String help(PircBotX bot, EType type, Channel channel, User sender) {
 			StringBuilder sb = new StringBuilder();
-			sb.append("remember/rem/r");
+			sb.append("remember/r");
 			sb.append("\nremember [.] {name} {raw} - remembers a factoid (use \".\" for local factoids)");
 			return sb.toString();
-		}
-		public boolean matches(PircBotX bot, EType type, String cmd) {
-			if (type != EType.Channel) return false;
-			return cmd.equals(command()) || cmd.equals("rem") || cmd.equals("r");
 		}
 		
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
@@ -664,13 +680,9 @@ public class ModuleFactoid extends Module {
 		public String command() {return "forget";}
 		public String help(PircBotX bot, EType type, Channel channel, User sender) {
 			StringBuilder sb = new StringBuilder();
-			sb.append("forget/f");
+			sb.append("forget");
 			sb.append("\nforget [.] {name} - forgets a factoid (use \".\" for local factoids)");
 			return sb.toString();
-		}
-		public boolean matches(PircBotX bot, EType type, String cmd) {
-			if (type != EType.Channel) return false;
-			return cmd.equals(command()) || cmd.equals("f");
 		}
 		
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
@@ -711,9 +723,6 @@ public class ModuleFactoid extends Module {
 			sb.append("\nfactoidcmd remove {command} - removes a command being an alias");
 			return sb.toString();
 		}
-		public boolean matches(PircBotX bot, EType type, String cmd) {
-			return cmd.equals(command()) || cmd.equals("fcmd");
-		}
 		
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			if (!canUseController(bot,type,sender)) return;
@@ -721,68 +730,61 @@ public class ModuleFactoid extends Module {
 			
 			String[] args = message.split(" ");
 			if (args.length == 1) {
-				ArrayList<CmdFactoid> list = new ArrayList<CmdFactoid>(fcmds);
 				StringBuilder sb = new StringBuilder();
-				for (CmdFactoid cmd : list) {
+				for (Entry<CmdFactoid, String> cmd : fcmds.entrySet()) {
 					if (sb.length() != 0) sb.append(", ");
-					StringBuilder sb2 = new StringBuilder();
-					for (String s : cmd.cmds) {
-						if (sb2.length() != 0) sb2.append(";");
-						sb2.append(s);
-					}
-					sb.append(sb2.toString()+"->"+cmd.factoid);
+					sb.append(cmd.getValue()+"->"+cmd.getKey().factoid);
 				}
 				callback.append(sb);
 				return;
 			} else if (args.length == 3 && args[1].equals("remove")) {
-				for (int i = 0; i < fcmds.size(); i++) {
-					CmdFactoid c = fcmds.get(i);
-					for (String s : c.cmds) if (s.equals(args[2])) {
-						Command.removeCommands(fcmds.get(i));
-						fcmds.remove(i);
+				for (Entry<CmdFactoid, String> c : fcmds.entrySet()) {
+					for (String s : c.getValue().split(";")) if (s.equals(args[2])) {
+						Command.removeCommands(c.getKey());
+						fcmds.remove(c.getKey());
 						callback.append("Removed.");
 						return;
 					}
 				}
 				return;
 			} else if (args.length == 4 && args[1].equals("add")) {
-l1:				for (int i = 0; i < fcmds.size(); i++) {
-					CmdFactoid c = fcmds.get(i);
-					for (String s : c.cmds) if (s.equals(args[2])) {
-						Command.removeCommands(fcmds.get(i));
-						fcmds.remove(i--);
-						break l1;
+				for (Iterator<Entry<CmdFactoid, String>> iter = fcmds.entrySet().iterator(); iter.hasNext();) {
+					Entry<CmdFactoid, String> c = iter.next();
+					for (String s : c.getValue().split(";")) if (s.equals(args[2])) {
+						Command.removeCommands(c.getKey());
+						iter.remove();
+						break;
 					}
 				}
-				CmdFactoid c = new CmdFactoid(args[2],args[3].toLowerCase());
-				fcmds.add(c);
-				Command.addCommands(c);
+				String name = args[2];
+				String names[] = name.split(";");
+				CmdFactoid cmd = new CmdFactoid(names[0],args[3].toLowerCase());
+				fcmds.put(cmd, name);
+				Command.addCommand(cmd.command(), cmd);
+				for (int i = 1; i < names.length; i++) {
+					Command.addCommand(names[i], cmd);
+				}
 				callback.append("Added.");
 				return;
 			}
 			
-			Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,help(bot,type,channel,sender));
+			callback.append(help(bot,type,channel,sender));
 		}
 	}
 	public class CmdFactoid extends Command {
-		protected ArrayList<String> cmds = new ArrayList<String>();
-		protected String factoid;
+		public final String cmd;
+		public final String factoid;
 		
 		public CmdFactoid(String command, String factoid) {
-			super();
-			cmds.addAll(Arrays.asList(command.split(Pattern.quote(";"))));
+			this.cmd = command;
 			this.factoid = factoid;
 		}
 		
-		public String command() {return cmds.get(0);}
+		public String command() {return cmd;}
 		public String help(PircBotX bot, EType type, Channel channel, User sender) {return "";}
-		public boolean matches(PircBotX bot, EType type, String cmd) {
-			if (type != EType.Channel) return false;
-			for (String s : cmds) if (cmd.equals(s)) return true;
-			return false;
-		}
 		
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
+			if (type != EType.Channel) return;
 			String[] args = message.split(" ");
 			onMessage(bot,channel,sender,""+Data.config.getString("factoid-char").charAt(0)+factoid+(args.length > 1 ? " "+StringTools.implode(args,1," ") : ""));
 		}
@@ -795,9 +797,6 @@ l1:				for (int i = 0; i < fcmds.size(); i++) {
 			sb.append("\n[r:op/controller] factoidmanage lock [.] {factoid} - locks a factoid");
 			sb.append("\n[r:op/controller] factoidmanage unlock [.] {factoid} - unlocks a factoid");
 			return sb.toString();
-		}
-		public boolean matches(PircBotX bot, EType type, String cmd) {
-			return cmd.equals(command()) || cmd.equals("fmanage") || cmd.equals("fmng");
 		}
 		
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {

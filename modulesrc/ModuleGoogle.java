@@ -21,6 +21,7 @@ public class ModuleGoogle extends Module {
 	public void onEnable() {
 		Command.addCommands(cmd1 = new CmdGoogle());
 		Command.addCommands(cmd2 = new CmdGoogleImg());
+		Command.addCommand("g", cmd1);
 	}
 	
 	@Override
@@ -84,7 +85,6 @@ public class ModuleGoogle extends Module {
 			sb.append("\ngoogle {query} - returns the first Google search result");
 			return sb.toString();
 		}
-		public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command()) || cmd.equals("g");}
 		@Override
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			doSearch(this, bot, type, callback, channel, sender, message);
@@ -95,11 +95,10 @@ public class ModuleGoogle extends Module {
 		public String command() {return "gis";}
 		public String help(PircBotX bot, EType type, Channel channel, User sender) {
 			StringBuilder sb = new StringBuilder();
-			sb.append("gis/gi");
+			sb.append("gis");
 			sb.append("\ngis {query} - returns the first Google Image search result");
 			return sb.toString();
 		}
-		public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command()) || cmd.equals("gi");}
 		@Override
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			doSearch(this, bot, type, callback, channel, sender, message);

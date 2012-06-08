@@ -1,7 +1,6 @@
 package pl.shockah.shocky;
 
 import java.util.*;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.pircbotx.*;
 import org.pircbotx.hooks.events.*;
 import pl.shockah.shocky.cmds.Command;
@@ -9,7 +8,6 @@ import pl.shockah.shocky.cmds.Command.EType;
 import pl.shockah.shocky.cmds.CommandCallback;
 
 public class Shocky extends ListenerAdapter {
-	public static Map<Thread,ImmutablePair<Command.EType,Command.EType>> overrideTarget = Collections.synchronizedMap(new HashMap<Thread,ImmutablePair<Command.EType,Command.EType>>());
 	private static TimedActions timed;
 	private static MultiBotManager multiBot;
 	private static boolean isClosing = false;
@@ -92,11 +90,6 @@ public class Shocky extends ListenerAdapter {
 		send(bot,t,channel,user,message);
 	}
 	public static void send(PircBotX bot, Command.EType type, Channel channel, User user, String message) {
-		Thread t = Thread.currentThread();
-		if (overrideTarget.containsKey(t)) {
-			ImmutablePair<Command.EType,Command.EType> pair = overrideTarget.get(t);
-			if (type == pair.getLeft()) type = pair.getRight();
-		}
 		switch (type) {
 			case Channel: sendChannel(bot,channel,message); break;
 			case Private: sendPrivate(bot,user,message); break;
@@ -164,39 +157,40 @@ public class Shocky extends ListenerAdapter {
 	
 	public void onMessage(MessageEvent<PircBotX> event) {
 		if (Data.isBlacklisted(event.getUser())) return;
-		Command cmd = Command.getCommand(event.getBot(),Command.EType.Channel,event.getMessage());
-		if (cmd != null) {
-			CommandCallback callback = new CommandCallback();
+		if (event.getMessage().length()<=1) return;
+		if (!Data.config.getString("main-cmdchar").contains(event.getMessage().substring(0, 1))) return;
+		CommandCallback callback = new CommandCallback();
+		callback.targetUser = event.getUser();
+		callback.targetChannel = event.getChannel();
+		Command cmd = Command.getCommand(event.getBot(),event.getUser(),Command.EType.Channel,callback,event.getMessage().substring(1));
+		if (cmd != null)
 			cmd.doCommand(event.getBot(),Command.EType.Channel,callback,event.getChannel(),event.getUser(),event.getMessage());
-			if (callback.length()>0) {
-				if (callback.type == EType.Channel) {
-					callback.insert(0,": ");
-					callback.insert(0,event.getUser().getNick());
-				}
-				send(event.getBot(),callback.type==EType.Notice?EType.Notice:Command.EType.Channel,event.getChannel(),event.getUser(),callback.toString());
+		if (callback.length()>0) {
+			if (callback.type == EType.Channel) {
+				callback.insert(0,": ");
+				callback.insert(0,event.getUser().getNick());
 			}
+			send(event.getBot(),callback.type==EType.Notice?EType.Notice:Command.EType.Channel,callback.targetChannel,callback.targetUser,callback.toString());
 		}
 	}
 	public void onPrivateMessage(PrivateMessageEvent<PircBotX> event) {
 		if (Data.isBlacklisted(event.getUser())) return;
-		Command cmd = Command.getCommand(event.getBot(),Command.EType.Private,event.getMessage());
-		if (cmd != null) {
-			CommandCallback callback = new CommandCallback();
+		CommandCallback callback = new CommandCallback();
+		Command cmd = Command.getCommand(event.getBot(),event.getUser(),Command.EType.Private,callback,event.getMessage());
+		if (cmd != null)
 			cmd.doCommand(event.getBot(),Command.EType.Private,callback,null,event.getUser(),event.getMessage());
-			if (callback.length()>0)
-				send(event.getBot(),Command.EType.Private,null,event.getUser(),callback.toString());
-		}
+		if (callback.length()>0)
+			send(event.getBot(),Command.EType.Private,null,event.getUser(),callback.toString());
 	}
 	public void onNotice(NoticeEvent<PircBotX> event) {
 		if (event.getUser().getNick().equals("NickServ")) return;
 		if (Data.isBlacklisted(event.getUser())) return;
-		Command cmd = Command.getCommand(event.getBot(),Command.EType.Notice,event.getMessage());
-		if (cmd != null) {
-			CommandCallback callback = new CommandCallback();
+		CommandCallback callback = new CommandCallback();
+		Command cmd = Command.getCommand(event.getBot(),event.getUser(),Command.EType.Notice,callback,event.getMessage());
+		if (cmd != null)
 			cmd.doCommand(event.getBot(),Command.EType.Notice,callback,null,event.getUser(),event.getMessage());
-			if (callback.length()>0)
-				send(event.getBot(),Command.EType.Notice,event.getChannel(),event.getUser(),callback.toString());
-		}
+		if (callback.length()>0)
+			send(event.getBot(),Command.EType.Notice,event.getChannel(),event.getUser(),callback.toString());
 	}
 	public void onKick(KickEvent<PircBotX> event) {
 		if (event.getRecipient().getNick().equals(event.getBot().getNick())) try {

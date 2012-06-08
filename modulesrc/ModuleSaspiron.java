@@ -27,9 +27,6 @@ public class ModuleSaspiron extends Module {
 		public String help(PircBotX bot, EType type, Channel channel, User sender) {
 			return "saspiron - if you need to ask for help then you should be using it";
 		}
-		public boolean matches(PircBotX bot, EType type, String cmd) {
-			return cmd.equals(command());
-		}
 		
 		protected final String[] three = new String[]{"was","is","can","but","it"};
 		protected final String[] four = new String[]{"awesome","fast","random","skrewed","brocken","misslead","fucked up"};

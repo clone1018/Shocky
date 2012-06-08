@@ -28,7 +28,6 @@ public class ModuleProbability extends Module {
 		public String help(PircBotX bot, EType type, Channel channel, User sender) {
 			return "probability {user} - check what the sensor is saying";
 		}
-		public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command());}
 		
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			String[] args = message.split(" ");

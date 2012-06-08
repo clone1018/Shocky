@@ -61,6 +61,7 @@ public class ModuleWolframAlpha extends Module {
 	public String name() {return "wolfram";}
 	public void onEnable() {
 		Command.addCommands(cmd = new CmdWolframAlpha());
+		Command.addCommand("wa", cmd);
 		Data.config.setNotExists("wolfram-apikey","");
 	}
 	public void onDisable() {
@@ -71,11 +72,10 @@ public class ModuleWolframAlpha extends Module {
 		public String command() {return "wolframalpha";}
 		public String help(PircBotX bot, EType type, Channel channel, User sender) {
 			StringBuilder sb = new StringBuilder();
-			sb.append("wolframalpha/wolfram/wa");
+			sb.append("wolframalpha/wa");
 			sb.append("\nwolframalpha {query} - shows WolframAlpha's result");
 			return sb.toString();
 		}
-		public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command()) || cmd.equals("wolfram") || cmd.equals("wa");}
 		
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			String[] args = message.split(" ");

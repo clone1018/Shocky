@@ -1,6 +1,7 @@
 import java.net.URLEncoder;
 import org.json.JSONObject;
 import org.pircbotx.Channel;
+import org.pircbotx.Colors;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 import pl.shockah.HTTPQuery;
@@ -29,11 +30,10 @@ public class ModuleUrban extends Module {
 		public String command() {return "urban";}
 		public String help(PircBotX bot, EType type, Channel channel, User sender) {
 			StringBuilder sb = new StringBuilder();
-			sb.append("urban/ur/u");
+			sb.append("urban");
 			sb.append("\nurban {query} - returns the first Urban dictionary search result");
 			return sb.toString();
 		}
-		public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command()) || cmd.equals("ur") || cmd.equals("u");}
 		
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			String[] args = message.split(" ");
@@ -52,7 +52,7 @@ public class ModuleUrban extends Module {
 			HTTPQuery q;
 			StringBuilder result = new StringBuilder();
 			try {
-				q = new HTTPQuery("http://www.urbandictionary.com/iphone/search/define?term=" + URLEncoder.encode(sb.toString(), "UTF8"), "GET");
+				q = new HTTPQuery("http://api.urbandictionary.com/v0/define?term=" + URLEncoder.encode(sb.toString(), "UTF8"), "GET");
 			} catch (Exception e) {
 				e.printStackTrace();
 				return;
@@ -73,9 +73,11 @@ public class ModuleUrban extends Module {
 				String example = entry.getString("example");
 				String permalink = entry.getString("permalink");
 				result.append(Utils.shortenUrl(permalink));
-				result.append(" \u0002");
+				result.append(" ");
+				result.append(Colors.BOLD);
 				result.append(word);
-				result.append("\u0002: ");
+				result.append(Colors.BOLD);
+				result.append(": ");
 				result.append(definition);
 				if (example != null && example.length()>0) {
 					result.append(" Example: ");

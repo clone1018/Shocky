@@ -1,8 +1,14 @@
 package pl.shockah.shocky.cmds;
 
+import org.pircbotx.Channel;
+import org.pircbotx.User;
+
 import pl.shockah.shocky.cmds.Command.EType;
 
 public class CommandCallback implements CharSequence {
+	
+	public User targetUser;
+	public Channel targetChannel;
 	public EType type = EType.Channel;
 	public final StringBuilder output;
 

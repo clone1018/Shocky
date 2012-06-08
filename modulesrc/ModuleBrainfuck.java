@@ -20,7 +20,9 @@ public class ModuleBrainfuck extends ScriptModule {
 	public String name() {return "brainfuck";}
 	public String identifier() {return "bf";}
 	public void onEnable() {
-		Command.addCommands(cmd = new CmdBrainfuck());
+		cmd = new CmdBrainfuck();
+		Command.addCommands(cmd);
+		Command.addCommand("bf", cmd);
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd);
@@ -50,9 +52,6 @@ public class ModuleBrainfuck extends ScriptModule {
 		public String command() {return "brainfuck";}
 		public String help(PircBotX bot, EType type, Channel channel, User sender) {
 			return "brainfuck/bf\nbrainfuck {code} - runs brainfuck code";
-		}
-		public boolean matches(PircBotX bot, EType type, String cmd) {
-			return cmd.equals(command()) || cmd.equals("bf");
 		}
 		
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {

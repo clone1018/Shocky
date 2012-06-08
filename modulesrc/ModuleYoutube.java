@@ -78,6 +78,8 @@ public class ModuleYoutube extends Module {
 	public void onEnable() {
 		Data.config.setNotExists("yt-otherbot",false);
 		Command.addCommands(cmd = new CmdYoutube());
+		Command.addCommand("yt", cmd);
+		Command.addCommand("y", cmd);
 		
 		patternsAction.add(Pattern.compile("^.*?(?:(?:playing)|(?:listening (?:to)?)):? (.+)$"));
 		patternsMessage.add(Pattern.compile("^np: (.*)$"));
@@ -136,11 +138,10 @@ public class ModuleYoutube extends Module {
 		public String command() {return "youtube";}
 		public String help(PircBotX bot, EType type, Channel channel, User sender) {
 			StringBuilder sb = new StringBuilder();
-			sb.append("youtube/you/yt/y");
+			sb.append("youtube/yt/y");
 			sb.append("\nyoutube {query} - returns the first YouTube search result");
 			return sb.toString();
 		}
-		public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command()) || cmd.equals("you") || cmd.equals("yt") || cmd.equals("y");}
 		
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			String[] args = message.split(" ");

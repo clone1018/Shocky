@@ -35,7 +35,7 @@ import pl.shockah.shocky.events.*;
 import pl.shockah.shocky.lines.*;
 
 public class ModuleRollback extends Module {
-	public final HashMap<String,ArrayList<Line>> rollback = new HashMap<String,ArrayList<Line>>(), rollbackTmp = new HashMap<String,ArrayList<Line>>();
+	public final Map<String,ArrayList<Line>> rollback = Collections.synchronizedMap(new HashMap<String,ArrayList<Line>>()), rollbackTmp = Collections.synchronizedMap(new HashMap<String,ArrayList<Line>>());
 	public final ArrayList<PasteService> services = new ArrayList<ModuleRollback.PasteService>();
 	protected Command cmd;
 	
@@ -79,6 +79,7 @@ public class ModuleRollback extends Module {
 		
 		Data.config.setNotExists("rollback-dateformat","dd.MM.yyyy HH:mm:ss");
 		Command.addCommands(cmd = new CmdPastebin());
+		Command.addCommand("pb", cmd);
 		
 		services.add(new ServicePasteKdeOrg());
 		services.add(new ServicePastebinCom());
@@ -165,11 +166,11 @@ public class ModuleRollback extends Module {
 		rollbackTmp.get(channel).add(line);
 	}
 	
-	public ArrayList<Line> getRollbackLines(String channel, String user, String regex, boolean newest, int lines, int seconds) {
-		return getRollbackLines(Line.class, channel, user, regex, newest, lines, seconds);
+	public ArrayList<Line> getRollbackLines(String channel, String user, String regex, String cull, boolean newest, int lines, int seconds) {
+		return getRollbackLines(Line.class, channel, user, regex, cull, newest, lines, seconds);
 	}
 	
-	public <T extends Line> ArrayList<T> getRollbackLines(Class<T> type, String channel, String user, String regex, boolean newest, int lines, int seconds) {
+	public synchronized <T extends Line> ArrayList<T> getRollbackLines(Class<T> type, String channel, String user, String regex, String cull, boolean newest, int lines, int seconds) {
 		ArrayList<T> ret = new ArrayList<T>();
 		ArrayList<Line> linesChannel = rollback.get(channel);
 		if (linesChannel == null || linesChannel.isEmpty()) return ret;
@@ -187,15 +188,18 @@ public class ModuleRollback extends Module {
 				@SuppressWarnings("unchecked")
 				T generic = (T) linesChannel.get(i);
 				if (line.containsUser(user)) {
-					if (pat == null) ret.add(generic);
-					else {
-						String tmp = null;
-						if (line instanceof LineMessage) tmp = ((LineMessage)line).text;
-						if (line instanceof LineAction) tmp = ((LineAction)line).text;
-						if (tmp != null) {
-							if (pat.matcher(tmp).find()) ret.add(generic);
+					String tmp = null;
+					if (line instanceof LineMessage) tmp = ((LineMessage)line).text;
+					if (line instanceof LineAction) tmp = ((LineAction)line).text;
+					if (tmp != null) {
+						if (cull != null && tmp.contentEquals(cull))
 							continue;
-						}
+						if (pat != null && !pat.matcher(tmp).find())
+							continue;
+						ret.add(generic);
+					} else {
+						if (pat == null)
+							ret.add(generic);
 					}
 				}
 			}
@@ -215,15 +219,18 @@ public class ModuleRollback extends Module {
 				if (!newest && line.time.after(check)) break;
 				
 				if (line.containsUser(user)) {
-					if (pat == null) ret.add(generic);
-					else {
-						String tmp = null;
-						if (line instanceof LineMessage) tmp = ((LineMessage)line).text;
-						if (line instanceof LineAction) tmp = ((LineAction)line).text;
-						if (tmp != null) {
-							if (pat.matcher(tmp).find()) ret.add(generic);
+					String tmp = null;
+					if (line instanceof LineMessage) tmp = ((LineMessage)line).text;
+					if (line instanceof LineAction) tmp = ((LineAction)line).text;
+					if (tmp != null) {
+						if (cull != null && tmp.contentEquals(cull))
 							continue;
-						}
+						if (pat != null && !pat.matcher(tmp).find())
+							continue;
+						ret.add(generic);
+					} else {
+						if (pat == null)
+							ret.add(generic);
 					}
 				}
 			}
@@ -251,9 +258,9 @@ public class ModuleRollback extends Module {
 			
 			return sb.toString();
 		}
-		public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command()) || cmd.equals("pb");}
 		
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
+			if (!canUseAny(bot,type,channel,sender)) return;
 			String[] args = message.split(" ");
 			String pbLink = "", regex = null;
 			callback.type = EType.Notice;
@@ -292,11 +299,11 @@ public class ModuleRollback extends Module {
 				
 				if (rollback.containsKey(aChannel) && !rollback.get(aChannel).isEmpty()) {
 					ArrayList<Line> list;
-					if (aLines.toLowerCase().endsWith("s")) list = getRollbackLines(aChannel,aUser,regex,aLines.charAt(0) != '-',0,Math.abs(Integer.parseInt(aLines.substring(0,aLines.length()-1))));
-					else if (aLines.toLowerCase().endsWith("m")) list = getRollbackLines(aChannel,aUser,regex,aLines.charAt(0) != '-',0,Math.abs(60*Integer.parseInt(aLines.substring(0,aLines.length()-1))));
-					else if (aLines.toLowerCase().endsWith("h")) list = getRollbackLines(aChannel,aUser,regex,aLines.charAt(0) != '-',0,Math.abs(3600*Integer.parseInt(aLines.substring(0,aLines.length()-1))));
-					else if (aLines.toLowerCase().endsWith("d")) list = getRollbackLines(aChannel,aUser,regex,aLines.charAt(0) != '-',0,Math.abs(86400*Integer.parseInt(aLines.substring(0,aLines.length()-1))));
-					else list = getRollbackLines(aChannel,aUser,regex,aLines.charAt(0) != '-',Math.abs(Integer.parseInt(aLines)),0);
+					if (aLines.toLowerCase().endsWith("s")) list = getRollbackLines(aChannel,aUser,regex,null,aLines.charAt(0) != '-',0,Math.abs(Integer.parseInt(aLines.substring(0,aLines.length()-1))));
+					else if (aLines.toLowerCase().endsWith("m")) list = getRollbackLines(aChannel,aUser,regex,null,aLines.charAt(0) != '-',0,Math.abs(60*Integer.parseInt(aLines.substring(0,aLines.length()-1))));
+					else if (aLines.toLowerCase().endsWith("h")) list = getRollbackLines(aChannel,aUser,regex,null,aLines.charAt(0) != '-',0,Math.abs(3600*Integer.parseInt(aLines.substring(0,aLines.length()-1))));
+					else if (aLines.toLowerCase().endsWith("d")) list = getRollbackLines(aChannel,aUser,regex,null,aLines.charAt(0) != '-',0,Math.abs(86400*Integer.parseInt(aLines.substring(0,aLines.length()-1))));
+					else list = getRollbackLines(aChannel,aUser,regex,null,aLines.charAt(0) != '-',Math.abs(Integer.parseInt(aLines)),0);
 					
 					if (list.isEmpty()) {
 						callback.append("Nothing to upload");

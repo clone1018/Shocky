@@ -23,8 +23,7 @@ public class ModuleChoose extends Module {
 		public String help(PircBotX bot, EType type, Channel channel, User sender) {
 			return "choose {1} {2} ... {n} - makes a decision";
 		}
-		public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command());}
-		
+
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			String[] args = message.split(" ");
 			if (args.length == 1) {

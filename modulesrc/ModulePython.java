@@ -65,10 +65,7 @@ public class ModulePython extends ScriptModule {
 	public class CmdPython extends Command {
 		public String command() {return "python";}
 		public String help(PircBotX bot, EType type, Channel channel, User sender) {
-			return "python/py\npython {code} - runs Python code";
-		}
-		public boolean matches(PircBotX bot, EType type, String cmd) {
-			return cmd.equals(command()) || cmd.equals("py");
+			return "python\npython {code} - runs Python code";
 		}
 		
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {

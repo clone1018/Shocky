@@ -40,6 +40,7 @@ public class ModuleQuestionParty extends Module {
 	public String name() {return "questionparty";}
 	public void onEnable() {
 		Command.addCommands(cmd = new CmdQuestionParty());
+		Command.addCommand("qparty", cmd);
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd);
@@ -49,11 +50,10 @@ public class ModuleQuestionParty extends Module {
 		public String command() {return "questionparty";}
 		public String help(PircBotX bot, EType type, Channel channel, User sender) {
 			StringBuilder sb = new StringBuilder();
-			sb.append("questionparty/qparty/qp");
+			sb.append("questionparty/qparty");
 			sb.append("\nquestionparty - random question with up to 5 random answers");
 			return sb.toString();
 		}
-		public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command()) || cmd.equals("qparty") || cmd.equals("qp");}
 		
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			callback.append(getQ());

@@ -1,10 +1,8 @@
 import java.io.File;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
-import java.util.TimeZone;
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
@@ -74,8 +72,6 @@ public class ModuleTell extends Module {
 		ArrayList<LineMessage> lines = tells.get(unick);
 		tells.remove(unick);
 		
-		SimpleDateFormat sdf = new SimpleDateFormat("d.MM, HH:mm:ss");
-		sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
 		for (LineMessage line : lines) Shocky.sendNotice(bot,user,line.sender+" said "+Utils.timeAgo(line.time)+": "+line.text);
 	}
 	
@@ -91,7 +87,6 @@ public class ModuleTell extends Module {
 		public String help(PircBotX bot, EType type, Channel channel, User sender) {
 			return "tell {user} {message} - relay the message to user";
 		}
-		public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command());}
 		
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			String[] args = message.split(" ");

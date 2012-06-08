@@ -60,9 +60,9 @@ public class ModuleRegexReplace extends Module {
 		if (module == null) return;
 		Pattern pattern = Pattern.compile(args[1],flags);
 		Matcher matcher = pattern.matcher("");
-		Method method = module.getClass().getDeclaredMethod("getRollbackLines", Class.class, String.class, String.class, String.class, boolean.class, int.class, int.class);
+		Method method = module.getClass().getDeclaredMethod("getRollbackLines", Class.class, String.class, String.class, String.class, String.class, boolean.class, int.class, int.class);
 		@SuppressWarnings("unchecked")
-		ArrayList<LineMessage> lines = (ArrayList<LineMessage>) method.invoke(module, LineMessage.class, event.getChannel().getName(), null, null, true, 10, 0);
+		ArrayList<LineMessage> lines = (ArrayList<LineMessage>) method.invoke(module, LineMessage.class, event.getChannel().getName(), null, null, s, true, 10, 0);
 		
 		final ExecutorService service = Executors.newFixedThreadPool(1);
 		try {
@@ -78,7 +78,6 @@ public class ModuleRegexReplace extends Module {
 	}
 	
 	private static class Run implements Callable<String> {
-		
 		private final List<LineMessage> lines;
 		private final Matcher matcher;
 		private final boolean single;
