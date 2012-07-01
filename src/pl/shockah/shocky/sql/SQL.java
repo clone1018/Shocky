@@ -12,21 +12,21 @@ public class SQL {
 	public static String update(QueryUpdate query) {return queryRaw(query.getSQLQuery());}
 	
 	public static String queryRaw(String query) {
-		HTTPQuery q = new HTTPQuery(Data.config.getString("main-sqlurl")+"?"+HTTPQuery.parseArgs("type","raw","q",query,"eval",getEval()),"GET");
+		HTTPQuery q = new HTTPQuery(Data.config.getString("main-sqlurl")+"?"+HTTPQuery.parseArgs("type","raw","q",query,"eval",getEval()));
 		q.connect(true,false);
 		String s = q.readWhole();
 		q.close();
 		return s;
 	}
 	public static String queryInsertId(String query) {
-		HTTPQuery q = new HTTPQuery(Data.config.getString("main-sqlurl")+"?"+HTTPQuery.parseArgs("type","insertid","q",query,"eval",getEval()),"GET");
+		HTTPQuery q = new HTTPQuery(Data.config.getString("main-sqlurl")+"?"+HTTPQuery.parseArgs("type","insertid","q",query,"eval",getEval()));
 		q.connect(true,false);
 		String s = q.readWhole();
 		q.close();
 		return s;
 	}
 	public static JSONObject queryJSON(String query) {
-		HTTPQuery q = new HTTPQuery(Data.config.getString("main-sqlurl")+"?"+HTTPQuery.parseArgs("type","json","q",query,"eval",getEval()),"GET");
+		HTTPQuery q = new HTTPQuery(Data.config.getString("main-sqlurl")+"?"+HTTPQuery.parseArgs("type","json","q",query,"eval",getEval()));
 		q.connect(true,false);
 		try {
 			JSONObject j = new JSONObject(q.readWhole());

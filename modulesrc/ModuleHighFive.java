@@ -57,7 +57,7 @@ public class ModuleHighFive extends Module implements ActionListener {
 		String s = started.get(event.getChannel().getName());
 		if (s == null && (list.contains("o/") ^ list.contains("\\o"))) {
 			started.put(event.getChannel().getName(),event.getUser().getNick());
-			TimerClear tc = new TimerClear(Data.config.getInt("hf-maxtime"),this,event.getChannel().getName());
+			TimerClear tc = new TimerClear(Data.forChannel(event.getChannel()).getInt("hf-maxtime"),this,event.getChannel().getName());
 			timers.put(event.getChannel().getName(),tc); tc.start();
 		}
 		if (s != null && (list.contains("\\o") ^ list.contains("o/"))) {
@@ -71,7 +71,7 @@ public class ModuleHighFive extends Module implements ActionListener {
 			int stat = changeStat(s,event.getUser().getNick(),1);
 			if (stat != 0) {
 				String msg = s+" o/ * \\o "+event.getUser().getNick()+" - "+getOrderNumber(stat)+" time";
-				if (Data.config.getBoolean("hf-announce")) Shocky.sendChannel(event.getBot(),event.getChannel(),msg);
+				if (Data.forChannel(event.getChannel()).getBoolean("hf-announce")) Shocky.sendChannel(event.getBot(),event.getChannel(),msg);
 				else {
 					Shocky.sendNotice(event.getBot(),event.getUser(),msg);
 					Shocky.sendNotice(event.getBot(),event.getBot().getUser(s),msg);

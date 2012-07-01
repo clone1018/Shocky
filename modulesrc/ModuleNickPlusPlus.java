@@ -42,7 +42,7 @@ public class ModuleNickPlusPlus extends Module {
 			if (event.getMessage().endsWith("++")) stat = changeStat(nick,1);
 			else if (event.getMessage().endsWith("--")) stat = changeStat(nick,-1);
 			else stat = changeStat(nick,0);
-			if (event.getMessage().endsWith("==") || Data.config.getBoolean("npp-announce")) Shocky.sendChannel(event.getBot(),event.getChannel(),nick+" == "+stat);
+			if (event.getMessage().endsWith("==") || Data.forChannel(event.getChannel()).getBoolean("npp-announce")) Shocky.sendChannel(event.getBot(),event.getChannel(),nick+" == "+stat);
 			else Shocky.sendNotice(event.getBot(),event.getUser(),nick+" == "+stat);
 		}
 	}

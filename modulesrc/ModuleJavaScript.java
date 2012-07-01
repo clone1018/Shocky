@@ -37,8 +37,8 @@ public class ModuleJavaScript extends ScriptModule {
 	public String name() {return "javascript";}
 	public String identifier() {return "js";}
 	public void onEnable() {
-		Command.addCommands(cmd = new CmdJavascript());
-		Command.addCommand("js",cmd);
+		Command.addCommands(this, cmd = new CmdJavascript());
+		Command.addCommand(this, "js",cmd);
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd);

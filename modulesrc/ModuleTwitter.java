@@ -30,7 +30,7 @@ public class ModuleTwitter extends Module {
 	public boolean isListener() {return true;}
 	public void onEnable() {
 		Data.config.setNotExists("twitter-dateformat","dd.MM.yyyy HH:mm:ss");
-		Command.addCommands(cmd = new CmdTwitter());
+		Command.addCommands(this, cmd = new CmdTwitter());
 	}
 	
 	public void onMessage(MessageEvent<PircBotX> event) {
@@ -40,7 +40,7 @@ public class ModuleTwitter extends Module {
 			if (!statusUrl.matcher(url).find()) continue;
 			String id = url.substring(url.length()-new StringBuilder(url).reverse().indexOf("/"),url.length());
 			
-			HTTPQuery q = new HTTPQuery("http://api.twitter.com/1/statuses/show.xml?trim_user=false&id="+id,"GET");
+			HTTPQuery q = new HTTPQuery("http://api.twitter.com/1/statuses/show.xml?trim_user=false&id="+id);
 			q.connect(true,false);
 			XMLObject xBase = XMLObject.deserialize(q.readWhole());
 			XMLObject status = xBase.getElement("status").get(0);
@@ -79,7 +79,7 @@ public class ModuleTwitter extends Module {
 				return;
 			}
 			
-			HTTPQuery q = new HTTPQuery("http://api.twitter.com/1/statuses/user_timeline.xml?"+HTTPQuery.parseArgs("trim_user","false","screen_name",nick),"GET");
+			HTTPQuery q = new HTTPQuery("http://api.twitter.com/1/statuses/user_timeline.xml?"+HTTPQuery.parseArgs("trim_user","false","screen_name",nick));
 			q.connect(true,false);
 			XMLObject xBase = XMLObject.deserialize(q.readWhole()).getElement("statuses").get(0);
 			XMLObject status = xBase.getElement("status").get(index-1);

@@ -23,6 +23,7 @@ public class Shocky extends ListenerAdapter {
 			multiBot.setMessageDelay(500);
 			multiBot.setEncoding("UTF8");
 			multiBot.setVerbose(Data.config.getBoolean("main-verbose"));
+			multiBot.setListenerManager(new ShockyListenerManager<PircBotX>());
 		} catch (Exception e) {e.printStackTrace();}
 		multiBot.getListenerManager().addListener(new Shocky());
 		
@@ -158,11 +159,11 @@ public class Shocky extends ListenerAdapter {
 	public void onMessage(MessageEvent<PircBotX> event) {
 		if (Data.isBlacklisted(event.getUser())) return;
 		if (event.getMessage().length()<=1) return;
-		if (!Data.config.getString("main-cmdchar").contains(event.getMessage().substring(0, 1))) return;
+		if (!Data.forChannel(event.getChannel()).getString("main-cmdchar").contains(event.getMessage().substring(0, 1))) return;
 		CommandCallback callback = new CommandCallback();
 		callback.targetUser = event.getUser();
 		callback.targetChannel = event.getChannel();
-		Command cmd = Command.getCommand(event.getBot(),event.getUser(),Command.EType.Channel,callback,event.getMessage().substring(1));
+		Command cmd = Command.getCommand(event.getBot(),event.getUser(),event.getChannel().getName(),Command.EType.Channel,callback,event.getMessage().substring(1));
 		if (cmd != null)
 			cmd.doCommand(event.getBot(),Command.EType.Channel,callback,event.getChannel(),event.getUser(),event.getMessage());
 		if (callback.length()>0) {
@@ -176,7 +177,7 @@ public class Shocky extends ListenerAdapter {
 	public void onPrivateMessage(PrivateMessageEvent<PircBotX> event) {
 		if (Data.isBlacklisted(event.getUser())) return;
 		CommandCallback callback = new CommandCallback();
-		Command cmd = Command.getCommand(event.getBot(),event.getUser(),Command.EType.Private,callback,event.getMessage());
+		Command cmd = Command.getCommand(event.getBot(),event.getUser(),null,Command.EType.Private,callback,event.getMessage());
 		if (cmd != null)
 			cmd.doCommand(event.getBot(),Command.EType.Private,callback,null,event.getUser(),event.getMessage());
 		if (callback.length()>0)
@@ -186,7 +187,7 @@ public class Shocky extends ListenerAdapter {
 		if (event.getUser().getNick().equals("NickServ")) return;
 		if (Data.isBlacklisted(event.getUser())) return;
 		CommandCallback callback = new CommandCallback();
-		Command cmd = Command.getCommand(event.getBot(),event.getUser(),Command.EType.Notice,callback,event.getMessage());
+		Command cmd = Command.getCommand(event.getBot(),event.getUser(),null,Command.EType.Notice,callback,event.getMessage());
 		if (cmd != null)
 			cmd.doCommand(event.getBot(),Command.EType.Notice,callback,null,event.getUser(),event.getMessage());
 		if (callback.length()>0)

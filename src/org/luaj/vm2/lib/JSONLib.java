@@ -56,17 +56,27 @@ public class JSONLib extends VarArgFunction {
 		return NONE;
 	}
 	
+	
 	public static Varargs get(Varargs args) {
 		try {
 			String url = args.checkjstring(1);
 			String post = args.optjstring(2, null);
-			if (post != null && post.isEmpty())
-				post = null;
-			HTTPQuery q = new HTTPQuery(url, post != null ? "POST" : "GET");
-			q.connect(true, post != null);
-			if (post != null)
+			HTTPQuery.Method method = HTTPQuery.Method.GET;
+			if (post != null) {
+				if (!post.isEmpty())
+					method = HTTPQuery.Method.POST;
+				else if (post.contentEquals("HEAD"))
+					method = HTTPQuery.Method.HEAD;
+			}
+			HTTPQuery q = new HTTPQuery(url, method);
+			q.connect(true, method == HTTPQuery.Method.POST);
+			if (method == HTTPQuery.Method.POST)
 				q.write(post);
-			return valueOf(q.readWhole());
+			return varargsOf(new LuaValue[] {
+					valueOf(q.readWhole()),
+					valueOf(q.getConnection().getResponseCode()),
+					valueOf(q.getConnection().getURL().toExternalForm())
+					});
 		} catch (Exception e) {
 			throw new LuaError(e);
 		}

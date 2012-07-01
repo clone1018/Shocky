@@ -27,7 +27,7 @@ public class ModuleYoutube extends Module {
 		HTTPQuery q = null;
 		
 		try {
-			q = new HTTPQuery("http://gdata.youtube.com/feeds/api/videos/"+URLEncoder.encode(vID,"UTF8")+"?v=2&alt=jsonc","GET");
+			q = new HTTPQuery("http://gdata.youtube.com/feeds/api/videos/"+URLEncoder.encode(vID,"UTF8")+"?v=2&alt=jsonc");
 			q.connect(true,false);
 			
 			JSONObject jItem = new JSONObject(q.readWhole()).getJSONObject("data");
@@ -50,7 +50,7 @@ public class ModuleYoutube extends Module {
 		HTTPQuery q = null;
 		
 		try {
-			q = new HTTPQuery("http://gdata.youtube.com/feeds/api/videos?max-results=1&v=2&alt=jsonc&q="+URLEncoder.encode(query,"UTF8"),"GET");
+			q = new HTTPQuery("http://gdata.youtube.com/feeds/api/videos?max-results=1&v=2&alt=jsonc&q="+URLEncoder.encode(query,"UTF8"));
 			q.connect(true,false);
 			
 			JSONObject jItem = new JSONObject(q.readWhole()).getJSONObject("data").getJSONArray("items").getJSONObject(0);
@@ -77,9 +77,9 @@ public class ModuleYoutube extends Module {
 	public boolean isListener() {return true;}
 	public void onEnable() {
 		Data.config.setNotExists("yt-otherbot",false);
-		Command.addCommands(cmd = new CmdYoutube());
-		Command.addCommand("yt", cmd);
-		Command.addCommand("y", cmd);
+		Command.addCommands(this, cmd = new CmdYoutube());
+		Command.addCommand(this, "yt", cmd);
+		Command.addCommand(this, "y", cmd);
 		
 		patternsAction.add(Pattern.compile("^.*?(?:(?:playing)|(?:listening (?:to)?)):? (.+)$"));
 		patternsMessage.add(Pattern.compile("^np: (.*)$"));
@@ -98,7 +98,7 @@ public class ModuleYoutube extends Module {
 			if (m.find()) {
 				String s = m.group(1);
 				if (s.startsWith("http://") || s.startsWith("www.//") || s.startsWith("youtu.be/") || s.startsWith("youtube/")) return;
-				String result = getVideoSearch(s,!Data.config.getBoolean("yt-otherbot"),true);
+				String result = getVideoSearch(s,!Data.forChannel(event.getChannel()).getBoolean("yt-otherbot"),true);
 				if (result == null) return;
 				s = Utils.mungeAllNicks(event.getChannel(),result);
 				Shocky.sendChannel(event.getBot(),event.getChannel(),event.getUser().getNick()+": "+s);
@@ -106,7 +106,7 @@ public class ModuleYoutube extends Module {
 			}
 		}
 		
-		if (!Data.config.getBoolean("yt-otherbot")) {
+		if (!Data.forChannel(event.getChannel()).getBoolean("yt-otherbot")) {
 			Matcher m = patternURL.matcher(event.getMessage());
 			while (m.find()) {
 				String vID = m.group(1);
@@ -125,7 +125,7 @@ public class ModuleYoutube extends Module {
 			if (m.find()) {
 				String s = m.group(1);
 				if (s.startsWith("http://") || s.startsWith("www.//") || s.startsWith("youtu.be/") || s.startsWith("youtube/")) return;
-				String result = getVideoSearch(s,!Data.config.getBoolean("yt-otherbot"),true);
+				String result = getVideoSearch(s,!Data.forChannel(event.getChannel()).getBoolean("yt-otherbot"),true);
 				if (result == null) return;
 				s = Utils.mungeAllNicks(event.getChannel(),result);
 				Shocky.sendChannel(event.getBot(),event.getChannel(),event.getUser().getNick()+": "+s);
@@ -157,7 +157,7 @@ public class ModuleYoutube extends Module {
 				sb.append(args[i]);
 			}
 			
-			String search = getVideoSearch(sb.toString(),!Data.config.getBoolean("yt-otherbot"),true);
+			String search = getVideoSearch(sb.toString(),!Data.forChannel(channel).getBoolean("yt-otherbot"),true);
 			if (search != null && !search.isEmpty()) {
 				search = Utils.mungeAllNicks(channel,search,sender.getNick());
 				callback.append(search);

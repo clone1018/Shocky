@@ -15,7 +15,6 @@ public class CmdController extends Command {
 		sb.append("[r:controller] controller remove {nick/login} - removes a controller");
 		return sb.toString();
 	}
-	public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command()) || cmd.equals("ctrl");}
 	
 	public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 		if (!canUseController(bot,type,sender)) return;

@@ -18,7 +18,7 @@ public class ModuleSeen extends Module {
 	public boolean isListener() {return true;}
 	public void onEnable() {
 		(config = new Config()).load(new File("data","seen.cfg"));
-		Command.addCommands(cmd = new CmdSeen());
+		Command.addCommands(this, cmd = new CmdSeen());
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd);

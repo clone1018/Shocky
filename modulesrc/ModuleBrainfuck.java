@@ -21,8 +21,8 @@ public class ModuleBrainfuck extends ScriptModule {
 	public String identifier() {return "bf";}
 	public void onEnable() {
 		cmd = new CmdBrainfuck();
-		Command.addCommands(cmd);
-		Command.addCommand("bf", cmd);
+		Command.addCommands(this, cmd);
+		Command.addCommand(this, "bf", cmd);
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd);

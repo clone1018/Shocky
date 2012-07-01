@@ -14,7 +14,7 @@ public class ModuleSaspiron extends Module {
 		return "saspiron";
 	}
 	public void onEnable() {
-		Command.addCommands(cmd = new CmdSaspiron());
+		Command.addCommands(this, cmd = new CmdSaspiron());
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd);

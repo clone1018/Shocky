@@ -1,6 +1,7 @@
 package pl.shockah.shocky.cmds;
 
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
@@ -14,20 +15,21 @@ public class CmdHelp extends Command {
 		
 		Map<String, Command> cmds = Command.getCommands();
 		int i = 0;
-		for (String name : cmds.keySet()) {
+		for (Entry<String, Command> cmd : cmds.entrySet()) {
+			if (channel != null && !cmd.getValue().isEnabled(channel.getName()))
+				continue;
 			if (i != 0) sb.append(", ");
-			sb.append(name);
+			sb.append(cmd.getKey());
 			i++;
 		}
 		return sb.toString();
 	}
-	public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command());}
 	
 	public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 		String[] args = message.split(" ");
 		callback.type = EType.Notice;
 		if (args.length == 2) {
-			Command cmd = Command.getCommand(bot,sender,type,callback,args[1]);
+			Command cmd = Command.getCommand(bot,sender,channel != null?channel.getName():null,type,callback,args[1]);
 			if (cmd != null)
 				callback.append(cmd.help(bot,type,channel,sender));
 			return;

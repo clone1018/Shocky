@@ -18,7 +18,7 @@ public class ModulePython extends ScriptModule {
 	public String identifier() {return "py";}
 	public void onEnable() {
 		Data.config.setNotExists("python-url","http://eval.appspot.com/eval");
-		Command.addCommands(cmd = new CmdPython());
+		Command.addCommands(this, cmd = new CmdPython());
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd);
@@ -45,8 +45,8 @@ public class ModulePython extends ScriptModule {
 		
 		code = sb.toString()+code;
 		
-		System.out.println(Data.config.getString("python-url")+"?"+HTTPQuery.parseArgs("statement",code));
-		HTTPQuery q = new HTTPQuery(Data.config.getString("python-url")+"?"+HTTPQuery.parseArgs("statement",code),"GET");
+		System.out.println(Data.forChannel(channel).getString("python-url")+"?"+HTTPQuery.parseArgs("statement",code));
+		HTTPQuery q = new HTTPQuery(Data.forChannel(channel).getString("python-url")+"?"+HTTPQuery.parseArgs("statement",code));
 		q.connect(true,false);
 		
 		sb = new StringBuilder();

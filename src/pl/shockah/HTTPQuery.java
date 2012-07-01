@@ -11,12 +11,14 @@ import java.util.ArrayList;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 
 public class HTTPQuery {
+	public enum Method{GET,POST,HEAD}
+	
 	protected URL url = null;
-	protected String method;
+	protected Method method;
 	protected HttpURLConnection c;
 	
-	public HTTPQuery(String adr) {this(adr,"POST");}
-	public HTTPQuery(String adr, String method) {
+	public HTTPQuery(String adr) {this(adr,Method.GET);}
+	public HTTPQuery(String adr, Method method) {
 		try {
 			url = new URL(adr);
 			this.method = method;
@@ -27,7 +29,7 @@ public class HTTPQuery {
 	public void connect(boolean cache, boolean input, boolean output) {
 		try {
 			c = (HttpURLConnection)url.openConnection();
-			c.setRequestMethod(method);
+			c.setRequestMethod(method.name());
 			c.setRequestProperty("Content-Type","application/x-www-form-urlencoded");
 			
 			c.setUseCaches(cache);

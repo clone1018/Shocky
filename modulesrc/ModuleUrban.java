@@ -18,7 +18,7 @@ public class ModuleUrban extends Module {
 	public String name() {return "urban";}
 	@Override
 	public void onEnable() {
-		Command.addCommands(cmd = new CmdUrban());
+		Command.addCommands(this, cmd = new CmdUrban());
 	}
 	
 	@Override
@@ -52,7 +52,7 @@ public class ModuleUrban extends Module {
 			HTTPQuery q;
 			StringBuilder result = new StringBuilder();
 			try {
-				q = new HTTPQuery("http://api.urbandictionary.com/v0/define?term=" + URLEncoder.encode(sb.toString(), "UTF8"), "GET");
+				q = new HTTPQuery("http://api.urbandictionary.com/v0/define?term=" + URLEncoder.encode(sb.toString(), "UTF8"));
 			} catch (Exception e) {
 				e.printStackTrace();
 				return;

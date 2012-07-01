@@ -31,40 +31,41 @@ public class ModuleAutoKick extends Module {
 	}
 	
 	public void onMessage(MessageEvent<PircBotX> event) {
+		if (!event.getChannel().isOp(event.getBot().getUserBot())) return;
 		if (!data.containsKey(event.getChannel().getName())) data.put(event.getChannel().getName(),Collections.synchronizedMap(new TreeMap<String,ModuleAutoKick.CheckerStructure>()));
 		Map<String,CheckerStructure> map = data.get(event.getChannel().getName());
-		if (!map.containsKey(event.getUser().getNick().toLowerCase())) map.put(event.getUser().getNick().toLowerCase(),new CheckerStructure(event.getBot(),event.getChannel().getName(),event.getUser().getNick().toLowerCase()));
+		if (!map.containsKey(event.getUser().getNick().toLowerCase())) map.put(event.getUser().getNick().toLowerCase(),new CheckerStructure(event.getBot(),event.getChannel(),event.getUser()));
 		map.get(event.getUser().getNick().toLowerCase()).runTimer();
 	}
 	public void onActionMessage(ActionEvent<PircBotX> event) {
+		if (!event.getChannel().isOp(event.getBot().getUserBot())) return;
 		if (!data.containsKey(event.getChannel().getName())) data.put(event.getChannel().getName(),Collections.synchronizedMap(new TreeMap<String,ModuleAutoKick.CheckerStructure>()));
 		Map<String,CheckerStructure> map = data.get(event.getChannel().getName());
-		if (!map.containsKey(event.getUser().getNick().toLowerCase())) map.put(event.getUser().getNick().toLowerCase(),new CheckerStructure(event.getBot(),event.getChannel().getName(),event.getUser().getNick().toLowerCase()));
+		if (!map.containsKey(event.getUser().getNick().toLowerCase())) map.put(event.getUser().getNick().toLowerCase(),new CheckerStructure(event.getBot(),event.getChannel(),event.getUser()));
 		map.get(event.getUser().getNick().toLowerCase()).runTimer();
 	}
 	
 	public class CheckerStructure implements ActionListener {
 		private final PircBotX bot;
-		private final String channel, nick;
+		private final Channel channel;
+		private final User nick;
 		private List<Timer> timers = Collections.synchronizedList(new ArrayList<Timer>());
-		private int counter = Data.config.getInt("autokick-messages");
+		private int counter;
 		
-		public CheckerStructure(PircBotX bot, String channel, String nick) {
+		public CheckerStructure(PircBotX bot, Channel channel, User nick) {
 			this.bot = bot;
 			this.channel = channel;
 			this.nick = nick;
+			
+			counter = Data.forChannel(channel).getInt("autokick-messages");
 		}
 		
 		public synchronized void runTimer() {
 			if (--counter == 0) {
-				Channel c = bot.getChannel(channel);
-				for (User user : c.getUsers()) if (user.getNick().toLowerCase().equals(nick)) {
-					bot.kick(c,user,"Excessive spam");
-					resetTimers();
-					break;
-				}
+				bot.kick(channel,nick,"Excessive spam");
+				resetTimers();
 			} else {
-				Timer t = new Timer(Data.config.getInt("autokick-delay"),this);
+				Timer t = new Timer(Data.forChannel(channel).getInt("autokick-delay"),this);
 				timers.add(t);
 				t.start();
 			}

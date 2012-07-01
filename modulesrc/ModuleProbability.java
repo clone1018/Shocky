@@ -17,7 +17,7 @@ public class ModuleProbability extends Module {
 	
 	public String name() {return "probability";}
 	public void onEnable() {
-		Command.addCommands(cmd = new CmdProbability());
+		Command.addCommands(this, cmd = new CmdProbability());
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd);

@@ -19,9 +19,9 @@ public class ModuleGoogle extends Module {
 	public String name() {return "google";}
 	@Override
 	public void onEnable() {
-		Command.addCommands(cmd1 = new CmdGoogle());
-		Command.addCommands(cmd2 = new CmdGoogleImg());
-		Command.addCommand("g", cmd1);
+		Command.addCommands(this, cmd1 = new CmdGoogle());
+		Command.addCommands(this, cmd2 = new CmdGoogleImg());
+		Command.addCommand(this, "g", cmd1);
 	}
 	
 	@Override
@@ -47,7 +47,7 @@ public class ModuleGoogle extends Module {
 		HTTPQuery q;
 		StringBuilder result = new StringBuilder();
 		try {
-			q = new HTTPQuery("http://ajax.googleapis.com/ajax/services/search/"+(cmd instanceof CmdGoogleImg?"images":"web")+"?v=1.0&safe=off&q=" + URLEncoder.encode(sb.toString(), "UTF8"), "GET");
+			q = new HTTPQuery("http://ajax.googleapis.com/ajax/services/search/"+(cmd instanceof CmdGoogleImg?"images":"web")+"?v=1.0&safe=off&q=" + URLEncoder.encode(sb.toString(), "UTF8"));
 		} catch (Exception e) {
 			e.printStackTrace();
 			return;

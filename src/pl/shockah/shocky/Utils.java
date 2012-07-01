@@ -37,7 +37,7 @@ public class Utils {
 	}
 	public static String shortenUrl(String url) {
 		try {
-			HTTPQuery q = new HTTPQuery("http://api.bitly.com/v3/shorten?format=txt&login=shockah&apiKey="+bitLyApiKey+"&longUrl="+URLEncoder.encode(url,"UTF8"),"GET");
+			HTTPQuery q = new HTTPQuery("http://api.bitly.com/v3/shorten?format=txt&login=shockah&apiKey="+bitLyApiKey+"&longUrl="+URLEncoder.encode(url,"UTF8"));
 			q.connect(true,true,false);
 			String line = q.read().get(0);
 			q.close();

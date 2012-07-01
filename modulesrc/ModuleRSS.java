@@ -43,7 +43,7 @@ public class ModuleRSS extends Module {
 	
 	public String name() {return "rss";}
 	public void onEnable() {
-		Command.addCommands(cmd = new CmdRSS());
+		Command.addCommands(this, cmd = new CmdRSS());
 		
 		ArrayList<String> lines = FileLine.read(new File("data","rss.cfg"));
 		for (int i = 0; i < lines.size(); i += 3) {
@@ -109,7 +109,7 @@ public class ModuleRSS extends Module {
 					ArrayList<FeedEntry> ret = new ArrayList<FeedEntry>();
 					Date newest = null;
 					
-					HTTPQuery q = new HTTPQuery(url,"GET");
+					HTTPQuery q = new HTTPQuery(url);
 					q.connect(true,false);
 					XMLObject xBase = XMLObject.deserialize(q.readWhole());
 					if (xBase.getAllElements().get(0).getName().equals("feed")) {
@@ -221,7 +221,6 @@ public class ModuleRSS extends Module {
 			}
 			return sb.toString();
 		}
-		public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command());}
 		
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			String[] args = message.split(" ");

@@ -11,7 +11,7 @@ public class ModuleSay extends Module {
 	
 	public String name() {return "say";}
 	public void onEnable() {
-		Command.addCommands(cmdSay = new CmdSay(),cmdAction = new CmdAction());
+		Command.addCommands(this, cmdSay = new CmdSay(),cmdAction = new CmdAction());
 	}
 	public void onDisable() {
 		Command.removeCommands(cmdSay,cmdAction);

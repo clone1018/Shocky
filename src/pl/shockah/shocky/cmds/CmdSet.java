@@ -3,6 +3,8 @@ package pl.shockah.shocky.cmds;
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
+
+import pl.shockah.Config;
 import pl.shockah.shocky.Data;
 
 public class CmdSet extends Command {
@@ -10,17 +12,34 @@ public class CmdSet extends Command {
 	public String help(PircBotX bot, EType type, Channel channel, User sender) {
 		return "[r:controller] set {key} {value} - sets a bot option value";
 	}
-	public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command());}
 	
 	public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-		if (!canUseController(bot,type,sender)) return;
 		String[] args = message.split(" ");
 		callback.type = EType.Notice;
 		
-		if (args.length == 3) {
-			args[1] = args[1].toLowerCase();
-			Data.config.set(args[1],args[2]);
-			callback.append("Set "+args[1]+" to "+args[2]);
+		int i = 1;
+		boolean global = (args.length > i && args[i].equalsIgnoreCase("."));
+		if (global) i++;
+		String key = (args.length > i)?args[i++].toLowerCase():null;
+		String value = (args.length > i)?args[i++]:null;
+		
+		if (global && !canUseController(bot,type,sender)) return;
+		else if (!canUseAny(bot,type,channel, sender)) return;
+		
+		Config config;
+		if (global)
+			config = Data.config;
+		else
+			config = Data.forChannel(channel);
+		
+		if (key != null && value != null) {
+			config.set(key,value);
+			callback.append("Set "+key+" to "+value);
+			return;
+		} else if (!global && key != null) {
+			value = config.getString(key);
+			config.remove(key);
+			callback.append("Unset "+key+". Was "+value);
 			return;
 		}
 		

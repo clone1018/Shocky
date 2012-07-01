@@ -14,7 +14,6 @@ public class CmdBlacklist extends Command {
 		sb.append("[r:controller] blacklist remove {nick} - removes an entry");
 		return sb.toString();
 	}
-	public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command());}
 	
 	public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 		if (!canUseController(bot,type,sender)) return;

@@ -16,8 +16,8 @@ import pl.shockah.shocky.cmds.CommandCallback;
 public class ModuleWolframAlpha extends Module {
 	protected Command cmd;
 	
-	public String getResult(String query) {
-		String apiKey = Data.config.getString("wolfram-apikey");
+	public String getResult(Channel channel, String query) {
+		String apiKey = Data.forChannel(channel).getString("wolfram-apikey");
 		if (apiKey.isEmpty()) return ">>> WolframAlpha module can't be used without setting up an API key. Get one at http://products.wolframalpha.com/developers/ <<<";
 		
 		try {
@@ -60,8 +60,8 @@ public class ModuleWolframAlpha extends Module {
 	
 	public String name() {return "wolfram";}
 	public void onEnable() {
-		Command.addCommands(cmd = new CmdWolframAlpha());
-		Command.addCommand("wa", cmd);
+		Command.addCommands(this, cmd = new CmdWolframAlpha());
+		Command.addCommand(this, "wa", cmd);
 		Data.config.setNotExists("wolfram-apikey","");
 	}
 	public void onDisable() {
@@ -85,7 +85,7 @@ public class ModuleWolframAlpha extends Module {
 				sb.append(args[i]);
 			}
 			
-			String result = getResult(sb.toString());
+			String result = getResult(channel, sb.toString());
 			if (result == null) return;
 			result = Utils.mungeAllNicks(channel,result,sender.getNick());
 			callback.append(result);

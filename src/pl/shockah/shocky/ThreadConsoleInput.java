@@ -15,7 +15,7 @@ public class ThreadConsoleInput extends Thread {
 			line = c.readLine();
 			if (line != null) {
 				CommandCallback callback = new CommandCallback();
-				Command cmd = Command.getCommand(null,null,Command.EType.Console,callback,line);
+				Command cmd = Command.getCommand(null,null,null,Command.EType.Console,callback,line);
 				if (cmd != null)
 					cmd.doCommand(null,Command.EType.Console,callback,null,null,line);
 				if (callback.length()>0)

@@ -16,7 +16,7 @@ public class ModuleLOLCode extends ScriptModule {
 	public String name() {return "lolcode";}
 	public String identifier() {return "lol";}
 	public void onEnable() {
-		Command.addCommands(cmd = new CmdLOLCode());
+		Command.addCommands(this, cmd = new CmdLOLCode());
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd);

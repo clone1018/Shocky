@@ -16,7 +16,6 @@ public class CmdPart extends Command {
 		
 		return sb.toString();
 	}
-	public boolean matches(PircBotX bot, EType type, String cmd) {return cmd.equals(command());}
 	
 	public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 		String[] args = message.split(" ");

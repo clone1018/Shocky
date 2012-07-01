@@ -12,7 +12,7 @@ public class ModuleChoose extends Module {
 	
 	public String name() {return "choose";}
 	public void onEnable() {
-		Command.addCommands(cmd = new CmdChoose());
+		Command.addCommands(this, cmd = new CmdChoose());
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd);

@@ -17,7 +17,7 @@ public class ModulePHP extends ScriptModule {
 	public String identifier() {return "php";}
 	public void onEnable() {
 		Data.config.setNotExists("php-url","http://localhost/shocky/shocky.php");
-		Command.addCommands(cmd = new CmdPHP());
+		Command.addCommands(this, cmd = new CmdPHP());
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd);
@@ -44,7 +44,7 @@ public class ModulePHP extends ScriptModule {
 		
 		code = sb.toString()+code;
 		
-		HTTPQuery q = new HTTPQuery(Data.config.getString("php-url")+"?"+HTTPQuery.parseArgs("code",code));
+		HTTPQuery q = new HTTPQuery(Data.forChannel(channel).getString("php-url")+"?"+HTTPQuery.parseArgs("code",code));
 		q.connect(true,false);
 		
 		sb = new StringBuilder();

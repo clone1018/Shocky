@@ -36,11 +36,11 @@ public class ModuleSamantha extends Module  {
 	}
 	
 	private void performedAction(Channel chan) {
-		nextAction.put(chan, System.currentTimeMillis()+Data.config.getInt("samantha-next"));
+		nextAction.put(chan, System.currentTimeMillis()+Data.forChannel(chan).getInt("samantha-next"));
 	}
 
 	public void onMessage(MessageEvent<PircBotX> event) {
-		if (!canPerformAction(event.getChannel()) || rnd.nextInt(Data.config.getInt("samantha-chance")) > 0)
+		if (!canPerformAction(event.getChannel()) || rnd.nextInt(Data.forChannel(event.getChannel()).getInt("samantha-chance")) > 0)
 			return;
 		
 		String[] args = event.getMessage().split(" ");

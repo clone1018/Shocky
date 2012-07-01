@@ -38,10 +38,10 @@ public class ModuleQuote extends Module {
 			}
 		}
 		
-		Command.addCommands(cmd = new CmdQuote(),cmdAdd = new CmdQuoteAdd(),cmdRemove = new CmdQuoteRemove());
-		Command.addCommand("q", cmd);
-		Command.addCommand("qadd", cmdAdd);
-		Command.addCommand("qdel", cmdRemove);
+		Command.addCommands(this, cmd = new CmdQuote(),cmdAdd = new CmdQuoteAdd(),cmdRemove = new CmdQuoteRemove());
+		Command.addCommand(this, "q", cmd);
+		Command.addCommand(this, "qadd", cmdAdd);
+		Command.addCommand(this, "qdel", cmdRemove);
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd,cmdAdd,cmdRemove);

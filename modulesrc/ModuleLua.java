@@ -1,5 +1,14 @@
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.io.PrintStream;
+import java.lang.reflect.Method;
 import java.nio.charset.Charset;
 import java.util.Random;
 import java.util.concurrent.Callable;
@@ -11,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import org.luaj.vm2.*;
+import org.luaj.vm2.compiler.DumpState;
 import org.luaj.vm2.compiler.LuaC;
 import org.luaj.vm2.lib.*;
 import org.luaj.vm2.lib.jse.*;
@@ -22,7 +32,9 @@ import com.sun.xml.internal.messaging.saaj.util.ByteOutputStream;
 
 import pl.shockah.StringTools;
 import pl.shockah.ZeroInputStream;
+import pl.shockah.shocky.Module;
 import pl.shockah.shocky.ScriptModule;
+import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Command.EType;
@@ -36,6 +48,8 @@ public class ModuleLua extends ScriptModule {
 	ThreadGroup sandboxGroup = new SandboxThreadGroup("lua");
 	ThreadFactory sandboxFactory = new SandboxThreadFactory(sandboxGroup);
 	LuaTable env = null;
+	
+	public static final File binary = new File("data","luastate.bin");
 
 	@Override
 	public String name() {return "lua";}
@@ -43,7 +57,7 @@ public class ModuleLua extends ScriptModule {
 	public String identifier() {return "lua";}
 	@Override
 	public void onEnable() {
-		Command.addCommands(cmd = new CmdLua());
+		Command.addCommands(this, cmd = new CmdLua());
 		env = new LuaTable();
 		env.load(new JseBaseLib());
 		env.load(new PackageLib());
@@ -55,11 +69,145 @@ public class ModuleLua extends ScriptModule {
 		env.load(new JSONLib());
 		
 		LuaThread.setGlobals(env);
+		
+		env.set("factoid", new FactoidTable());
+		
+		try {
+			if (binary.exists()) {
+				FileInputStream fs = new FileInputStream(binary);
+				ObjectInputStream is = new ObjectInputStream(fs);
+				env.set("irc", readValue(is));
+				is.close();
+				fs.close();
+			} else {
+				env.set("irc", new LuaTable());
+			}
+		} catch(Exception e) {
+			e.printStackTrace();
+		}
 	}
 	@Override
 	public void onDisable() {
 		Command.removeCommands(cmd);
 	}
+	
+	@Override
+	public void onDataSave() {
+		try {
+			LuaValue value = env.get("irc");
+			if (value.istable()) {
+				if (binary.exists() || binary.createNewFile()) {
+					FileOutputStream fs = new FileOutputStream(binary);
+					ObjectOutputStream os = new ObjectOutputStream(fs);
+					writeValue(os, value);
+					os.flush();
+					os.close();
+					fs.close();
+				}
+			}
+		} catch(Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public static void writeTable(ObjectOutputStream os, LuaValue value) throws IOException {
+		LuaTable table = value.checktable();
+		LuaValue[] keys = table.keys();
+		writeEncodedInt(os,keys.length);
+		for (LuaValue value2 : keys) {
+			writeValue(os, value2);
+			writeValue(os, table.get(value2));
+		}
+	}
+	
+	public static void writeValue(ObjectOutputStream os, LuaValue value) throws IOException {
+		if (value.type() == LuaValue.TFUNCTION && !value.isclosure()) {
+			writeEncodedInt(os,LuaValue.TNIL);
+		} else {
+			writeEncodedInt(os,value.type());
+		}
+		switch (value.type()) {
+		case LuaValue.TBOOLEAN: os.writeBoolean(value.checkboolean()); break;
+		case LuaValue.TINT: writeEncodedInt(os,value.checkint()); break;
+		case LuaValue.TTABLE: writeTable(os,value); break;
+		case LuaValue.TNUMBER: os.writeDouble(value.checkdouble()); break;
+		
+		case LuaValue.TSTRING:
+			byte[] bytes = value.checkjstring().getBytes(Charset.forName("UTF-8"));
+			writeEncodedInt(os,bytes.length);
+			os.write(bytes);
+			break;
+		
+		case LuaValue.TFUNCTION:
+			if (value.isclosure()) {
+				LuaClosure closure = value.checkclosure();
+				DumpState.dump(closure.p, os, true);
+			}
+			break;
+			
+		default:
+		case LuaValue.TNIL:
+		case LuaValue.TNONE: break;
+		}
+	}
+	
+	public LuaValue readTable(ObjectInputStream is) throws IOException {
+		LuaTable table = new LuaTable();
+		int size = readEncodedInt(is);
+		for (int i = 0; i < size; i++) {
+			LuaValue key = readValue(is);
+			LuaValue value = readValue(is);
+			if (key.type() != LuaValue.TNIL && key.type() != LuaValue.TNONE)
+				table.set(key, value);
+		}
+		return table;
+	}
+	
+	public LuaValue readValue(ObjectInputStream is) throws IOException {
+		int type = readEncodedInt(is);
+		switch (type) {
+		case LuaValue.TBOOLEAN: return LuaValue.valueOf(is.readBoolean());
+		case LuaValue.TINT: return LuaValue.valueOf(readEncodedInt(is));
+		case LuaValue.TTABLE: return readTable(is);
+		case LuaValue.TNUMBER: return LuaValue.valueOf(is.readDouble());
+		
+		case LuaValue.TSTRING:
+			int length = readEncodedInt(is);
+			byte[] bytes = new byte[length];
+			is.read(bytes);
+			return LuaValue.valueOf(new String(bytes,Charset.forName("UTF-8")));
+		
+		case LuaValue.TFUNCTION: return LoadState.load(is, "script", env);
+			
+		default:
+		case LuaValue.TNIL: return LuaNil.NIL;
+		case LuaValue.TNONE: return LuaNil.NONE;
+		}
+	}
+	
+	public static void writeEncodedInt(OutputStream os, int value) throws IOException
+	{
+		long num;
+		for (num = value & 0xFFFFFFFFL; num >= 0x80; num >>= 7)
+			os.write((int)((num & 0x7F) | 0x80));
+		os.write((int)num);
+	}
+	
+	public static int readEncodedInt(InputStream is) throws IOException
+	{
+		int num = 0;
+		int shift = 0;
+		while (shift < 35)
+		{
+			int b = is.read();
+			num |= (b & 0x7F) << shift;
+			shift += 7;
+			if ((b & 0x80) == 0)
+				return num;
+		}
+		return Integer.MAX_VALUE;
+	}
+
 
 	@Override
 	public String parse(PircBotX bot, EType type, Channel channel, User sender, String code, String message) {
@@ -81,7 +229,7 @@ public class ModuleLua extends ScriptModule {
 		env.set("bot", bot.getNick());
 		env.set("sender", sender.getNick());
 		
-		Sandbox sandbox = new Sandbox(channel.getUsers().toArray(new User[0]));
+		Sandbox sandbox = new Sandbox(bot,channel);
 		env.set("bot", CoerceJavaToLua.coerce(sandbox));
 
 		LuaRunner r = new LuaRunner(code);
@@ -139,14 +287,47 @@ public class ModuleLua extends ScriptModule {
 	
 	public class Sandbox {
 		private Random rnd = new Random();
-		private final User[] users;
+		private final PircBotX bot;
+		private final Channel chan;
+		private User[] users;
 		
-		public Sandbox(User[] users) {
-			this.users = users;
+		public Sandbox(PircBotX bot, Channel chan) {
+			this.bot = bot;
+			this.chan = chan;
 		}
 		
 		public String randnick() {
+			if (chan == null)
+				return null;
+			if (users == null)
+				users = chan.getUsers().toArray(new User[0]);
 			return users[rnd.nextInt(users.length)].getNick();
+		}
+		
+		public boolean isOp(String username) {
+			if (chan == null)
+				return false;
+			User user = bot.getUser(username);
+			return user != null && chan.isOp(user);
+		}
+		
+		public boolean isVoiced(String username) {
+			if (chan == null)
+				return false;
+			User user = bot.getUser(username);
+			return user != null && chan.hasVoice(user);
+		}
+		
+		public String topic() {
+			if (chan == null)
+				return null;
+			return chan.getTopic();
+		}
+		
+		public String chanModes() {
+			if (chan == null)
+				return null;
+			return chan.getMode();
 		}
 		
 		public String toString() {
@@ -183,6 +364,52 @@ public class ModuleLua extends ScriptModule {
 			}
 			return null;
 		}
-		
+	}
+	
+	public class FactoidTable extends LuaValue {
+
+		@Override
+		public int type() {
+			return LuaValue.TTABLE;
+		}
+
+		@Override
+		public String typename() {
+			return "table";
+		}
+
+		@Override
+		public LuaValue get(LuaValue key) {
+			try {
+				final String factoid = key.checkjstring();
+				String channame = env.get(valueOf("channel")).checkjstring();
+				String username = env.get(valueOf("sender")).checkjstring();
+				final Channel chan = Shocky.getChannel(channame);
+				final PircBotX bot = Shocky.getBotForChannel(channame);
+				final User user = Shocky.getUser(username);
+				final Module module = Module.getModule("factoid");
+				final Method method = module.getClass().getDeclaredMethod("runFactoid", PircBotX.class, Channel.class, User.class, String.class);
+				LuaFunction function = new OneArgFunction() {
+
+					@Override
+					public LuaValue call(LuaValue arg) {
+						StringBuilder message = new StringBuilder(factoid);
+						String args = arg.optjstring(null);
+						if (args != null) {
+							message.append(' ');
+							message.append(args);
+						}
+						try {
+							return valueOf((String)method.invoke(module, bot, chan, user, message.toString()));
+						} catch (Exception e) {
+							throw new LuaError(e);
+						}
+					}					
+				};
+				return function;
+			} catch (Exception e) {
+				throw new LuaError(e);
+			}
+		}
 	}
 }

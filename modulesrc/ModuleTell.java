@@ -31,7 +31,7 @@ public class ModuleTell extends Module {
 	public String name() {return "tell";}
 	public boolean isListener() {return true;}
 	public void onEnable() {
-		Command.addCommands(cmd = new CmdTell());
+		Command.addCommands(this, cmd = new CmdTell());
 		
 		ArrayList<String> lines = FileLine.read(new File("data","tell.cfg"));
 		for (int i = 0; i < lines.size(); i += 4) addTell(lines.get(i),new LineMessage(Long.parseLong(lines.get(i+2)),lines.get(i+1),lines.get(i+3)));
@@ -56,10 +56,10 @@ public class ModuleTell extends Module {
 	
 	public void onMessage(MessageEvent<PircBotX> event) {
 		String[] args = event.getMessage().split(" ");
-		if (args.length>0&&args[0].length()>0&&!Command.matches(cmd,event.getBot(),EType.Channel,args[0]))
+		if (args.length>0&&args[0].length()>0&&!Command.matches(cmd,event.getBot(),EType.Channel,event.getChannel().getName(),args[0]))
 			sendTells(event.getBot(),event.getUser());}
-	public void onPrivateMessage(PrivateMessageEvent<PircBotX> event) {if (!Command.matches(cmd,event.getBot(),EType.Private,event.getMessage().split(" ")[0])) sendTells(event.getBot(),event.getUser());}
-	public void onNotice(NoticeEvent<PircBotX> event) {if (!Command.matches(cmd,event.getBot(),EType.Notice,event.getMessage().split(" ")[0])) sendTells(event.getBot(),event.getUser());}
+	public void onPrivateMessage(PrivateMessageEvent<PircBotX> event) {if (!Command.matches(cmd,event.getBot(),EType.Private,null,event.getMessage().split(" ")[0])) sendTells(event.getBot(),event.getUser());}
+	public void onNotice(NoticeEvent<PircBotX> event) {if (!Command.matches(cmd,event.getBot(),EType.Notice,null,event.getMessage().split(" ")[0])) sendTells(event.getBot(),event.getUser());}
 	public void onAction(ActionEvent<PircBotX> event) {sendTells(event.getBot(),event.getUser());}
 	public void onTopic(TopicEvent<PircBotX> event) {if (event.isChanged()) sendTells(event.getBot(),event.getUser());}
 	public void onKick(KickEvent<PircBotX> event) {sendTells(event.getBot(),event.getSource());}

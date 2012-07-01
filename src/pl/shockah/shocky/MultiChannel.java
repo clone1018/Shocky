@@ -10,7 +10,7 @@ import org.pircbotx.exception.*;
 import pl.shockah.Reflection;
 
 public class MultiChannel {
-	private static HashMap<PircBotX,List<String>> channelMap = new HashMap<PircBotX,List<String>>();
+	private static Map<PircBotX,List<String>> channelMap = new TreeMap<PircBotX,List<String>>(NickComparator.singleton);
 	protected static String channelPrefixes = null;
 	
 	public static Channel get(String name) {
@@ -53,6 +53,7 @@ public class MultiChannel {
 	
 	public static void lostChannel(PircBotX bot, String channel) throws Exception {
 		channelMap.get(bot).remove(channel);
+		Data.channels.remove(channel);
 	}
 	
 	public static void join(String... channels) throws Exception {

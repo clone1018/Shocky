@@ -1,6 +1,8 @@
 package pl.shockah.shocky;
 
 import java.io.File;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -10,9 +12,11 @@ import java.util.Map;
 import org.pircbotx.PircBotX;
 
 public abstract class Module extends ListenerAdapter implements Comparable<Module> {
-	private static final List<Module> modules = Collections.synchronizedList(new ArrayList<Module>()), modulesOn = Collections.synchronizedList(new ArrayList<Module>());
+	private static final List<Module> modules = Collections.synchronizedList(new ArrayList<Module>());
+	private static final List<Module> modulesOn = Collections.synchronizedList(new ArrayList<Module>());
 	private static final List<ModuleLoader> loaders = Collections.synchronizedList(new ArrayList<ModuleLoader>());
 	private static final Map<String, ScriptModule> scriptingModules = Collections.synchronizedMap(new HashMap<String,ScriptModule>());
+	private static final Map<String, List<Module>> disabledModules = Collections.synchronizedMap(new HashMap<String,List<Module>>());
 	
 	static {
 		Module.registerModuleLoader(new ModuleLoader.Java());
@@ -55,7 +59,9 @@ public abstract class Module extends ListenerAdapter implements Comparable<Modul
 				scriptingModules.put(sModule.identifier(), sModule);
 			}
 			Data.config.setNotExists("module-"+module.name(),true);
-			if (Data.config.getBoolean("module-"+module.name())) enable(module);
+			if (Data.config.getBoolean("module-"+module.name())) enable(module,null);
+			for (String key : Data.config.getKeysSubconfigs())
+				if (key.startsWith("#")&&!Data.forChannel(key).getBoolean("module-"+module.name())) disable(module,key);
 		}
 		return module;
 	}
@@ -63,7 +69,7 @@ public abstract class Module extends ListenerAdapter implements Comparable<Modul
 		if (module == null) return false;
 		if (!modules.contains(module)) return false;
 		if (modulesOn.contains(module)) {
-			disable(module);
+			disable(module,null);
 		}
 		modules.remove(module);
 		if (module instanceof ScriptModule) {
@@ -80,22 +86,48 @@ public abstract class Module extends ListenerAdapter implements Comparable<Modul
 		return load(src) != null;
 	}
 	
-	public static boolean enable(Module module) {
+	public static boolean enable(Module module, String channel) {
 		if (module == null) return false;
-		if (modulesOn.contains(module)) return false;
-		module.onEnable();
-		if (module.isListener()) Shocky.getBotManager().getListenerManager().addListener(module);
-		modulesOn.add(module);
-		return true;
+		if (channel != null) {
+			List<Module> disabled;
+			if (!disabledModules.containsKey(channel))
+			{
+				disabled = new ArrayList<Module>();
+				disabledModules.put(channel, disabled);
+			} else {
+				disabled = disabledModules.get(channel);
+			}
+			return disabled.remove(module);
+		} else {
+			if (modulesOn.contains(module)) return false;
+			module.onEnable();
+			if (module.isListener()) Shocky.getBotManager().getListenerManager().addListener(module);
+			modulesOn.add(module);
+			return true;
+		}
 	}
-	public static boolean disable(Module module) {
+	public static boolean disable(Module module, String channel) {
 		if (module == null) return false;
-		if (!modulesOn.contains(module)) return false;
-		if (module.isListener()) Shocky.getBotManager().getListenerManager().removeListener(module);
-		module.onDataSave();
-		module.onDisable();
-		modulesOn.remove(module);
-		return true;
+		if (channel != null) {
+			List<Module> disabled;
+			if (!disabledModules.containsKey(channel))
+			{
+				disabled = new ArrayList<Module>();
+				disabledModules.put(channel, disabled);
+			} else {
+				disabled = disabledModules.get(channel);
+			}
+			if (disabled.contains(module))
+				return false;
+			return disabled.add(module);
+		} else {
+			if (!modulesOn.contains(module)) return false;
+			if (module.isListener()) Shocky.getBotManager().getListenerManager().removeListener(module);
+			module.onDataSave();
+			module.onDisable();
+			modulesOn.remove(module);
+			return true;
+		}
 	}
 	
 	public static ArrayList<Module> loadNewModules() {
@@ -141,11 +173,28 @@ public abstract class Module extends ListenerAdapter implements Comparable<Modul
 	public void onDataSave() {}
 	public boolean isListener() {return false;}
 	
-	public final boolean isEnabled() {
+	public final boolean isEnabled(String channel) {
+		if (disabledModules.containsKey(channel) && disabledModules.get(channel).contains(this))
+			return false;
 		return modulesOn.contains(this);
 	}
 	
 	public final int compareTo(Module module) {
 		return name().compareTo(module.name());
+	}
+	
+	@SuppressWarnings("unchecked")
+	public <R> R invokeMethod(String name, Object... args) {
+		Class<?>[] argTypes = new Class[args.length];
+		for (int i = 0; i < args.length; i++)
+			argTypes[i] = args[i].getClass();
+		try {
+			Method method = this.getClass().getDeclaredMethod(name, argTypes);
+			if ((method.getModifiers() & Modifier.PUBLIC) == 0)
+				method.setAccessible(true);
+			return (R)method.invoke(this, args);
+		} catch (Exception e) {
+			return null;
+		}
 	}
 }

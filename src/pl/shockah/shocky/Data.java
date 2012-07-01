@@ -4,6 +4,7 @@ import java.io.Console;
 import java.io.File;
 import java.util.ArrayList;
 
+import org.pircbotx.Channel;
 import org.pircbotx.User;
 
 import pl.shockah.Config;
@@ -153,5 +154,12 @@ public class Data {
 		}
 
 		return false;
+	}
+	
+	public static Config forChannel(String chan) {
+		return Data.config.getConfig(chan);
+	}
+	public static Config forChannel(Channel chan) {
+		return forChannel(chan.getName());
 	}
 }

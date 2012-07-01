@@ -78,8 +78,8 @@ public class ModuleRollback extends Module {
 		rollbackTmp.clear();
 		
 		Data.config.setNotExists("rollback-dateformat","dd.MM.yyyy HH:mm:ss");
-		Command.addCommands(cmd = new CmdPastebin());
-		Command.addCommand("pb", cmd);
+		Command.addCommands(this, cmd = new CmdPastebin());
+		Command.addCommand(this, "pb", cmd);
 		
 		services.add(new ServicePasteKdeOrg());
 		services.add(new ServicePastebinCom());
@@ -336,7 +336,7 @@ public class ModuleRollback extends Module {
 	}
 	public class ServicePasteKdeOrg extends PasteService {
 		public String paste(ArrayList<Line> lines) {
-			HTTPQuery q = new HTTPQuery("http://paste.kde.org/","POST");
+			HTTPQuery q = new HTTPQuery("http://paste.kde.org/",HTTPQuery.Method.POST);
 			
 			StringBuilder sb = new StringBuilder();
 			sb.append("paste_lang=Text");
@@ -369,7 +369,7 @@ public class ModuleRollback extends Module {
 		private static final String apiKey = "caa6c4204f869de432d5434776598b1c";
 		
 		public String paste(ArrayList<Line> lines) {
-			HTTPQuery q = new HTTPQuery("http://pastebin.com/api/api_post.php","POST");
+			HTTPQuery q = new HTTPQuery("http://pastebin.com/api/api_post.php",HTTPQuery.Method.POST);
 			
 			StringBuilder sb = new StringBuilder();
 			sb.append("api_option=paste");
@@ -391,7 +391,7 @@ public class ModuleRollback extends Module {
 		private static final String apiKey = "srDSz+PeUmUWZWm5qhHkK0WVlmQe29cx";
 		
 		public String paste(ArrayList<Line> lines) {
-			HTTPQuery q = new HTTPQuery("http://pastebin.ca/quiet-paste.php","POST");
+			HTTPQuery q = new HTTPQuery("http://pastebin.ca/quiet-paste.php",HTTPQuery.Method.POST);
 			
 			StringBuilder sb = new StringBuilder();
 			try {

@@ -279,6 +279,9 @@ public class JSONTokener {
                 case 'u':
                     sb.append((char)Integer.parseInt(this.next(4), 16));
                     break;
+                case 'x':
+                    sb.append((char)Integer.parseInt(this.next(2), 16));
+                    break;
                 case '"':
                 case '\'':
                 case '\\':

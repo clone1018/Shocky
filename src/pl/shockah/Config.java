@@ -11,6 +11,17 @@ import java.util.regex.Pattern;
 import pl.shockah.FileLine;
 
 public class Config {
+	
+	public Config() {
+		this(null);
+	}
+	
+	public Config(Config fallback) {
+		fallbackConfig = fallback;
+	}
+	
+	public final Config fallbackConfig;
+	
 	private HashMap<String,String> mapValues = new HashMap<String,String>();
 	private HashMap<String,Config> mapSubconfigs = new HashMap<String,Config>();
 	
@@ -55,15 +66,18 @@ public class Config {
 	public synchronized void makeConfig(String key) {
 		if (mapValues.containsKey(key)) mapValues.remove(key);
 		if (mapSubconfigs.containsKey(key)) return;
-		mapSubconfigs.put(key,new Config());
+		mapSubconfigs.put(key,new Config(this));
 	}
+	
 	public synchronized Config getConfig(String key) {
 		if (!mapSubconfigs.containsKey(key)) makeConfig(key);
 		return mapSubconfigs.get(key);
 	}
+	
 	public synchronized void removeConfig(String key) {
 		mapSubconfigs.remove(key);
 	}
+	
 	public synchronized boolean existsConfig(String key) {
 		return mapSubconfigs.containsKey(key);
 	}
@@ -71,9 +85,11 @@ public class Config {
 	public synchronized boolean exists(String key) {
 		return mapValues.containsKey(key);
 	}
+	
 	public void setNotExists(String key, Object value) {
 		if (!exists(key)) set(key,value);
 	}
+	
 	public void setNotExists(String key, boolean value) {setNotExists(key,new Boolean(value));}
 	public void setNotExists(String key, int value) {setNotExists(key,new Integer(value));}
 	public void setNotExists(String key, long value) {setNotExists(key,new Long(value));}
@@ -81,7 +97,13 @@ public class Config {
 	public void setNotExists(String key, double value) {setNotExists(key,new Double(value));}
 	
 	public synchronized String getString(String key) {
-		return mapValues.get(key);
+		if (mapValues.containsKey(key))
+				return mapValues.get(key);
+		
+		if (fallbackConfig != null)
+			return fallbackConfig.getString(key);
+		
+		return null;
 	}
 	public boolean getBoolean(String key) {
 		String v = getString(key);
