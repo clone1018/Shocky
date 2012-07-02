@@ -43,6 +43,8 @@ public class Data {
 		Data.config.setNotExists("main-sqlpass","");
 		Data.config.setNotExists("main-sqldb","shocky");
 		Data.config.setNotExists("main-sqlprefix","");
+		Data.config.setNotExists("main-bitlyuser","");
+		Data.config.setNotExists("main-bitlyapikey","");
 		
 		Console c = System.console();
 		if (c == null) System.out.println("--- Not running in console, using default first-run settings ---"); else {

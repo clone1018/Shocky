@@ -1,6 +1,5 @@
 package pl.shockah.shocky;
 
-import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.regex.Pattern;
@@ -10,7 +9,6 @@ import pl.shockah.HTTPQuery;
 import pl.shockah.StringTools;
 
 public class Utils {
-	private static final String bitLyApiKey = "R_d1b29bf716a73c5ae5cd354485299926";
 	public static final Pattern
 		patternURL = Pattern.compile("[a-z]+://(www\\.)?[a-z0-9]+(\\.[a-z]+)+/([^/:]+/)*([^/]*)?"),
 		patternNick = Pattern.compile("[a-zA-Z0-9\\Q_-\\[]{}^`|\\E]+");
@@ -37,7 +35,7 @@ public class Utils {
 	}
 	public static String shortenUrl(String url) {
 		try {
-			HTTPQuery q = new HTTPQuery("http://api.bitly.com/v3/shorten?format=txt&login=shockah&apiKey="+bitLyApiKey+"&longUrl="+URLEncoder.encode(url,"UTF8"));
+			HTTPQuery q = new HTTPQuery("http://api.bitly.com/v3/shorten?"+HTTPQuery.parseArgs("format","txt","login",Data.config.getString("main-bitlyuser"),"apiKey",Data.config.getString("main-bitlyapikey"),"longUrl",url));
 			q.connect(true,true,false);
 			String line = q.read().get(0);
 			q.close();
