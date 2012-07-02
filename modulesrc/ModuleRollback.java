@@ -261,7 +261,6 @@ public class ModuleRollback extends Module {
 		}
 		
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-			if (!canUseAny(bot,type,channel,sender)) return;
 			String[] args = message.split(" ");
 			String pbLink = "", regex = null;
 			callback.type = EType.Notice;
