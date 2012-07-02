@@ -6,6 +6,8 @@ import java.util.regex.*;
 import org.json.JSONObject;
 import org.pircbotx.*;
 import org.pircbotx.hooks.events.MessageEvent;
+import org.pircbotx.hooks.events.NoticeEvent;
+import org.pircbotx.hooks.events.PrivateMessageEvent;
 import pl.shockah.*;
 import pl.shockah.shocky.*;
 import pl.shockah.shocky.Utils;
@@ -298,14 +300,23 @@ public class ModuleFactoid extends Module {
 		if (Data.isBlacklisted(event.getUser())) return;
 		onMessage(event.getBot(),event.getChannel(),event.getUser(),event.getMessage());
 	}
+	public void onPrivateMessage(PrivateMessageEvent<PircBotX> event) {
+		if (Data.isBlacklisted(event.getUser())) return;
+		onMessage(event.getBot(),null,event.getUser(),event.getMessage());
+	}
+	public void onNotice(NoticeEvent<PircBotX> event) {
+		if (Data.isBlacklisted(event.getUser())) return;
+		onMessage(event.getBot(),null,event.getUser(),event.getMessage());
+	}
 	public void onMessage(PircBotX bot, Channel channel, User sender, String msg) {
 		if (msg.length() < 2) return;
-		String chars = Data.forChannel(channel).getString("factoid-char");
+		Config config = channel == null ? Data.config : Data.forChannel(channel);
+		String chars = config.getString("factoid-char");
 		
 		for (int i = 0; i < chars.length(); i++) if (msg.charAt(0) == chars.charAt(i)) {
 			msg = redirectMessage(channel, sender, msg);
-			String charsraw = Data.forChannel(channel).getString("factoid-charraw");
-			String charsby = Data.forChannel(channel).getString("factoid-charby");
+			String charsraw = config.getString("factoid-charraw");
+			String charsby = config.getString("factoid-charby");
 			
 			String[] args = msg.split(" ");
 			String target = null;
@@ -322,6 +333,7 @@ public class ModuleFactoid extends Module {
 			}
 			
 			if (target != null) {
+				if (channel == null) return;
 				boolean found = false;
 				for (User user : channel.getUsers()) if (user.getNick().equals(target)) {
 					found = true;
@@ -332,7 +344,7 @@ public class ModuleFactoid extends Module {
 			
 			for (i = 0; i < charsraw.length(); i++) if (msg.charAt(0) == charsraw.charAt(i)) {
 				msg = new StringBuilder(msg).deleteCharAt(0).toString().split(" ")[0].toLowerCase();
-				Factoid f = getLatest(channel.getName(),msg,false);
+				Factoid f = getLatest(channel == null ? null : channel.getName(),msg,false);
 				StringBuilder sb = new StringBuilder();
 				if (target == null && ping != null) {
 					sb.append(ping);
@@ -341,12 +353,12 @@ public class ModuleFactoid extends Module {
 				sb.append(msg);
 				sb.append(": ");
 				sb.append(f.rawtext);
-				if (f != null && !f.forgotten) Shocky.send(bot,target != null?Command.EType.Notice:Command.EType.Channel,channel,Shocky.getUser(target),sb.toString());
+				if (f != null && !f.forgotten) Shocky.send(bot,target != null?Command.EType.Notice:(channel == null ? Command.EType.Notice : Command.EType.Channel),channel,channel == null ? sender : Shocky.getUser(target),sb.toString());
 				return;
 			}
 			for (i = 0; i < charsby.length(); i++) if (msg.charAt(0) == charsby.charAt(i)) {
 				msg = new StringBuilder(msg).deleteCharAt(0).toString().split(" ")[0].toLowerCase();
-				Factoid f = getLatest(channel.getName(),msg,false);
+				Factoid f = getLatest(channel == null ? null : channel.getName(),msg,false);
 				StringBuilder sb = new StringBuilder();
 				if (target == null && ping != null) {
 					sb.append(ping);
@@ -355,16 +367,16 @@ public class ModuleFactoid extends Module {
 				sb.append(msg);
 				sb.append(", last edited by ");
 				sb.append(f.author);
-				if (f != null && !f.forgotten) Shocky.send(bot,target != null?Command.EType.Notice:Command.EType.Channel,channel,Shocky.getUser(target),sb.toString());
+				if (f != null && !f.forgotten) Shocky.send(bot,target != null?Command.EType.Notice:(channel == null ? Command.EType.Notice : Command.EType.Channel),channel,channel == null ? sender : Shocky.getUser(target),sb.toString());
 				return;
 			}
 			
 			args = msg.split(" ");
 			String factoid = args[0].toLowerCase();
-			String[] chain = factoid.split(Data.forChannel(channel).getString("factoid-charchain"));
+			String[] chain = factoid.split(config.getString("factoid-charchain"));
 			
 			for (i = 0; i < chain.length; i++)
-				if (getLatest(channel.getName(),chain[i],false) == null) return;
+				if (getLatest(channel == null ? null : channel.getName(),chain[i],false) == null) return;
 
 			String message = StringTools.implode(args, 1," ");
 			
@@ -380,7 +392,7 @@ public class ModuleFactoid extends Module {
 					sb.insert(0, ping);
 				}
 				
-				Shocky.send(bot, target != null?Command.EType.Notice:Command.EType.Channel, channel, Shocky.getUser(target), sb.toString());
+				Shocky.send(bot, target != null?Command.EType.Notice:(channel == null ? Command.EType.Notice : Command.EType.Channel), channel, channel == null ? sender : Shocky.getUser(target), sb.toString());
 			}
 		}
 	}
@@ -390,7 +402,7 @@ public class ModuleFactoid extends Module {
 		while (true) {
 			String factoid = message.split(" ")[0].toLowerCase();
 
-			Factoid f = getLatest(channel.getName(), factoid, false);
+			Factoid f = getLatest(channel == null ? null : channel.getName(), factoid, false);
 			if (f != null) {
 				if (f.forgotten)
 					break;
@@ -425,14 +437,14 @@ public class ModuleFactoid extends Module {
 		ScriptModule sModule = Module.getScriptingModule(type);
 		if (sModule != null) {
 			raw = parseVariables(bot, channel, sender, message, raw);
-			String parsed = sModule.parse(bot, EType.Channel, channel, sender, raw, message);
+			String parsed = sModule.parse(bot, channel == null ? EType.Notice : EType.Channel, channel, sender, raw, message);
 			return parse(bot, channel, sender, message, parsed);
 		} else if (type != null && type.contentEquals("cmd")) {
 			CommandCallback callback = new CommandCallback();
 			Command cmd = Command.getCommand(bot,sender,channel.getName(),EType.Channel,callback,raw);
 			if (cmd != null && !(cmd instanceof CmdFactoid)) {
 				raw = parseVariables(bot, channel, sender, message, raw);
-				cmd.doCommand(bot,EType.Channel,callback,channel,sender,raw);
+				cmd.doCommand(bot,channel == null ? EType.Notice : EType.Channel,callback,channel,sender,raw);
 				if (callback.type == EType.Channel)
 					return callback.toString();
 			}
@@ -503,11 +515,11 @@ public class ModuleFactoid extends Module {
 				m.appendReplacement(ret, args.length > 1 ? StringTools.implode(args,1," ") : sender.getNick());
 			else if (tag.contentEquals("bot"))
 				m.appendReplacement(ret, bot.getName());
-			else if (tag.contentEquals("chan"))
+			else if (channel != null && tag.contentEquals("chan"))
 				m.appendReplacement(ret, channel.getName());
 			else if (tag.contentEquals("user"))
 				m.appendReplacement(ret, sender.getNick());
-			else if (tag.contentEquals("rndn")) {
+			else if (channel != null && tag.contentEquals("rndn")) {
 				if (users == null) {
 					rnd = new Random();
 					users = channel.getUsers().toArray(new User[0]);
@@ -525,7 +537,7 @@ public class ModuleFactoid extends Module {
 	
 	public String redirectMessage(Channel channel, User sender, String message) {
 		String[] args = message.split(" ");
-		if (args.length >= 2 && args.length <= 3 && args[1].contentEquals("^")) {
+		if (args.length >= 2 && args.length <= 3 && args[1].contentEquals("^") && channel != null) {
 			Module module = Module.getModule("rollback");
 			try {
 			if (module != null) {
@@ -604,6 +616,7 @@ public class ModuleFactoid extends Module {
 	}
 	
 	private Factoid getLatest(String channel, String factoid) {
+		if (channel == null) channel = "";
 		QuerySelect q = new QuerySelect(SQL.getTable("factoid"));
 		q.addCriterions(new CriterionStringEquals("channel",channel == null? "" : channel.toLowerCase()));
 		q.addCriterions(new CriterionStringEquals("factoid",factoid.toLowerCase()));
@@ -613,6 +626,7 @@ public class ModuleFactoid extends Module {
 		return j != null && j.length() != 0 ? Factoid.fromJSONObject(j) : (channel == null ? null : getLatest(null,factoid));
 	}
 	private Factoid getLatest(String channel, String factoid, boolean forgotten) {
+		if (channel == null) channel = "";
 		QuerySelect q = new QuerySelect(SQL.getTable("factoid"));
 		q.addCriterions(new CriterionStringEquals("channel",channel == null? "" : channel.toLowerCase()));
 		q.addCriterions(new CriterionStringEquals("factoid",factoid.toLowerCase()));
