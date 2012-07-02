@@ -3,7 +3,6 @@ package pl.shockah.shocky.cmds;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -87,12 +86,8 @@ public abstract class Command implements Comparable<Command> {
 		return null;
 	}
 	public static Map<String,Command> getCommands() {
-		TreeMap<String,Command> map = new TreeMap<String,Command>(cmds);
-		Iterator<String> iterator = map.keySet().iterator();
-		while (iterator.hasNext()) {
-			String key = iterator.next();
-			if (aliases.contains(key)) iterator.remove();
-		}
+		TreeMap<String,Command> map = new TreeMap<String,Command>();
+		for (String s : cmds.keySet()) if (!aliases.contains(s)) map.put(s,cmds.get(s));
 		return Collections.unmodifiableSortedMap(map);
 	}
 	public static Map<String,Command> getCommands(String cmdName, String channel) {
