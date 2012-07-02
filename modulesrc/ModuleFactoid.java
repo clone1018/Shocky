@@ -616,7 +616,6 @@ public class ModuleFactoid extends Module {
 	}
 	
 	private Factoid getLatest(String channel, String factoid) {
-		if (channel == null) channel = "";
 		QuerySelect q = new QuerySelect(SQL.getTable("factoid"));
 		q.addCriterions(new CriterionStringEquals("channel",channel == null? "" : channel.toLowerCase()));
 		q.addCriterions(new CriterionStringEquals("factoid",factoid.toLowerCase()));
@@ -626,7 +625,6 @@ public class ModuleFactoid extends Module {
 		return j != null && j.length() != 0 ? Factoid.fromJSONObject(j) : (channel == null ? null : getLatest(null,factoid));
 	}
 	private Factoid getLatest(String channel, String factoid, boolean forgotten) {
-		if (channel == null) channel = "";
 		QuerySelect q = new QuerySelect(SQL.getTable("factoid"));
 		q.addCriterions(new CriterionStringEquals("channel",channel == null? "" : channel.toLowerCase()));
 		q.addCriterions(new CriterionStringEquals("factoid",factoid.toLowerCase()));
