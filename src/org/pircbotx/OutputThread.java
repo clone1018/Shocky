@@ -17,34 +17,17 @@ public class OutputThread extends Thread {
 	}
 
 	public void sendRawLineNow(String line) {
-		failIfNotConnected();
 		if (line.length() > this.bot.getMaxLineLength() - 2) line = line.substring(0,this.bot.getMaxLineLength() - 2);
 		synchronized (this.bwriter) {
+			failIfNotConnected();
 			try {
 				this.bwriter.write(line + "\r\n");
 				this.bwriter.flush();
 				this.bot.log(">>>" + line);
 				handleLine(line);
 			} catch (Exception e) {
-				this.bot.logException(e);
+				throw new RuntimeException("Exception encountered when writng to socket",e);
 			}
-		}
-	}
-	
-	@SuppressWarnings({"rawtypes","unchecked"}) protected void handleLine(String line) {
-		String[] spl = line.split(" ");
-		if (line.toUpperCase().startsWith("PRIVMSG")) {
-			if (line.indexOf(":\u0001") > 0 && line.endsWith("\u0001")) {
-				return;
-			} else {
-				if (bot._channelPrefixes.indexOf(spl[1].charAt(0)) != -1) {
-					bot.getListenerManager().dispatchEvent(new MessageOutEvent(bot,bot.getChannel(spl[1]),line.substring(line.indexOf(" :")+2)));
-				} else {
-					bot.getListenerManager().dispatchEvent(new PrivateMessageOutEvent(bot,bot.getUser(spl[1]),line.substring(line.indexOf(" :")+2)));
-				}
-			}
-		} else if (line.toUpperCase().startsWith("NOTICE")) {
-			bot.getListenerManager().dispatchEvent(new NoticeOutEvent(bot,bot.getUser(spl[1]),line.substring(line.indexOf(" :")+2)));
 		}
 	}
 
@@ -77,5 +60,22 @@ public class OutputThread extends Thread {
 				Thread.sleep(this.bot.getMessageDelay());
 			}
 		} catch (InterruptedException e) {}
+	}
+	
+	@SuppressWarnings({"rawtypes","unchecked"}) protected void handleLine(String line) {
+		String[] spl = line.split(" ");
+		if (line.toUpperCase().startsWith("PRIVMSG")) {
+			if (line.indexOf(":\u0001") > 0 && line.endsWith("\u0001")) {
+				return;
+			} else {
+				if (bot.channelPrefixes.indexOf(spl[1].charAt(0)) != -1) {
+					bot.getListenerManager().dispatchEvent(new MessageOutEvent(bot,bot.getChannel(spl[1]),line.substring(line.indexOf(" :")+2)));
+				} else {
+					bot.getListenerManager().dispatchEvent(new PrivateMessageOutEvent(bot,bot.getUser(spl[1]),line.substring(line.indexOf(" :")+2)));
+				}
+			}
+		} else if (line.toUpperCase().startsWith("NOTICE")) {
+			bot.getListenerManager().dispatchEvent(new NoticeOutEvent(bot,bot.getUser(spl[1]),line.substring(line.indexOf(" :")+2)));
+		}
 	}
 }

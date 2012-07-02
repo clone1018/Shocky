@@ -20,7 +20,7 @@ public class Shocky extends ListenerAdapter {
 			multiBot.setName(Data.config.getString("main-botname"));
 			multiBot.setLogin(Data.config.getString("main-botname"));
 			multiBot.setAutoNickChange(true);
-			multiBot.setMessageDelay(500);
+			multiBot.setMessageDelay(Data.config.getInt("main-messagedelay"));
 			multiBot.setEncoding("UTF8");
 			multiBot.setVerbose(Data.config.getBoolean("main-verbose"));
 			multiBot.setListenerManager(new ShockyListenerManager<PircBotX>());

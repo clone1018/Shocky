@@ -5,6 +5,7 @@ import java.io.File;
 import java.util.ArrayList;
 
 import org.pircbotx.Channel;
+import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 
 import pl.shockah.Config;
@@ -29,12 +30,13 @@ public class Data {
 	private static synchronized void blank() {
 		Data.config.setNotExists("main-botname","Shocky");
 		Data.config.setNotExists("main-server","irc.esper.net");
-		Data.config.setNotExists("main-version","Shocky - PircBotX 1.6 - https://github.com/clone1018/Shocky - http://pircbotx.googlecode.com");
+		Data.config.setNotExists("main-version","Shocky - PircBotX "+PircBotX.VERSION+" - https://github.com/clone1018/Shocky - http://pircbotx.googlecode.com");
 		Data.config.setNotExists("main-verbose",false);
 		Data.config.setNotExists("main-maxchannels",10);
 		Data.config.setNotExists("main-nickservpass","");
 		Data.config.setNotExists("main-cmdchar","`~");
 		Data.config.setNotExists("main-messagelength",400);
+		Data.config.setNotExists("main-messagedelay",500);
 		Data.config.setNotExists("main-sqlurl","http://localhost/shocky/sql.php");
 		Data.config.setNotExists("main-sqlhost","localhost");
 		Data.config.setNotExists("main-sqluser","");
@@ -49,6 +51,7 @@ public class Data {
 			firstRunSetupString(c,"main-server");
 			firstRunSetupBoolean(c,"main-verbose");
 			firstRunSetupString(c,"main-botname");
+			firstRunSetupInt(c,"main-messagedelay");
 			firstRunSetupPassword(c,"main-nickservpass");
 			firstRunSetupString(c,"main-version");
 			firstRunSetupInt(c,"main-maxchannels");

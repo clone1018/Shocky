@@ -43,11 +43,7 @@ public class MultiChannel {
 		} catch (IrcException e) {
 			e.printStackTrace();
 		}
-		if (bot != null) {
-			if (bot.isConnected())
-				bot.disconnect();
-			bot.dispose();
-		}
+		if (bot != null) bot.disconnect();
 		return null;
 	}
 	
