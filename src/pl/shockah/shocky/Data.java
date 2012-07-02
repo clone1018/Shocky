@@ -146,6 +146,9 @@ public class Data {
 			case 'i':
 				value = user.getLogin().toLowerCase();
 				break;
+			case 's':
+				value = Whois.getWhoisLogin(user).toLowerCase();
+				break;
 			}
 			for (String part : array) {
 				int idx = value.indexOf(part, o);
