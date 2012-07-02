@@ -91,7 +91,7 @@ public abstract class Command implements Comparable<Command> {
 		Iterator<String> iterator = map.keySet().iterator();
 		while (iterator.hasNext()) {
 			String key = iterator.next();
-			if (aliases.contains(key)) map.remove(key);
+			if (aliases.contains(key)) iterator.remove();
 		}
 		return Collections.unmodifiableSortedMap(map);
 	}
