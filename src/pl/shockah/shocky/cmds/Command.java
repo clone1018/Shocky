@@ -87,13 +87,13 @@ public abstract class Command implements Comparable<Command> {
 		return null;
 	}
 	public static Map<String,Command> getCommands() {
-		Map<String,Command> map = Collections.synchronizedSortedMap(new TreeMap<String,Command>(cmds));
+		TreeMap<String,Command> map = new TreeMap<String,Command>(cmds);
 		Iterator<String> iterator = map.keySet().iterator();
 		while (iterator.hasNext()) {
 			String key = iterator.next();
 			if (aliases.contains(key)) map.remove(key);
 		}
-		return Collections.unmodifiableMap(map);
+		return Collections.unmodifiableSortedMap(map);
 	}
 	public static Map<String,Command> getCommands(String cmdName, String channel) {
 		TreeMap<String,Command> matchMap = new TreeMap<String,Command>();

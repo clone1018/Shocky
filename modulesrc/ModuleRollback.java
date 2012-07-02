@@ -300,7 +300,7 @@ public class ModuleRollback extends Module {
 				
 				if (rollback.containsKey(aChannel) && !rollback.get(aChannel).isEmpty()) {
 					ArrayList<Line> list;
-					if (aLines.toLowerCase().matches("^\\-?(?:[0-9]+[smhd])+$")) {
+					if (aLines.toLowerCase().matches("^\\-?(?:[0-9]+?[smhd])+$")) {
 						boolean additive = aLines.charAt(0) != '-';
 						if (!additive) aLines = aLines.substring(1);
 						Pattern p = Pattern.compile("([0-9]+[smhd])");
@@ -340,7 +340,9 @@ public class ModuleRollback extends Module {
 		public String getLink(ArrayList<Line> lines) {
 			String link;
 			for (PasteService service : services) {
-				link = service.paste(lines); if (link.isEmpty() || link.startsWith("http://")) return link;
+				link = service.paste(lines);
+				if (link == null) continue;
+				if (link.isEmpty() || link.startsWith("http://")) return link;
 			}
 			return "Failed with all services";
 		}
