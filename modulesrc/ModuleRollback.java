@@ -9,6 +9,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TimeZone;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
@@ -249,11 +250,11 @@ public class ModuleRollback extends Module {
 			if (type == EType.Channel) {
 				sb.append("\npastebin [channel] [user] {lines} - uploads last lines to paste.kde.org/pastebin.com/pastebin.ca");
 				sb.append("\npastebin [channel] [user] -{lines} - uploads first lines to paste.kde.org/pastebin.com/pastebin.ca");
-				sb.append("\npastebin [channel] [user] {time}{h/m/s} - uploads last lines from set time to paste.kde.org/pastebin.com/pastebin.ca");
+				sb.append("\npastebin [channel] [user] {time}{d/h/m/s} - uploads last lines from set time to paste.kde.org/pastebin.com/pastebin.ca");
 			} else {
 				sb.append("\npastebin {channel} [user] {lines} - uploads last lines to paste.kde.org/pastebin.com/pastebin.ca");
 				sb.append("\npastebin {channel} [user] -{lines} - uploads first lines to paste.kde.org/pastebin.com/pastebin.ca");
-				sb.append("\npastebin {channel} [user] {time}{h/m/s} - uploads last lines from set time to paste.kde.org/pastebin.com/pastebin.ca");
+				sb.append("\npastebin {channel} [user] {time}{d/h/m/s} - uploads last lines from set time to paste.kde.org/pastebin.com/pastebin.ca");
 			}
 			
 			return sb.toString();
@@ -299,11 +300,25 @@ public class ModuleRollback extends Module {
 				
 				if (rollback.containsKey(aChannel) && !rollback.get(aChannel).isEmpty()) {
 					ArrayList<Line> list;
-					if (aLines.toLowerCase().endsWith("s")) list = getRollbackLines(aChannel,aUser,regex,null,aLines.charAt(0) != '-',0,Math.abs(Integer.parseInt(aLines.substring(0,aLines.length()-1))));
-					else if (aLines.toLowerCase().endsWith("m")) list = getRollbackLines(aChannel,aUser,regex,null,aLines.charAt(0) != '-',0,Math.abs(60*Integer.parseInt(aLines.substring(0,aLines.length()-1))));
-					else if (aLines.toLowerCase().endsWith("h")) list = getRollbackLines(aChannel,aUser,regex,null,aLines.charAt(0) != '-',0,Math.abs(3600*Integer.parseInt(aLines.substring(0,aLines.length()-1))));
-					else if (aLines.toLowerCase().endsWith("d")) list = getRollbackLines(aChannel,aUser,regex,null,aLines.charAt(0) != '-',0,Math.abs(86400*Integer.parseInt(aLines.substring(0,aLines.length()-1))));
-					else list = getRollbackLines(aChannel,aUser,regex,null,aLines.charAt(0) != '-',Math.abs(Integer.parseInt(aLines)),0);
+					if (aLines.toLowerCase().matches("^\\-?(?:[0-9]+[smhd])+$")) {
+						boolean additive = aLines.charAt(0) != '-';
+						if (!additive) aLines = aLines.substring(1);
+						Pattern p = Pattern.compile("([0-9]+[smhd])");
+						Matcher m = p.matcher(aLines);
+						
+						int time = 0;
+						while (m.find()) {
+							char c = m.group(1).charAt(m.group(1).length()-1);
+							int i = Integer.parseInt(m.group(1).substring(0,m.group(1).length()-1));
+							switch (c) {
+								case 's': time += i; break;
+								case 'm': time += i*60; break;
+								case 'h': time += i*3600; break;
+								case 'd': time += i*86400; break;
+							}
+						}
+						list = getRollbackLines(aChannel,aUser,regex,null,additive,0,time);
+					} else list = getRollbackLines(aChannel,aUser,regex,null,aLines.charAt(0) != '-',Math.abs(Integer.parseInt(aLines)),0);
 					
 					if (list.isEmpty()) {
 						callback.append("Nothing to upload");

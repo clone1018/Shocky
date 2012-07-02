@@ -1,7 +1,10 @@
 package pl.shockah.shocky.cmds;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
@@ -18,6 +21,7 @@ import pl.shockah.shocky.Shocky;
 public abstract class Command implements Comparable<Command> {
 	private static final Map<Command, Object> cmdSources = Collections.synchronizedMap(new HashMap<Command, Object>());
 	private static final Map<String, Command> cmds = Collections.synchronizedSortedMap(new TreeMap<String, Command>());
+	private static final List<String> aliases = Collections.synchronizedList(new ArrayList<String>());
 	
 	public static enum EType {
 		Channel, Private, Notice, Console;
@@ -34,6 +38,7 @@ public abstract class Command implements Comparable<Command> {
 	public static void addCommand(Object source, String name, Command command) {
 		cmdSources.put(command, source);
 		cmds.put(name,command);
+		aliases.add(name);
 	}
 	public static void addCommands(Object source, Command... commands) {
 		for (int i = 0; i < commands.length; i++) {
@@ -50,8 +55,10 @@ public abstract class Command implements Comparable<Command> {
 	public static void removeCommands(String... commands) {
 		for (int i = 0; i < commands.length; i++) {
 			Command cmd = cmds.remove(commands[i]);
-			if (cmd != null)
+			if (cmd != null) {
 				cmdSources.remove(cmd);
+				aliases.remove(commands[i]);
+			}
 		}
 	}
 	public static void removeCommands(Command... commands) {
@@ -80,7 +87,13 @@ public abstract class Command implements Comparable<Command> {
 		return null;
 	}
 	public static Map<String,Command> getCommands() {
-		return Collections.unmodifiableMap(cmds);
+		Map<String,Command> map = Collections.synchronizedSortedMap(new TreeMap<String,Command>(cmds));
+		Iterator<String> iterator = map.keySet().iterator();
+		while (iterator.hasNext()) {
+			String key = iterator.next();
+			if (aliases.contains(key)) map.remove(key);
+		}
+		return Collections.unmodifiableMap(map);
 	}
 	public static Map<String,Command> getCommands(String cmdName, String channel) {
 		TreeMap<String,Command> matchMap = new TreeMap<String,Command>();

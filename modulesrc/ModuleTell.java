@@ -48,7 +48,7 @@ public class ModuleTell extends Module {
 				lines.add(pair.getKey());
 				lines.add(l.sender);
 				lines.add(""+l.time.getTime());
-				lines.add(l.getMessage());
+				lines.add(l.text);
 			}
 		}
 		FileLine.write(new File("data","tell.cfg"),lines);
