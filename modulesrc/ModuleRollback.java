@@ -43,7 +43,7 @@ public class ModuleRollback extends Module implements IRollback {
 	public static String toString(Line line) {
 		SimpleDateFormat sdf = new SimpleDateFormat(Data.config.getString("rollback-dateformat"));
 		sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
-		return (Line.getWithChannels() ? "["+line.channel+"] " : " ")+"["+sdf.format(line.time)+"] "+line.getMessage();
+		return "["+sdf.format(line.time)+"] "+(Line.getWithChannels() ? "["+line.channel+"] " : " ")+line.getMessage();
 	}
 	
 	public String name() {return "rollback";}
@@ -181,7 +181,7 @@ public class ModuleRollback extends Module implements IRollback {
 					q.addCriterions(new CriterionNumber("stamp","<=",j.getLong("stamp")+seconds));
 				} else q.addCriterions(new CriterionNumber("stamp",">=",new Date().getTime()-(seconds*1000)));
 			}
-			if (regex != null && !regex.isEmpty()) q.addCriterions(new Criterion("'HEX(txt) RLIKE CONCAT('(..)*',HEX('"+regex.replace("\\","\\\\").replace("'","\\'")+"'),'(..)*')'"));
+			if (regex != null && !regex.isEmpty()) q.addCriterions(new Criterion("txt REGEXP '"+regex.replace("\\","\\\\").replace("'","\\'")+"'"));
 			if (cull != null && !cull.isEmpty()) q.addCriterions(new CriterionStringEquals("txt",cull,false));
 			if (type != Line.class) q.addCriterions(new CriterionNumber("type","=",intType));
 			q.addOrder("stamp",!newest);
