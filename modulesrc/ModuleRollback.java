@@ -1,9 +1,9 @@
-import java.io.File;
 import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.Map.Entry;
 import java.util.regex.*;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.pircbotx.*;
 import org.pircbotx.hooks.events.*;
 import pl.shockah.*;
@@ -14,11 +14,23 @@ import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.events.*;
 import pl.shockah.shocky.lines.*;
 import pl.shockah.shocky.prototypes.IRollback;
+import pl.shockah.shocky.sql.Criterion;
+import pl.shockah.shocky.sql.CriterionNumber;
+import pl.shockah.shocky.sql.CriterionStringEquals;
+import pl.shockah.shocky.sql.QueryInsert;
+import pl.shockah.shocky.sql.QuerySelect;
+import pl.shockah.shocky.sql.SQL;
 
 public class ModuleRollback extends Module implements IRollback {
-	public final Map<String,ArrayList<Line>> rollback = Collections.synchronizedMap(new HashMap<String,ArrayList<Line>>()), rollbackTmp = Collections.synchronizedMap(new HashMap<String,ArrayList<Line>>());
 	public final ArrayList<PasteService> services = new ArrayList<ModuleRollback.PasteService>();
 	protected Command cmd;
+	
+	public static final int
+		TYPE_MESSAGE = 1,
+		TYPE_ACTION = 2,
+		TYPE_ENTERLEAVE = 3,
+		TYPE_KICK = 4,
+		TYPE_OTHER = 0;
 	
 	public static void appendLines(StringBuilder sb, ArrayList<Line> lines) {
 		try {
@@ -31,33 +43,12 @@ public class ModuleRollback extends Module implements IRollback {
 	public static String toString(Line line) {
 		SimpleDateFormat sdf = new SimpleDateFormat(Data.config.getString("rollback-dateformat"));
 		sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
-		return "["+sdf.format(line.time)+"] "+line.getMessage();
+		return (Line.getWithChannels() ? "["+line.channel+"] " : " ")+"["+sdf.format(line.time)+"] "+line.getMessage();
 	}
 	
 	public String name() {return "rollback";}
 	public boolean isListener() {return true;}
 	public void onEnable() {
-		File dir = new File("data","rollback"); dir.mkdir();
-		File[] files = dir.listFiles();
-		for (File f : files) {
-			if (f.isDirectory()) return;
-			
-			String channel = f.getName();
-			BinBuffer binb = new BinFile(f).read(); binb.setPos(0);
-			int count = binb.readInt();
-			for (int i = 0; i < count; i++) {
-				try {
-					Line line = Line.readLine(binb);
-					if (line != null)
-						addRollbackLine(channel,line);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-		}
-		
-		rollbackTmp.clear();
-		
 		Data.config.setNotExists("rollback-dateformat","dd.MM.yyyy HH:mm:ss");
 		Command.addCommands(this, cmd = new CmdPastebin());
 		Command.addCommand(this, "pb", cmd);
@@ -65,159 +56,156 @@ public class ModuleRollback extends Module implements IRollback {
 		services.add(new ServicePasteKdeOrg());
 		services.add(new ServicePastebinCom());
 		services.add(new ServicePastebinCa());
+		
+		SQL.raw("CREATE TABLE IF NOT EXISTS "+SQL.getTable("rollback")+" (channel TEXT NOT NULL,user TEXT NOT NULL,user2 TEXT NOT NULL,type INT(1) UNSIGNED NOT NULL,stamp BIGINT UNSIGNED NOT NULL,txt TEXT NOT NULL)");
+		SQL.raw("ALTER TABLE "+SQL.getTable("rollback")+" ADD INDEX (channel(5),stamp)");
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd);
 		services.clear();
 	}
-	public void onDataSave() {
-		File dir = new File("data","rollback"); dir.mkdir();
-		BinBuffer binb = new BinBuffer();
-		
-		Iterator<Entry<String, ArrayList<Line>>> it = rollbackTmp.entrySet().iterator();
-		while (it.hasNext()) {
-			binb.clear();
-			Map.Entry<String, ArrayList<Line>> pair = it.next();
-			
-			ArrayList<Line> lines = pair.getValue();
-			binb.writeInt(lines.size());
-			for (Line line : lines) {
-				byte type = Line.getLineID(line);
-				if (type != -1) {
-					binb.writeByte(type);
-					line.save(binb);
-				}
-			}
-			
-			binb.setPos(0);
-			new BinFile(new File(dir,pair.getKey())).append(binb);
-		}
-		
-		rollbackTmp.clear();
-	}
 	
 	public void onMessage(MessageEvent<PircBotX> event) {
-		addRollbackLine(event.getChannel().getName(),new LineMessage(event.getUser().getNick(),event.getMessage()));
+		addRollbackLine(event.getChannel().getName(),new LineMessage(event.getChannel().getName(),event.getUser().getNick(),event.getMessage()));
 	}
 	public void onMessageOut(MessageOutEvent<PircBotX> event) {
-		addRollbackLine(event.getChannel().getName(),new LineMessage(event.getBot().getNick(),event.getMessage()));
+		addRollbackLine(event.getChannel().getName(),new LineMessage(event.getChannel().getName(),event.getBot().getNick(),event.getMessage()));
 	}
 	public void onAction(ActionEvent<PircBotX> event) {
-		addRollbackLine(event.getChannel().getName(),new LineAction(event.getUser().getNick(),event.getMessage()));
+		addRollbackLine(event.getChannel().getName(),new LineAction(event.getChannel().getName(),event.getUser().getNick(),event.getMessage()));
 	}
 	public void onActionOut(ActionOutEvent<PircBotX> event) {
-		addRollbackLine(event.getChannel().getName(),new LineAction(event.getBot().getNick(),event.getMessage()));
+		addRollbackLine(event.getChannel().getName(),new LineAction(event.getChannel().getName(),event.getBot().getNick(),event.getMessage()));
 	}
 	public void onTopic(TopicEvent<PircBotX> event) {
 		if (!event.isChanged()) return;
-		addRollbackLine(event.getChannel().getName(),new LineOther("* "+event.getUser().getNick()+" has changed the topic to: "+event.getTopic()));
+		addRollbackLine(event.getChannel().getName(),new LineOther(event.getChannel().getName(),"* "+event.getUser().getNick()+" has changed the topic to: "+event.getTopic()));
 	}
 	public void onJoin(JoinEvent<PircBotX> event) {
-		addRollbackLine(event.getChannel().getName(),new LineEnterLeave(event.getUser().getNick(),"("+event.getUser().getHostmask()+") has joined"));
+		addRollbackLine(event.getChannel().getName(),new LineEnterLeave(event.getChannel().getName(),event.getUser().getNick(),"("+event.getUser().getHostmask()+") has joined"));
 	}
 	public void onPart(PartEvent<PircBotX> event) {
-		addRollbackLine(event.getChannel().getName(),new LineEnterLeave(event.getUser().getNick(),"("+event.getUser().getHostmask()+") has left"));
+		addRollbackLine(event.getChannel().getName(),new LineEnterLeave(event.getChannel().getName(),event.getUser().getNick(),"("+event.getUser().getHostmask()+") has left"));
 	}
 	public void onQuit(QuitEvent<PircBotX> event) {
-		for (Channel channel : event.getUser().getChannels()) addRollbackLine(channel.getName(),new LineEnterLeave(event.getUser().getNick(),"has quit ("+event.getReason()+")"));
+		for (Channel channel : event.getUser().getChannels()) addRollbackLine(channel.getName(),new LineEnterLeave(channel.getName(),event.getUser().getNick(),"has quit ("+event.getReason()+")"));
 	}
 	public void onKick(KickEvent<PircBotX> event) {
 		addRollbackLine(event.getChannel().getName(),new LineKick(event));
 	}
 	public void onNickChange(NickChangeEvent<PircBotX> event) {
-		for (Channel channel : event.getBot().getChannels(event.getUser())) addRollbackLine(channel.getName(),new LineOther("* "+event.getOldNick()+" is now known as "+event.getNewNick()));
+		for (Channel channel : event.getBot().getChannels(event.getUser())) addRollbackLine(channel.getName(),new LineOther(channel.getName(),"* "+event.getOldNick()+" is now known as "+event.getNewNick()));
 	}
 	public void onMode(ModeEvent<PircBotX> event) {
 		String mode = event.getMode();
 		if (mode.charAt(0) == ' ') mode = "+"+mode.substring(1);
-		addRollbackLine(event.getChannel().getName(),new LineOther("* "+event.getUser().getNick()+" sets mode "+mode));
+		addRollbackLine(event.getChannel().getName(),new LineOther(event.getChannel().getName(),"* "+event.getUser().getNick()+" sets mode "+mode));
 	}
 	public void onUserMode(UserModeEvent<PircBotX> event) {
 		String mode = event.getMode();
 		if (mode.charAt(0) == ' ') mode = "+"+mode.substring(1);
-		for (Channel channel : event.getBot().getChannels(event.getTarget())) addRollbackLine(channel.getName(),new LineOther("* "+event.getSource().getNick()+" sets mode "+mode+" "+event.getTarget().getNick()));
+		for (Channel channel : event.getBot().getChannels(event.getTarget())) addRollbackLine(channel.getName(),new LineOther(channel.getName(),"* "+event.getSource().getNick()+" sets mode "+mode+" "+event.getTarget().getNick()));
 	}
 	
 	public synchronized void addRollbackLine(String channel, Line line) {
-		if (!channel.startsWith("#")) return;
+		if (channel == null || !channel.startsWith("#")) return;
 		channel = channel.toLowerCase();
-		if (!rollback.containsKey(channel)) rollback.put(channel,new ArrayList<Line>());
-		if (!rollbackTmp.containsKey(channel)) rollbackTmp.put(channel,new ArrayList<Line>());
-		rollback.get(channel).add(line);
-		rollbackTmp.get(channel).add(line);
+		
+		int intType = TYPE_OTHER;
+		if (line.getClass() == LineMessage.class) intType = TYPE_MESSAGE;
+		if (line.getClass() == LineAction.class) intType = TYPE_ACTION;
+		if (line.getClass() == LineEnterLeave.class) intType = TYPE_ENTERLEAVE;
+		if (line.getClass() == LineKick.class) intType = TYPE_KICK;
+		
+		QueryInsert q = new QueryInsert(SQL.getTable("rollback"));
+		q.add("channel",channel);
+		q.add("stamp",new Date().getTime());
+		q.add("type",intType);
+		switch (intType) {
+			case TYPE_MESSAGE: {
+				LineMessage lm = (LineMessage)line;
+				q.add("user",lm.sender);
+				q.add("user2","");
+				q.add("txt",lm.text);
+			} break;
+			case TYPE_ACTION: {
+				LineAction la = (LineAction)line;
+				q.add("user",la.sender);
+				q.add("user2","");
+				q.add("txt",la.text);
+			} break;
+			case TYPE_ENTERLEAVE: {
+				LineEnterLeave lel = (LineEnterLeave)line;
+				q.add("user",lel.sender);
+				q.add("user2","");
+				q.add("txt",lel.text);
+			} break;
+			case TYPE_KICK: {
+				LineKick lk = (LineKick)line;
+				q.add("user",lk.sender);
+				q.add("user2",lk.target);
+				q.add("txt",lk.text);
+			} break;
+			default: {
+				q.add("user",""); q.add("user2","");
+				q.add("txt",((LineOther)line).text);
+			} break;
+		}
+		SQL.insert(q);
 	}
 	
 	public ArrayList<Line> getRollbackLines(String channel, String user, String regex, String cull, boolean newest, int lines, int seconds) {
 		return getRollbackLines(Line.class, channel, user, regex, cull, newest, lines, seconds);
 	}
 	
-	public synchronized <T extends Line> ArrayList<T> getRollbackLines(Class<T> type, String channel, String user, String regex, String cull, boolean newest, int lines, int seconds) {
+	@SuppressWarnings("unchecked") public synchronized <T extends Line> ArrayList<T> getRollbackLines(Class<T> type, String channel, String user, String regex, String cull, boolean newest, int lines, int seconds) {
 		ArrayList<T> ret = new ArrayList<T>();
-		ArrayList<Line> linesChannel = rollback.get(channel);
-		if (linesChannel == null || linesChannel.isEmpty()) return ret;
-		Pattern pat = regex == null ? null : Pattern.compile(regex);
+		int intType = TYPE_OTHER;
+		if (type == LineMessage.class) intType = TYPE_MESSAGE;
+		if (type == LineAction.class) intType = TYPE_ACTION;
+		if (type == LineEnterLeave.class) intType = TYPE_ENTERLEAVE;
+		if (type == LineKick.class) intType = TYPE_KICK;
 		
-		int i = newest ? linesChannel.size() : -1;
-		if (lines != 0) {
-			while (lines > ret.size()) {
-				i += newest ? -1 : 1;
-				if (i < 0 || i >= linesChannel.size()) break;
-				
-				Line line = linesChannel.get(i);
-				if (!type.isAssignableFrom(line.getClass()))
-					continue;
-				@SuppressWarnings("unchecked")
-				T generic = (T) linesChannel.get(i);
-				if (line.containsUser(user)) {
-					String tmp = null;
-					if (line instanceof LineMessage) tmp = ((LineMessage)line).text;
-					if (line instanceof LineAction) tmp = ((LineAction)line).text;
-					if (tmp != null) {
-						if (cull != null && tmp.contentEquals(cull))
-							continue;
-						if (pat != null && !pat.matcher(tmp).find())
-							continue;
-						ret.add(generic);
-					} else {
-						if (pat == null)
-							ret.add(generic);
-					}
-				}
+		try {
+			QuerySelect q = new QuerySelect(SQL.getTable("rollback"));
+			if (channel != null) q.addCriterions(new CriterionStringEquals("channel",channel.toLowerCase()));
+			if (user != null) q.addCriterions(new CriterionStringEquals("user",user.toLowerCase()));
+			if (lines != 0) q.setLimitCount(lines);
+			if (seconds != 0) {
+				if (!newest) {
+					QuerySelect q2 = new QuerySelect(SQL.getTable("rollback"));
+					if (channel != null) q2.addCriterions(new CriterionStringEquals("channel",channel.toLowerCase()));
+					q2.setLimitCount(1);
+					JSONObject j = SQL.select(q2);
+					if (j == null || j.length() == 0) return ret;
+					q.addCriterions(new CriterionNumber("stamp","<=",j.getLong("stamp")+seconds));
+				} else q.addCriterions(new CriterionNumber("stamp",">=",new Date().getTime()-(seconds*1000)));
 			}
-		} else {
-			Date check = newest ? new Date(new Date().getTime()-(seconds*1000l)) : new Date(linesChannel.get(0).time.getTime()+(seconds*1000l));
+			if (regex != null && !regex.isEmpty()) q.addCriterions(new Criterion("'HEX(txt) RLIKE CONCAT('(..)*',HEX('"+regex.replace("\\","\\\\").replace("'","\\'")+"'),'(..)*')'"));
+			if (cull != null && !cull.isEmpty()) q.addCriterions(new CriterionStringEquals("txt",cull,false));
+			if (type != Line.class) q.addCriterions(new CriterionNumber("type","=",intType));
+			q.addOrder("stamp",!newest);
 			
-			while (true) {
-				i += newest ? -1 : 1;
-				if (i < 0 || i >= linesChannel.size()) break;
-				
-				Line line = linesChannel.get(i);
-				if (!type.isAssignableFrom(line.getClass()))
-					continue;
-				@SuppressWarnings("unchecked")
-				T generic = (T) linesChannel.get(i);
-				if (newest && line.time.before(check)) break;
-				if (!newest && line.time.after(check)) break;
-				
-				if (line.containsUser(user)) {
-					String tmp = null;
-					if (line instanceof LineMessage) tmp = ((LineMessage)line).text;
-					if (line instanceof LineAction) tmp = ((LineAction)line).text;
-					if (tmp != null) {
-						if (cull != null && tmp.contentEquals(cull))
-							continue;
-						if (pat != null && !pat.matcher(tmp).find())
-							continue;
-						ret.add(generic);
-					} else {
-						if (pat == null)
-							ret.add(generic);
-					}
+			JSONObject j = SQL.select(q);
+			if (j == null || j.length() == 0) return ret;
+			ArrayList<JSONObject> results = new ArrayList<JSONObject>();
+			if (j.length() == 1 && j.has("___")) {
+				JSONArray ja = j.getJSONArray("___");
+				for (int i = 0; i < ja.length(); i++) results.add(ja.getJSONObject(i));
+			} else results.add(j);
+			
+			for (JSONObject result : results) {
+				switch (result.getInt("type")) {
+					case TYPE_MESSAGE: ret.add((T)new LineMessage(result.getLong("stamp"),result.getString("channel"),result.getString("user"),result.getString("txt"))); break;
+					case TYPE_ACTION: ret.add((T)new LineAction(result.getLong("stamp"),result.getString("channel"),result.getString("user"),result.getString("txt"))); break;
+					case TYPE_ENTERLEAVE: ret.add((T)new LineEnterLeave(result.getLong("stamp"),result.getString("channel"),result.getString("user"),result.getString("txt"))); break;
+					case TYPE_KICK: ret.add((T)new LineKick(result.getLong("stamp"),result.getString("channel"),result.getString("user"),result.getString("user2"),result.getString("txt"))); break;
+					default: ret.add((T)new LineOther(result.getLong("stamp"),result.getString("channel"),result.getString("txt"))); break;
 				}
 			}
-		}
+		} catch (Exception e) {e.printStackTrace();}
 		
-		if (newest) Collections.reverse(ret);
+		Collections.reverse(ret);
 		return ret;
 	}
 	
@@ -232,9 +220,9 @@ public class ModuleRollback extends Module implements IRollback {
 				sb.append("\npastebin [channel] [user] -{lines} - uploads first lines to paste.kde.org/pastebin.com/pastebin.ca");
 				sb.append("\npastebin [channel] [user] {time}{d/h/m/s} - uploads last lines from set time to paste.kde.org/pastebin.com/pastebin.ca");
 			} else {
-				sb.append("\npastebin {channel} [user] {lines} - uploads last lines to paste.kde.org/pastebin.com/pastebin.ca");
-				sb.append("\npastebin {channel} [user] -{lines} - uploads first lines to paste.kde.org/pastebin.com/pastebin.ca");
-				sb.append("\npastebin {channel} [user] {time}{d/h/m/s} - uploads last lines from set time to paste.kde.org/pastebin.com/pastebin.ca");
+				sb.append("\npastebin [channel] [user] {lines} - uploads last lines to paste.kde.org/pastebin.com/pastebin.ca");
+				sb.append("\npastebin [channel] [user] -{lines} - uploads first lines to paste.kde.org/pastebin.com/pastebin.ca");
+				sb.append("\npastebin [channel] [user] {time}{d/h/m/s} - uploads last lines from set time to paste.kde.org/pastebin.com/pastebin.ca");
 			}
 			
 			return sb.toString();
@@ -259,7 +247,7 @@ public class ModuleRollback extends Module implements IRollback {
 			}
 			
 			if (args.length >= 2) {
-				String aChannel = type == EType.Channel ? channel.getName() : null, aUser = null, aLines;
+				String aChannel = null, aUser = null, aLines;
 				
 				if (args.length == 2) {
 					aLines = args[1];
@@ -271,40 +259,40 @@ public class ModuleRollback extends Module implements IRollback {
 					aUser = args[2];
 					aLines = args[3];
 				}
-				if (aChannel == null) {
-					callback.append(help(bot,type,channel,sender));
-					return;
-				}
-				aChannel = aChannel.toLowerCase();
-				
-				if (rollback.containsKey(aChannel) && !rollback.get(aChannel).isEmpty()) {
-					ArrayList<Line> list;
-					if (aLines.toLowerCase().matches("^\\-?(?:[0-9]+?[smhd])+$")) {
-						boolean additive = aLines.charAt(0) != '-';
-						if (!additive) aLines = aLines.substring(1);
-						Pattern p = Pattern.compile("([0-9]+[smhd])");
-						Matcher m = p.matcher(aLines);
-						
-						int time = 0;
-						while (m.find()) {
-							char c = m.group(1).charAt(m.group(1).length()-1);
-							int i = Integer.parseInt(m.group(1).substring(0,m.group(1).length()-1));
-							switch (c) {
-								case 's': time += i; break;
-								case 'm': time += i*60; break;
-								case 'h': time += i*3600; break;
-								case 'd': time += i*86400; break;
-							}
-						}
-						list = getRollbackLines(aChannel,aUser,regex,null,additive,0,time);
-					} else list = getRollbackLines(aChannel,aUser,regex,null,aLines.charAt(0) != '-',Math.abs(Integer.parseInt(aLines)),0);
-					
-					if (list.isEmpty()) {
-						callback.append("Nothing to upload");
+				if (aChannel == null && aUser == null) {
+					if (type == EType.Channel) aChannel = channel.getName(); else {
+						callback.append(help(bot,type,channel,sender));
 						return;
 					}
-					pbLink = getLink(list);
-				} else callback.append("No "+aChannel+" archive");
+				}
+				if (aChannel != null) aChannel = aChannel.toLowerCase();
+				
+				ArrayList<Line> list;
+				if (aLines.toLowerCase().matches("^\\-?(?:[0-9]+?[smhd])+$")) {
+					boolean additive = aLines.charAt(0) != '-';
+					if (!additive) aLines = aLines.substring(1);
+					Pattern p = Pattern.compile("([0-9]+[smhd])");
+					Matcher m = p.matcher(aLines);
+					
+					int time = 0;
+					while (m.find()) {
+						char c = m.group(1).charAt(m.group(1).length()-1);
+						int i = Integer.parseInt(m.group(1).substring(0,m.group(1).length()-1));
+						switch (c) {
+							case 's': time += i; break;
+							case 'm': time += i*60; break;
+							case 'h': time += i*3600; break;
+							case 'd': time += i*86400; break;
+						}
+					}
+					list = getRollbackLines(aChannel,aUser,regex,null,additive,0,time);
+				} else list = getRollbackLines(aChannel,aUser,regex,null,aLines.charAt(0) != '-',Math.abs(Integer.parseInt(aLines)),0);
+				
+				if (list.isEmpty()) {
+					callback.append("Nothing to upload");
+					return;
+				}
+				pbLink = getLink(list,aUser != null && aChannel == null);
 			} else {
 				callback.append(help(bot,type,channel,sender));
 				return;
@@ -316,10 +304,12 @@ public class ModuleRollback extends Module implements IRollback {
 			}
 		}
 		
-		public String getLink(ArrayList<Line> lines) {
+		public String getLink(ArrayList<Line> lines, boolean withChannel) {
 			String link;
 			for (PasteService service : services) {
+				Line.setWithChannels(withChannel);
 				link = service.paste(lines);
+				Line.setWithChannels(false);
 				if (link == null) continue;
 				if (link.isEmpty() || link.startsWith("http://")) return link;
 			}

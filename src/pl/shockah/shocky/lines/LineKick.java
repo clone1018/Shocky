@@ -10,11 +10,11 @@ public class LineKick extends LineWithSender {
 	public final String target;
 	public final String text;
 	
-	public LineKick(String sender, String target, String text) {this(new Date(),sender,target,text);}
-	public LineKick(long ms, String sender, String target, String text) {this(new Date(ms),sender,target,text);}
-	public LineKick(KickEvent<PircBotX> event) {this(new Date(),event.getSource().getNick(),event.getRecipient().getNick(),event.getReason());}
-	public LineKick(Date time, String sender, String target, String text) {
-		super(time,sender);
+	public LineKick(String channel, String sender, String target, String text) {this(new Date(),channel,sender,target,text);}
+	public LineKick(long ms, String channel, String sender, String target, String text) {this(new Date(ms),channel,sender,target,text);}
+	public LineKick(KickEvent<PircBotX> event) {this(new Date(),event.getChannel().getName(),event.getSource().getNick(),event.getRecipient().getNick(),event.getReason());}
+	public LineKick(Date time, String channel, String sender, String target, String text) {
+		super(time,channel,sender);
 		this.target = target;
 		this.text = text;
 	}

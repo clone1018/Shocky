@@ -34,7 +34,7 @@ public class ModuleTell extends Module {
 		Command.addCommands(this, cmd = new CmdTell());
 		
 		ArrayList<String> lines = FileLine.read(new File("data","tell.cfg"));
-		for (int i = 0; i < lines.size(); i += 4) addTell(lines.get(i),new LineMessage(Long.parseLong(lines.get(i+2)),lines.get(i+1),lines.get(i+3)));
+		for (int i = 0; i < lines.size(); i += 4) addTell(lines.get(i),new LineMessage(Long.parseLong(lines.get(i+2)),"",lines.get(i+1),lines.get(i+3)));
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd);
@@ -92,7 +92,7 @@ public class ModuleTell extends Module {
 			String[] args = message.split(" ");
 			callback.type = EType.Notice;
 			if (args.length >= 3) {
-				addTell(args[1],new LineMessage(sender.getNick(),StringTools.implode(args,2," ")));
+				addTell(args[1],new LineMessage("",sender.getNick(),StringTools.implode(args,2," ")));
 				callback.append("I'll pass that along");
 				return;
 			}

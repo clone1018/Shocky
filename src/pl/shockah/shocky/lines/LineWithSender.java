@@ -7,10 +7,10 @@ import pl.shockah.BinBuffer;
 public abstract class LineWithSender extends Line {
 	public final String sender;
 	
-	public LineWithSender(String sender) {this(new Date(),sender);}
-	public LineWithSender(long ms, String sender) {this(new Date(ms),sender);}
-	public LineWithSender(Date time, String sender) {
-		super(time);
+	public LineWithSender(String channel, String sender) {this(new Date(),channel,sender);}
+	public LineWithSender(long ms, String channel, String sender) {this(new Date(ms),channel,sender);}
+	public LineWithSender(Date time, String channel, String sender) {
+		super(time,channel);
 		this.sender = sender;
 	}
 	

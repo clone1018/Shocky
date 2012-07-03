@@ -168,6 +168,7 @@ public class Data {
 		return Data.config.getConfig(chan);
 	}
 	public static Config forChannel(Channel chan) {
+		if (chan == null) return Data.config;
 		return forChannel(chan.getName());
 	}
 }

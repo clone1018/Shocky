@@ -11,30 +11,41 @@ public abstract class Line {
 	private static final HashMap<Byte,Class<? extends Line>> lineIDMap = new HashMap<Byte,Class<? extends Line>>();
 	private static final HashMap<Class<? extends Line>,Byte> lineClassMap = new HashMap<Class<? extends Line>,Byte>();
 	private static final SimpleDateFormat sdf;
+	protected static boolean withChannels = false;
 	
 	static {
 		sdf = new SimpleDateFormat("[HH:mm:ss]");
 		sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
 	}
 	
-	public final Date time;
+	public static void setWithChannels(boolean b) {
+		withChannels = b;
+	}
+	public static boolean getWithChannels() {
+		return withChannels;
+	}
 	
-	public Line() {this(new Date());}
-	public Line(long ms) {this(new Date(ms));}
-	public Line(Date time) {
+	public final Date time;
+	public final String channel;
+	
+	public Line(String channel) {this(new Date(),channel);}
+	public Line(long ms, String channel) {this(new Date(ms),channel);}
+	public Line(Date time, String channel) {
 		this.time = time;
+		this.channel = channel.toLowerCase();
 	}
 	
 	public Line(BinBuffer buffer) {
-		this(buffer.readXBytes(8));
+		this(buffer.readXBytes(8),buffer.readString());
 	}
 	
 	public void save(BinBuffer buffer) {
 		buffer.writeXBytes(time.getTime(),8);
+		buffer.writeString(channel);
 	}
 	
 	public String toString() {
-		return sdf.format(time)+" "+getMessage();
+		return (withChannels ? "["+channel+"] " : " ")+sdf.format(time)+" "+getMessage();
 	}
 	public abstract String getMessage();
 	

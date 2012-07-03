@@ -60,7 +60,7 @@ function sqlArray($result) {
 function sql2json($data_sql) {
 	$json_str = "";
 	if ($total = sqlRows($data_sql)) {
-		if ($total > 1) $json_str .= "[";
+		if ($total > 1) $json_str .= "{\"___\":[";
 		$row_count = 0;	
 		while ($data = sqlArray($data_sql)) {
 			if (count($data) > 1) $json_str .= "{";
@@ -80,7 +80,7 @@ function sql2json($data_sql) {
 			if (count($data) > 1) $json_str .= "}";
 			if ($row_count < $total) $json_str .= ",";
 		}
-		if ($total > 1) $json_str .= "]";
+		if ($total > 1) $json_str .= "]}";
 	} else $json_str = "{}";
 	return $json_str;
 }

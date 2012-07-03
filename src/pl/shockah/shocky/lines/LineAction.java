@@ -9,11 +9,11 @@ import pl.shockah.BinBuffer;
 public class LineAction extends LineWithSender {
 	public final String text;
 	
-	public LineAction(String sender, String text) {this(new Date(),sender,text);}
-	public LineAction(long ms, String sender, String text) {this(new Date(ms),sender,text);}
-	public LineAction(ActionEvent<PircBotX> event) {this(new Date(),event.getUser().getNick(),event.getAction());}
-	public LineAction(Date time, String sender, String text) {
-		super(time,sender);
+	public LineAction(String channel, String sender, String text) {this(new Date(),channel,sender,text);}
+	public LineAction(long ms, String channel, String sender, String text) {this(new Date(ms),channel,sender,text);}
+	public LineAction(ActionEvent<PircBotX> event) {this(new Date(),event.getChannel().getName(),event.getUser().getNick(),event.getAction());}
+	public LineAction(Date time, String channel, String sender, String text) {
+		super(time,channel,sender);
 		this.text = text;
 	}
 	

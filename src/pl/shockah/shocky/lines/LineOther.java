@@ -7,10 +7,10 @@ import pl.shockah.BinBuffer;
 public class LineOther extends Line {
 	public final String text;
 	
-	public LineOther(String text) {this(new Date(),text);}
-	public LineOther(long ms, String text) {this(new Date(ms),text);}
-	public LineOther(Date time, String text) {
-		super(time);
+	public LineOther(String channel, String text) {this(new Date(),channel,text);}
+	public LineOther(long ms, String channel, String text) {this(new Date(ms),channel,text);}
+	public LineOther(Date time, String channel, String text) {
+		super(time,channel);
 		this.text = text;
 	}
 	
