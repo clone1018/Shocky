@@ -9,6 +9,8 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.charset.Charset;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -357,7 +359,7 @@ public class ModuleLua extends ScriptModule {
 			try {
 				LuaFunction func = LuaC.instance.load(new ByteArrayInputStream(code.getBytes()), "script", env);
 				Object out = func.invoke();
-				if (sw.size() != 0)
+				if (sw.size() > 0)
 					return new String(sw.getBytes(),0,sw.size(),Charset.forName("UTF-8"));
 				if (out != null)
 					return out.toString();
@@ -383,11 +385,12 @@ public class ModuleLua extends ScriptModule {
 
 		@Override
 		public LuaValue get(LuaValue key) {
-			return new FactoidFunction(key.checkjstring());
+			return FactoidFunction.create(key.checkjstring());
 		}
 	}
 	
-	public static class FactoidFunction extends OneArgFunction {
+	private static class FactoidFunction extends OneArgFunction {
+		private static final Map<String,FactoidFunction> internMap = new HashMap<String,FactoidFunction>();
 		
 		final String factoid;
 		
@@ -396,8 +399,20 @@ public class ModuleLua extends ScriptModule {
 		private static Channel chan;
 		private static User user;
 		
-		public FactoidFunction(String factoid) {
+		private FactoidFunction(String factoid) {
 			this.factoid = factoid;
+		}
+		
+		public static LuaValue create(String factoid) {
+			if (factoid == null || factoid.isEmpty())
+				return NIL;
+			
+			if (internMap.containsKey(factoid))
+				return internMap.get(factoid);
+			
+			FactoidFunction function = new FactoidFunction(factoid);
+			internMap.put(factoid, function);
+			return function;
 		}
 
 		public static void initFields(IFactoid module, PircBotX bot, Channel chan, User user) {
@@ -409,8 +424,8 @@ public class ModuleLua extends ScriptModule {
 		
 		@Override
 		public LuaValue call(LuaValue arg) {
-			StringBuilder message = new StringBuilder(factoid);
 			String args = arg.optjstring(null);
+			StringBuilder message = new StringBuilder(factoid);
 			if (args != null) {
 				message.append(' ');
 				message.append(args);
