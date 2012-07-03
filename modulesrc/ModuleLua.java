@@ -383,12 +383,7 @@ public class ModuleLua extends ScriptModule {
 
 		@Override
 		public LuaValue get(LuaValue key) {
-			try {
-				final String factoid = key.checkjstring();
-				return new FactoidFunction(factoid);
-			} catch (Exception e) {
-				throw new LuaError(e);
-			}
+			return new FactoidFunction(key.checkjstring());
 		}
 	}
 	
