@@ -1,4 +1,3 @@
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
@@ -20,7 +19,7 @@ import pl.shockah.shocky.Data;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.lines.LineMessage;
-
+import pl.shockah.shocky.prototypes.IRollback;
 
 public class ModuleRegexReplace extends Module {
 	
@@ -67,13 +66,11 @@ public class ModuleRegexReplace extends Module {
 				}
 			}
 		}
-		Module module = Module.getModule("rollback");
+		IRollback module = (IRollback)Module.getModule("rollback");
 		if (module == null) return;
 		Pattern pattern = Pattern.compile(args[1],flags);
 		Matcher matcher = pattern.matcher("");
-		Method method = module.getClass().getDeclaredMethod("getRollbackLines", Class.class, String.class, String.class, String.class, String.class, boolean.class, int.class, int.class);
-		@SuppressWarnings("unchecked")
-		ArrayList<LineMessage> lines = (ArrayList<LineMessage>) method.invoke(module, LineMessage.class, event.getChannel().getName(), null, null, s, true, 10, 0);
+		ArrayList<LineMessage> lines = module.getRollbackLines(LineMessage.class, event.getChannel().getName(), null, null, s, true, 10, 0);
 		
 		final ExecutorService service = Executors.newFixedThreadPool(1);
 		try {

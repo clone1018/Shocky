@@ -1,41 +1,21 @@
 import java.io.File;
 import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.TimeZone;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import org.pircbotx.Channel;
-import org.pircbotx.PircBotX;
-import org.pircbotx.User;
-import org.pircbotx.hooks.events.ActionEvent;
-import org.pircbotx.hooks.events.JoinEvent;
-import org.pircbotx.hooks.events.KickEvent;
-import org.pircbotx.hooks.events.MessageEvent;
-import org.pircbotx.hooks.events.ModeEvent;
-import org.pircbotx.hooks.events.NickChangeEvent;
-import org.pircbotx.hooks.events.PartEvent;
-import org.pircbotx.hooks.events.QuitEvent;
-import org.pircbotx.hooks.events.TopicEvent;
-import org.pircbotx.hooks.events.UserModeEvent;
-import pl.shockah.BinBuffer;
-import pl.shockah.BinFile;
-import pl.shockah.HTTPQuery;
-import pl.shockah.StringTools;
+import java.util.regex.*;
+import org.pircbotx.*;
+import org.pircbotx.hooks.events.*;
+import pl.shockah.*;
 import pl.shockah.shocky.Data;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.events.*;
 import pl.shockah.shocky.lines.*;
+import pl.shockah.shocky.prototypes.IRollback;
 
-public class ModuleRollback extends Module {
+public class ModuleRollback extends Module implements IRollback {
 	public final Map<String,ArrayList<Line>> rollback = Collections.synchronizedMap(new HashMap<String,ArrayList<Line>>()), rollbackTmp = Collections.synchronizedMap(new HashMap<String,ArrayList<Line>>());
 	public final ArrayList<PasteService> services = new ArrayList<ModuleRollback.PasteService>();
 	protected Command cmd;

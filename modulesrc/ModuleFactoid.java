@@ -1,5 +1,4 @@
 import java.io.File;
-import java.lang.reflect.Method;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.regex.*;
@@ -16,6 +15,8 @@ import pl.shockah.shocky.cmds.Command.EType;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.lines.Line;
 import pl.shockah.shocky.lines.LineMessage;
+import pl.shockah.shocky.prototypes.IFactoid;
+import pl.shockah.shocky.prototypes.IRollback;
 import pl.shockah.shocky.sql.CriterionNumber;
 import pl.shockah.shocky.sql.CriterionStringEquals;
 import pl.shockah.shocky.sql.QueryInsert;
@@ -23,12 +24,16 @@ import pl.shockah.shocky.sql.QuerySelect;
 import pl.shockah.shocky.sql.QueryUpdate;
 import pl.shockah.shocky.sql.SQL;
 
-public class ModuleFactoid extends Module {
+public class ModuleFactoid extends Module implements IFactoid {
 	
 	static {
 		try {
 			Class.forName("pl.shockah.shocky.Factoid");
 			Class.forName("pl.shockah.shocky.sql.QuerySelect");
+			Class.forName("pl.shockah.shocky.sql.Criterion");
+			Class.forName("pl.shockah.shocky.sql.CriterionNumber");
+			Class.forName("pl.shockah.shocky.sql.CriterionNumber$Operation");
+			Class.forName("pl.shockah.shocky.sql.CriterionStringEquals");
 		} catch (ClassNotFoundException e) {
 		}
 	}
@@ -538,7 +543,7 @@ public class ModuleFactoid extends Module {
 	public String redirectMessage(Channel channel, User sender, String message) {
 		String[] args = message.split(" ");
 		if (args.length >= 2 && args.length <= 3 && args[1].contentEquals("^") && channel != null) {
-			Module module = Module.getModule("rollback");
+			IRollback module = (IRollback)Module.getModule("rollback");
 			try {
 			if (module != null) {
 				User user = null;
@@ -550,9 +555,7 @@ public class ModuleFactoid extends Module {
 						}
 					}
 				}
-				Method method = module.getClass().getDeclaredMethod("getRollbackLines", Class.class, String.class, String.class, String.class, String.class, boolean.class, int.class, int.class);
-				@SuppressWarnings("unchecked")
-				ArrayList<LineMessage> lines = (ArrayList<LineMessage>) method.invoke(module, LineMessage.class, channel.getName(), user != null ? user.getNick() : null, null, message, true, 1, 0);
+				ArrayList<LineMessage> lines = module.getRollbackLines(LineMessage.class, channel.getName(), user != null ? user.getNick() : null, null, message, true, 1, 0);
 				if (lines.size() == 1) {
 					Line line = lines.get(0);
 					StringBuilder msg = new StringBuilder(args[0]);

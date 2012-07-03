@@ -8,7 +8,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.lang.reflect.Method;
 import java.nio.charset.Charset;
 import java.util.Random;
 import java.util.concurrent.Callable;
@@ -34,10 +33,10 @@ import pl.shockah.StringTools;
 import pl.shockah.ZeroInputStream;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.ScriptModule;
-import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Command.EType;
+import pl.shockah.shocky.prototypes.IFactoid;
 import pl.shockah.shocky.threads.SandboxSecurityManager;
 import pl.shockah.shocky.threads.SandboxThreadFactory;
 import pl.shockah.shocky.threads.SandboxThreadGroup;
@@ -229,6 +228,9 @@ public class ModuleLua extends ScriptModule {
 		env.set("bot", bot.getNick());
 		env.set("sender", sender.getNick());
 		
+		IFactoid module = (IFactoid)Module.getModule("factoid");
+		FactoidFunction.initFields(module, bot, channel, sender);
+		
 		Sandbox sandbox = new Sandbox(bot,channel);
 		env.set("bot", CoerceJavaToLua.coerce(sandbox));
 
@@ -251,6 +253,7 @@ public class ModuleLua extends ScriptModule {
 		finally {
 		    service.shutdown();
 		    System.setSecurityManager(sysSecure);
+		    FactoidFunction.initFields(null, null, null, null);
 		}
 		if (output == null || output.isEmpty())
 			return null;
@@ -366,47 +369,59 @@ public class ModuleLua extends ScriptModule {
 		}
 	}
 	
-	public class FactoidTable extends LuaValue {
+	public static class FactoidTable extends LuaValue {
 
 		@Override
 		public int type() {
-			return LuaValue.TTABLE;
+			return LuaValue.TUSERDATA;
 		}
 
 		@Override
 		public String typename() {
-			return "table";
+			return "userdata";
 		}
 
 		@Override
 		public LuaValue get(LuaValue key) {
 			try {
 				final String factoid = key.checkjstring();
-				String channame = env.get(valueOf("channel")).checkjstring();
-				String username = env.get(valueOf("sender")).checkjstring();
-				final Channel chan = Shocky.getChannel(channame);
-				final PircBotX bot = Shocky.getBotForChannel(channame);
-				final User user = Shocky.getUser(username);
-				final Module module = Module.getModule("factoid");
-				final Method method = module.getClass().getDeclaredMethod("runFactoid", PircBotX.class, Channel.class, User.class, String.class);
-				LuaFunction function = new OneArgFunction() {
+				return new FactoidFunction(factoid);
+			} catch (Exception e) {
+				throw new LuaError(e);
+			}
+		}
+	}
+	
+	public static class FactoidFunction extends OneArgFunction {
+		
+		final String factoid;
+		
+		private static IFactoid module;
+		private static PircBotX bot;
+		private static Channel chan;
+		private static User user;
+		
+		public FactoidFunction(String factoid) {
+			this.factoid = factoid;
+		}
 
-					@Override
-					public LuaValue call(LuaValue arg) {
-						StringBuilder message = new StringBuilder(factoid);
-						String args = arg.optjstring(null);
-						if (args != null) {
-							message.append(' ');
-							message.append(args);
-						}
-						try {
-							return valueOf((String)method.invoke(module, bot, chan, user, message.toString()));
-						} catch (Exception e) {
-							throw new LuaError(e);
-						}
-					}					
-				};
-				return function;
+		public static void initFields(IFactoid module, PircBotX bot, Channel chan, User user) {
+			FactoidFunction.module = module;
+			FactoidFunction.bot = bot;
+			FactoidFunction.chan = chan;
+			FactoidFunction.user = user;
+		}
+		
+		@Override
+		public LuaValue call(LuaValue arg) {
+			StringBuilder message = new StringBuilder(factoid);
+			String args = arg.optjstring(null);
+			if (args != null) {
+				message.append(' ');
+				message.append(args);
+			}
+			try {
+				return valueOf(module.runFactoid(bot, chan, user, message.toString()));
 			} catch (Exception e) {
 				throw new LuaError(e);
 			}
