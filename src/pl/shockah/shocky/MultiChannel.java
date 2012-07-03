@@ -33,7 +33,7 @@ public class MultiChannel {
 			if (!Data.config.getString("main-nickservpass").isEmpty())
 				bot.identify(Data.config.getString("main-nickservpass"));
 			if (channelPrefixes == null)
-				channelPrefixes = Reflection.getPrivateValue(PircBotX.class,"_channelPrefixes",bot);
+				channelPrefixes = Reflection.getPrivateValue(PircBotX.class,"channelPrefixes",bot);
 			channelMap.put(bot, new ArrayList<String>(Data.config.getInt("main-maxchannels")));
 			return bot;
 		} catch (NickAlreadyInUseException e) {
