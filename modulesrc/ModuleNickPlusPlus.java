@@ -32,6 +32,7 @@ public class ModuleNickPlusPlus extends Module {
 		if (Data.isBlacklisted(event.getUser())) return;
 		if (event.getMessage().matches("^("+Utils.patternNick.pattern()+")((\\+\\+)|(\\-\\-)|(\\=\\=))$")) {
 			String nick = event.getMessage().substring(0,event.getMessage().length()-2);
+			if (nick.length() < 3) return;
 			
 			if (event.getMessage().endsWith("++") && event.getUser().getNick().equalsIgnoreCase(nick)) {
 				if (event.getBot().getUserBot().getChannelsOpIn().contains(event.getChannel())) event.getBot().kick(event.getChannel(),event.getUser(),event.getMessage());
