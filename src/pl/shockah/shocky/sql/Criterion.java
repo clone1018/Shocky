@@ -1,22 +1,8 @@
 package pl.shockah.shocky.sql;
 
-import java.util.ArrayList;
-
 public class Criterion {
-	public static String getWhereClause(ArrayList<Criterion> list) {
-		if (list == null || list.isEmpty()) return "";
-		StringBuilder sb = new StringBuilder();
-		
-		for (Criterion c : list) {
-			if (sb.length() != 0) sb.append(" AND ");
-			sb.append(c);
-		}
-		
-		sb.insert(0,"WHERE ");
-		return sb.toString();
-	}
 	
-	private String raw;
+	private final String raw;
 	
 	public Criterion(String raw) {
 		this.raw = raw;
@@ -24,5 +10,19 @@ public class Criterion {
 	
 	public String toString() {
 		return raw;
+	}
+	
+	public static enum Operation {
+		Equals("="), NotEquals("<>"), Lesser("<"), Greater(">"), LesserOrEqual("<="), GreaterOrEqual(">=");
+		
+		private final String operation;
+		
+		Operation(String o) {
+			operation = o;
+		}
+		
+		public String toString() {
+			return operation;
+		}
 	}
 }

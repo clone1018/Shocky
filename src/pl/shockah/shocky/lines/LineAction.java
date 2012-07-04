@@ -5,6 +5,7 @@ import org.pircbotx.PircBotX;
 import org.pircbotx.hooks.events.ActionEvent;
 
 import pl.shockah.BinBuffer;
+import pl.shockah.shocky.sql.QueryInsert;
 
 public class LineAction extends LineWithSender {
 	public final String text;
@@ -29,5 +30,10 @@ public class LineAction extends LineWithSender {
 
 	public String getMessage() {
 		return "* "+sender+" "+text;
+	}
+	@Override
+	public void fillQuery(QueryInsert q) {
+		super.fillQuery(q);
+		q.add("txt",text);
 	}
 }

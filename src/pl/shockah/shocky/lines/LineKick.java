@@ -5,6 +5,7 @@ import org.pircbotx.PircBotX;
 import org.pircbotx.hooks.events.KickEvent;
 
 import pl.shockah.BinBuffer;
+import pl.shockah.shocky.sql.QueryInsert;
 
 public class LineKick extends LineWithSender {
 	public final String target;
@@ -39,5 +40,11 @@ public class LineKick extends LineWithSender {
 		if (super.containsUser(user))
 			return true;
 		return target.equalsIgnoreCase(user);
+	}
+	@Override
+	public void fillQuery(QueryInsert q) {
+		super.fillQuery(q);
+		q.add("user2",target);
+		q.add("txt",text);
 	}
 }

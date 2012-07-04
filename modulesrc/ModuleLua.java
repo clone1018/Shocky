@@ -218,8 +218,8 @@ public class ModuleLua extends ScriptModule {
 			String[] args = message.split(" ");
 			String argsImp = StringTools.implode(args,1," "); if (argsImp == null) argsImp = "";
 			env.set("argc",(args.length-1));
-			env.set("args",argsImp.replace("\"","\\\""));
-			env.set("ioru",(args.length-1 == 0 ? sender.getNick() : argsImp).replace("\"","\\\""));
+			env.set("args",argsImp);
+			env.set("ioru",(args.length-1 == 0 ? sender.getNick() : argsImp));
 			LuaTable arg = new LuaTable();
 			for (int i = 1; i < args.length; i++)
 				arg.set(i, args[i]);

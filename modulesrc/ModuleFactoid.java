@@ -349,7 +349,13 @@ public class ModuleFactoid extends Module implements IFactoid {
 			
 			for (i = 0; i < charsraw.length(); i++) if (msg.charAt(0) == charsraw.charAt(i)) {
 				msg = new StringBuilder(msg).deleteCharAt(0).toString().split(" ")[0].toLowerCase();
-				Factoid f = getLatest(channel == null ? null : channel.getName(),msg,false);
+				Factoid f = null;
+				if (channel != null)
+					f = getLatest(channel.getName(),msg,false);
+				if (f == null)
+					f = getLatest(null,msg,false);
+				if (f == null)
+					return;
 				StringBuilder sb = new StringBuilder();
 				if (target == null && ping != null) {
 					sb.append(ping);
@@ -358,12 +364,18 @@ public class ModuleFactoid extends Module implements IFactoid {
 				sb.append(msg);
 				sb.append(": ");
 				sb.append(f.rawtext);
-				if (f != null && !f.forgotten) Shocky.send(bot,target != null?Command.EType.Notice:(channel == null ? Command.EType.Notice : Command.EType.Channel),channel,channel == null ? sender : Shocky.getUser(target),sb.toString());
+				Shocky.send(bot,target != null?Command.EType.Notice:(channel == null ? Command.EType.Notice : Command.EType.Channel),channel,channel == null ? sender : Shocky.getUser(target),sb.toString());
 				return;
 			}
 			for (i = 0; i < charsby.length(); i++) if (msg.charAt(0) == charsby.charAt(i)) {
 				msg = new StringBuilder(msg).deleteCharAt(0).toString().split(" ")[0].toLowerCase();
-				Factoid f = getLatest(channel == null ? null : channel.getName(),msg,false);
+				Factoid f = null;
+				if (channel != null)
+					f = getLatest(channel.getName(),msg,false);
+				if (f == null)
+					f = getLatest(null,msg,false);
+				if (f == null)
+					return;
 				StringBuilder sb = new StringBuilder();
 				if (target == null && ping != null) {
 					sb.append(ping);
@@ -380,13 +392,20 @@ public class ModuleFactoid extends Module implements IFactoid {
 			String factoid = args[0].toLowerCase();
 			String[] chain = factoid.split(config.getString("factoid-charchain"));
 			
-			for (i = 0; i < chain.length; i++)
-				if (getLatest(channel == null ? null : channel.getName(),chain[i],false) == null) return;
+			for (i = 0; i < chain.length; i++) {
+				Factoid f = null;
+				if (channel != null)
+					f = getLatest(channel.getName(),chain[i],false);
+				if (f == null)
+					f = getLatest(null,chain[i],false);
+				if (f == null)
+					return;
+			}
 
 			String message = StringTools.implode(args, 1," ");
 			
 			for (i = 0; i < chain.length; i++) {
-				msg = chain[i] + " " + message;
+				msg = chain[i] + ' ' + message;
 				message = runFactoid(bot, channel, sender, msg);
 			}
 			
@@ -407,25 +426,29 @@ public class ModuleFactoid extends Module implements IFactoid {
 		while (true) {
 			String factoid = message.split(" ")[0].toLowerCase();
 
-			Factoid f = getLatest(channel == null ? null : channel.getName(), factoid, false);
-			if (f != null) {
-				if (f.forgotten)
+			Factoid f = null;
+			if (channel != null)
+				f = getLatest(channel.getName(),factoid,false);
+			if (f == null)
+				f = getLatest(null,factoid,false);
+			if (f == null)
+				break;
+			String raw = f.rawtext;
+			if (raw.startsWith("<alias>")) {
+				raw = raw.substring(7);
+				message = parseVariables(bot, channel, sender, message, raw);
+				StringBuilder sb = new StringBuilder();
+				parseFunctions(message, sb);
+				message = sb.toString();
+				if (checkRecursive.contains(message))
 					break;
-				String raw = f.rawtext;
-				if (raw.startsWith("<alias>")) {
-					raw = raw.substring(7);
-					message = parseVariables(bot, channel, sender, message, raw);
-					StringBuilder sb = new StringBuilder();
-					parseFunctions(message,sb);
-					message = sb.toString();
-					if (checkRecursive.contains(message))
-						break;
-					checkRecursive.add(message);
-					continue;
-				} else return parse(bot, channel, sender, message, raw);
-			} else break;
+				checkRecursive.add(message);
+				continue;
+			} else {
+				return parse(bot, channel, sender, message, raw);
+			}
 		}
-		return "";
+		return null;
 	}
 	
 	public String parse(PircBotX bot, Channel channel, User sender, String message, String raw) {
@@ -625,7 +648,9 @@ public class ModuleFactoid extends Module implements IFactoid {
 		q.addOrder("stamp",false);
 		q.setLimitCount(1);
 		JSONObject j = SQL.select(q);
-		return j != null && j.length() != 0 ? Factoid.fromJSONObject(j) : (channel == null ? null : getLatest(null,factoid));
+		if (j == null || j.length() == 0)
+			return null;
+		return Factoid.fromJSONObject(j);
 	}
 	private Factoid getLatest(String channel, String factoid, boolean forgotten) {
 		QuerySelect q = new QuerySelect(SQL.getTable("factoid"));
@@ -635,7 +660,9 @@ public class ModuleFactoid extends Module implements IFactoid {
 		q.addOrder("stamp",false);
 		q.setLimitCount(1);
 		JSONObject j = SQL.select(q);
-		return j != null && j.length() != 0 ? Factoid.fromJSONObject(j) : (channel == null ? null : getLatest(null,factoid,forgotten));
+		if (j == null || j.length() == 0)
+			return null;
+		return Factoid.fromJSONObject(j);
 	}
 	
 	public abstract class Function {
@@ -681,7 +708,7 @@ public class ModuleFactoid extends Module implements IFactoid {
 			String name = args[args[1].equals(".") ? 2 : 1].toLowerCase();
 			String rem = StringTools.implode(args,args[1].equals(".") ? 3 : 2," ");
 			
-			Factoid f = getLatest(channel.getName(),name,false);
+			Factoid f = getLatest(prefix,name,false);
 			if (f != null && f.locked) callback.append("Factoid is locked"); else {
 				QueryInsert q = new QueryInsert(SQL.getTable("factoid"));
 				q.add("channel",prefix);
@@ -714,7 +741,7 @@ public class ModuleFactoid extends Module implements IFactoid {
 			String prefix = args[1].equals(".") ? channel.getName() : "";
 			String name = args[args[1].equals(".") ? 2 : 1].toLowerCase();
 			
-			Factoid f = getLatest(channel.getName(),name,false);
+			Factoid f = getLatest(prefix,name,false);
 			if (f == null) callback.append("No such factoid"); else {
 				if (f.locked) callback.append("Factoid is locked");
 				else {
@@ -751,7 +778,7 @@ public class ModuleFactoid extends Module implements IFactoid {
 			String prefix = args[1].equals(".") ? channel.getName() : "";
 			String name = args[args[1].equals(".") ? 2 : 1].toLowerCase();
 			
-			Factoid f = getLatest(channel.getName(),name,true);
+			Factoid f = getLatest(prefix,name,true);
 			if (f == null) callback.append("No such factoid"); else {
 				if (f.locked) callback.append("Factoid is locked");
 				else {

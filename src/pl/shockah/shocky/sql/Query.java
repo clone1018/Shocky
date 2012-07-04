@@ -1,53 +1,77 @@
 package pl.shockah.shocky.sql;
 
-import java.util.ArrayList;
-import org.apache.commons.lang3.tuple.ImmutablePair;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Map.Entry;
 
 public abstract class Query {
-	protected static String getColumnsClause(ArrayList<String> list) {
+	protected static String getColumnsClause(Collection<String> list) {
 		if (list == null || list.isEmpty()) return "*";
 		StringBuilder sb = new StringBuilder();
 		
 		for (String s : list) {
-			if (sb.length() != 0) sb.append(",");
+			if (sb.length() != 0) sb.append(',');
 			sb.append(s);
 		}
 		
 		return sb.toString();
 	}
-	protected static String getValuesPairClause(ArrayList<ImmutablePair<String,Object>> list) {
+	protected static String getValuesPairClause(Map<String,Object> list) {
 		StringBuilder sb = new StringBuilder();
 		
-		for (ImmutablePair<String,Object> pair : list) {
-			if (sb.length() != 0) sb.append(",");
-			sb.append(pair.left+"=");
-			if (pair.right instanceof String) sb.append("'"+((String)pair.right).replace("\\","\\\\").replace("'","\\'")+"'");
-			else sb.append(pair.right);
+		for (Entry<String, Object> pair : list.entrySet()) {
+			if (sb.length() != 0) sb.append(',');
+			sb.append(pair.getKey());
+			sb.append('=');
+			Object value = pair.getValue();
+			if (value instanceof String)
+				sb.append('\'').append(value.toString().replace("\\","\\\\").replace("'","\\'")).append('\'');
+			else
+				sb.append(value);
 		}
 		
 		return sb.toString();
 	}
-	protected static String getValuesObjectClause(ArrayList<Object> list) {
+	protected static String getValuesObjectClause(Collection<Object> list) {
 		StringBuilder sb = new StringBuilder();
 		
 		for (Object o : list) {
-			if (sb.length() != 0) sb.append(",");
-			if (o instanceof String) sb.append("'"+((String)o).replace("\\","\\\\").replace("'","\\'")+"'");
-			else sb.append(o);
+			if (sb.length() != 0) sb.append(',');
+			if (o instanceof String)
+				sb.append('\'').append(o.toString().replace("\\","\\\\").replace("'","\\'")).append('\'');
+			else
+				sb.append(o);
 		}
 		
 		return sb.toString();
 	}
-	protected static String getOrderByClause(ArrayList<ImmutablePair<String,Boolean>> list) {
+	protected static String getOrderByClause(Map<String,Boolean> list) {
 		if (list == null || list.isEmpty()) return "";
-		StringBuilder sb = new StringBuilder();
 		
-		for (ImmutablePair<String,Boolean> pair : list) {
-			if (sb.length() != 0) sb.append(",");
-			sb.append(pair.left+(pair.right ? "" : " DESC"));
+		StringBuilder sb = new StringBuilder("ORDER BY ");
+		int i = 0;
+		for (Entry<String, Boolean> pair : list.entrySet()) {
+			if (i > 0) sb.append(',');
+			sb.append(pair.getKey());
+			sb.append(' ');
+			sb.append(pair.getValue() ? "ASC" : "DESC");
+			i++;
 		}
 		
-		sb.insert(0,"ORDER BY ");
+		return sb.toString();
+	}
+	
+	public static String getWhereClause(Collection<Criterion> list) {
+		if (list == null || list.isEmpty()) return "";
+		StringBuilder sb = new StringBuilder("WHERE ");
+		
+		int i = 0;
+		for (Criterion c : list) {
+			if (i > 0) sb.append(" AND ");
+			sb.append(c);
+			i++;
+		}
+		
 		return sb.toString();
 	}
 	

@@ -5,6 +5,6 @@ public class CriterionStringEquals extends Criterion {
 		this(column,value,true);
 	}
 	public CriterionStringEquals(String column, String value, boolean equals) {
-		super(column+(equals ? "=" : "<>")+"'"+value.replace("\\","\\\\").replace("'","\\'")+"'");
+		super(column+(equals ? Operation.Equals : Operation.NotEquals)+"'"+value.replace("\\","\\\\").replace("'","\\'")+"'");
 	}
 }

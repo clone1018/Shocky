@@ -4,8 +4,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 public class QueryDelete extends Query {
-	private String table;
-	private ArrayList<Criterion> criterions = new ArrayList<Criterion>();
+	private final String table;
+	private final ArrayList<Criterion> criterions = new ArrayList<Criterion>();
 	private int limitOffset = 0, limitCount = 1;
 	
 	public QueryDelete(String table) {
@@ -24,7 +24,7 @@ public class QueryDelete extends Query {
 	}
 	
 	public String getSQLQuery() {
-		String clauseWhere = Criterion.getWhereClause(criterions);
+		String clauseWhere = getWhereClause(criterions);
 		String clauseLimit = limitOffset == 0 && limitCount == 1 ? "" : "LIMIT "+(limitOffset != 0 ? ""+limitOffset+"," : "")+limitCount;
 		return "DELETE FROM "+table+(clauseWhere.isEmpty() ? "" : " "+clauseWhere)+(clauseLimit.isEmpty() ? "" : " "+clauseLimit);
 	}

@@ -39,6 +39,8 @@ public class ModuleRegexReplace extends Module {
 	@Override
 	public void onMessage(MessageEvent<PircBotX> event) throws Exception {
 		if (Data.isBlacklisted(event.getUser())) return;
+		IRollback module = (IRollback)Module.getModule("rollback");
+		if (module == null) return;
 		String s = event.getMessage();
 		if (!s.startsWith("s/")&&!s.startsWith("m/")) return;
 		String[] args = s.split("/", -1);
@@ -66,8 +68,6 @@ public class ModuleRegexReplace extends Module {
 				}
 			}
 		}
-		IRollback module = (IRollback)Module.getModule("rollback");
-		if (module == null) return;
 		Pattern pattern = Pattern.compile(args[1],flags);
 		Matcher matcher = pattern.matcher("");
 		ArrayList<LineMessage> lines = module.getRollbackLines(LineMessage.class, event.getChannel().getName(), null, null, s, true, 10, 0);

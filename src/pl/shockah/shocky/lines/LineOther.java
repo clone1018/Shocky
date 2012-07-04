@@ -3,6 +3,7 @@ package pl.shockah.shocky.lines;
 import java.util.Date;
 
 import pl.shockah.BinBuffer;
+import pl.shockah.shocky.sql.QueryInsert;
 
 public class LineOther extends Line {
 	public final String text;
@@ -30,5 +31,13 @@ public class LineOther extends Line {
 
 	public boolean containsUser(String user) {
 		return false;
+	}
+	
+	@Override
+	public void fillQuery(QueryInsert q) {
+		super.fillQuery(q);
+		q.add("user","");
+		q.add("user2","");
+		q.add("txt",text);
 	}
 }

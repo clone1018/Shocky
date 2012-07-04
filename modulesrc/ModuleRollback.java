@@ -15,6 +15,7 @@ import pl.shockah.shocky.events.*;
 import pl.shockah.shocky.lines.*;
 import pl.shockah.shocky.prototypes.IRollback;
 import pl.shockah.shocky.sql.Criterion;
+import pl.shockah.shocky.sql.Criterion.Operation;
 import pl.shockah.shocky.sql.CriterionNumber;
 import pl.shockah.shocky.sql.CriterionStringEquals;
 import pl.shockah.shocky.sql.QueryInsert;
@@ -111,46 +112,10 @@ public class ModuleRollback extends Module implements IRollback {
 		if (channel == null || !channel.startsWith("#")) return;
 		channel = channel.toLowerCase();
 		
-		int intType = TYPE_OTHER;
-		if (line.getClass() == LineMessage.class) intType = TYPE_MESSAGE;
-		if (line.getClass() == LineAction.class) intType = TYPE_ACTION;
-		if (line.getClass() == LineEnterLeave.class) intType = TYPE_ENTERLEAVE;
-		if (line.getClass() == LineKick.class) intType = TYPE_KICK;
-		
 		QueryInsert q = new QueryInsert(SQL.getTable("rollback"));
 		q.add("channel",channel);
 		q.add("stamp",new Date().getTime());
-		q.add("type",intType);
-		switch (intType) {
-			case TYPE_MESSAGE: {
-				LineMessage lm = (LineMessage)line;
-				q.add("user",lm.sender);
-				q.add("user2","");
-				q.add("txt",lm.text);
-			} break;
-			case TYPE_ACTION: {
-				LineAction la = (LineAction)line;
-				q.add("user",la.sender);
-				q.add("user2","");
-				q.add("txt",la.text);
-			} break;
-			case TYPE_ENTERLEAVE: {
-				LineEnterLeave lel = (LineEnterLeave)line;
-				q.add("user",lel.sender);
-				q.add("user2","");
-				q.add("txt",lel.text);
-			} break;
-			case TYPE_KICK: {
-				LineKick lk = (LineKick)line;
-				q.add("user",lk.sender);
-				q.add("user2",lk.target);
-				q.add("txt",lk.text);
-			} break;
-			default: {
-				q.add("user",""); q.add("user2","");
-				q.add("txt",((LineOther)line).text);
-			} break;
-		}
+		line.fillQuery(q);
 		SQL.insert(q);
 	}
 	
@@ -178,12 +143,12 @@ public class ModuleRollback extends Module implements IRollback {
 					q2.setLimitCount(1);
 					JSONObject j = SQL.select(q2);
 					if (j == null || j.length() == 0) return ret;
-					q.addCriterions(new CriterionNumber("stamp","<=",j.getLong("stamp")+seconds));
-				} else q.addCriterions(new CriterionNumber("stamp",">=",new Date().getTime()-(seconds*1000)));
+					q.addCriterions(new CriterionNumber("stamp",Operation.LesserOrEqual,j.getLong("stamp")+seconds));
+				} else q.addCriterions(new CriterionNumber("stamp",Operation.GreaterOrEqual,new Date().getTime()-(seconds*1000)));
 			}
-			if (regex != null && !regex.isEmpty()) q.addCriterions(new Criterion("txt REGEXP '"+regex.replace("\\","\\\\").replace("'","\\'")+"'"));
+			if (regex != null && !regex.isEmpty()) q.addCriterions(new Criterion("txt REGEXP '"+regex.replace("\\","\\\\").replace("'","\\'")+'\''));
 			if (cull != null && !cull.isEmpty()) q.addCriterions(new CriterionStringEquals("txt",cull,false));
-			if (type != Line.class) q.addCriterions(new CriterionNumber("type","=",intType));
+			if (type != Line.class) q.addCriterions(new CriterionNumber("type",Operation.Equals,intType));
 			q.addOrder("stamp",!newest);
 			
 			JSONObject j = SQL.select(q);
@@ -317,10 +282,10 @@ public class ModuleRollback extends Module implements IRollback {
 		}
 	}
 
-	public abstract class PasteService {
-		public abstract String paste(ArrayList<Line> lines);
+	public interface PasteService {
+		String paste(ArrayList<Line> lines);
 	}
-	public class ServicePasteKdeOrg extends PasteService {
+	public class ServicePasteKdeOrg implements PasteService {
 		public String paste(ArrayList<Line> lines) {
 			HTTPQuery q = new HTTPQuery("http://paste.kde.org/",HTTPQuery.Method.POST);
 			
@@ -351,7 +316,7 @@ public class ModuleRollback extends Module implements IRollback {
 			return null;
 		}
 	}
-	public class ServicePastebinCom extends PasteService {
+	public class ServicePastebinCom implements PasteService {
 		private static final String apiKey = "caa6c4204f869de432d5434776598b1c";
 		
 		public String paste(ArrayList<Line> lines) {
@@ -373,7 +338,7 @@ public class ModuleRollback extends Module implements IRollback {
 			return list.get(0);
 		}
 	}
-	public class ServicePastebinCa extends PasteService {
+	public class ServicePastebinCa implements PasteService {
 		private static final String apiKey = "srDSz+PeUmUWZWm5qhHkK0WVlmQe29cx";
 		
 		public String paste(ArrayList<Line> lines) {

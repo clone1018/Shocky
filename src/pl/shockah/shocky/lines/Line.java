@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.TimeZone;
 
 import pl.shockah.BinBuffer;
+import pl.shockah.shocky.sql.QueryInsert;
 
 public abstract class Line {
 	private static final HashMap<Byte,Class<? extends Line>> lineIDMap = new HashMap<Byte,Class<? extends Line>>();
@@ -50,6 +51,10 @@ public abstract class Line {
 	public abstract String getMessage();
 	
 	public abstract boolean containsUser(String user);
+	
+	public void fillQuery(QueryInsert q) {
+		q.add("type",getLineID(this));
+	}
 	
 	public static void registerLineType(Byte id, Class<? extends Line> type) {
 		lineIDMap.put(id, type);
