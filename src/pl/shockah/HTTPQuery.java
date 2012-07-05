@@ -99,7 +99,7 @@ public class HTTPQuery {
 		for (int i = 0; i < args.length; i += 2) {
 			if (sb.length() != 0) sb.append('&');
 			try {
-				sb.append(URLEncoder.encode(args[i]+'='+args[i+1],"UTF-8"));
+				sb.append(URLEncoder.encode(args[i],"UTF-8")+'='+URLEncoder.encode(args[i+1],"UTF-8"));
 			} catch (Exception e) {e.printStackTrace();}
 		}
 		return sb.toString();

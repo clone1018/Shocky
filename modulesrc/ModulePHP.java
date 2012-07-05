@@ -44,8 +44,9 @@ public class ModulePHP extends ScriptModule {
 		
 		code = sb.toString()+code;
 		
-		HTTPQuery q = new HTTPQuery(Data.forChannel(channel).getString("php-url")+"?"+HTTPQuery.parseArgs("code",code));
-		q.connect(true,false);
+		HTTPQuery q = new HTTPQuery(Data.forChannel(channel).getString("php-url"),HTTPQuery.Method.POST);
+		q.connect(true,true);
+		q.write(HTTPQuery.parseArgs("code",code));
 		
 		sb = new StringBuilder();
 		for (String line : q.read()) {

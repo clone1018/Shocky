@@ -1,7 +1,7 @@
 <?php
 
-if (!isset($_GET["eval"])) die();
-eval($_GET["eval"]);
+if (!isset($_POST["eval"])) die();
+eval($_POST["eval"]);
 
 /*
 $db["host"] = "localhost";
@@ -13,19 +13,19 @@ $db["db"] = "shocky";
 _sqlConnect();
 unset($db);
 
-if (!isset($_GET["type"])) die();
-if (!isset($_GET["q"])) die();
-switch ($_GET["type"]) {
+if (!isset($_POST["type"])) die();
+if (!isset($_POST["q"])) die();
+switch ($_POST["type"]) {
 	case "raw": {
-		sqlQuery($_GET["q"]);
+		sqlQuery($_POST["q"]);
 		die("OK");
 	} break;
 	case "insertid": {
-		sqlQuery($_GET["q"]);
+		sqlQuery($_POST["q"]);
 		die(mysql_insert_id());
 	} break;
 	case "json": {
-		echo sql2json(sqlQuery($_GET["q"]));
+		echo sql2json(sqlQuery($_POST["q"]));
 	} break;
 }
 

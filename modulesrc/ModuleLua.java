@@ -1,28 +1,10 @@
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.PrintStream;
+import java.io.*;
 import java.nio.charset.Charset;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.*;
+import java.util.concurrent.*;
 
 import org.luaj.vm2.*;
-import org.luaj.vm2.compiler.DumpState;
-import org.luaj.vm2.compiler.LuaC;
+import org.luaj.vm2.compiler.*;
 import org.luaj.vm2.lib.*;
 import org.luaj.vm2.lib.jse.*;
 import org.pircbotx.Channel;
@@ -39,9 +21,7 @@ import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Command.EType;
 import pl.shockah.shocky.prototypes.IFactoid;
-import pl.shockah.shocky.threads.SandboxSecurityManager;
-import pl.shockah.shocky.threads.SandboxThreadFactory;
-import pl.shockah.shocky.threads.SandboxThreadGroup;
+import pl.shockah.shocky.threads.*;
 
 public class ModuleLua extends ScriptModule {
 	protected Command cmd;
