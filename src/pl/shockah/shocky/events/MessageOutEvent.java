@@ -2,10 +2,11 @@ package pl.shockah.shocky.events;
 
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
+import org.pircbotx.User;
 import org.pircbotx.hooks.Event;
-import org.pircbotx.hooks.types.GenericEvent;
+import org.pircbotx.hooks.types.GenericMessageEvent;
 
-public class MessageOutEvent<T extends PircBotX> extends Event<T> implements GenericEvent<T> {
+public class MessageOutEvent<T extends PircBotX> extends Event<T> implements GenericMessageEvent<T> {
 	protected final Channel channel;
 	protected final String message;
 
@@ -21,6 +22,9 @@ public class MessageOutEvent<T extends PircBotX> extends Event<T> implements Gen
 	}
 	public String getMessage() {
 		return this.message;
+	}
+	public User getUser() {
+		return bot.getUserBot();
 	}
 
 	public String toString() {
