@@ -1,5 +1,7 @@
 package pl.shockah.shocky.cmds;
 
+import java.util.concurrent.TimeUnit;
+
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
@@ -15,6 +17,12 @@ public class CmdSave extends Command {
 		if (!canUseController(bot,type,sender)) return;
 		callback.type = EType.Notice;
 		Shocky.dataSave();
-		callback.append("Saved");
+		callback.append("Saved. Next periodic save in ");
+		long delay = Shocky.nextSave(TimeUnit.MINUTES);
+		callback.append(delay);
+		callback.append(" minute");
+		if (delay != 1)
+			callback.append('s');
+		callback.append('.');
 	}
 }

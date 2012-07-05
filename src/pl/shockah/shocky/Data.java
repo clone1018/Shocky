@@ -37,6 +37,7 @@ public class Data {
 		Data.config.setNotExists("main-cmdchar","`~");
 		Data.config.setNotExists("main-messagelength",400);
 		Data.config.setNotExists("main-messagedelay",500);
+		Data.config.setNotExists("main-saveinterval",300);
 		Data.config.setNotExists("main-sqlurl","http://localhost/shocky/sql.php");
 		Data.config.setNotExists("main-sqlhost","localhost");
 		Data.config.setNotExists("main-sqluser","");
@@ -59,6 +60,7 @@ public class Data {
 			firstRunSetupInt(c,"main-maxchannels");
 			firstRunSetupString(c,"main-cmdchar");
 			firstRunSetupInt(c,"main-messagelength");
+			firstRunSetupInt(c,"main-saveinterval");
 			firstRunSetupString(c,"main-sqlurl");
 			firstRunSetupString(c,"main-sqlhost");
 			firstRunSetupString(c,"main-sqluser");

@@ -7,6 +7,7 @@ import org.pircbotx.Channel;
 import org.pircbotx.User;
 import pl.shockah.HTTPQuery;
 import pl.shockah.StringTools;
+import pl.shockah.shocky.paste.*;
 
 public class Utils {
 	public static final Pattern
@@ -21,6 +22,8 @@ public class Utils {
 	private static final String
 		flipOriginal =	"!().12345679<>?ABCDEFGJKLMPQRTUVWY[]_abcdefghijklmnpqrtuvwy{},'\"┳",
 		flipReplace =	"¡)(˙⇂ᄅƐㄣϛ9Ɫ6><¿∀ℇƆ◖ƎℲפſ丬˥WԀΌᴚ⊥∩ΛMλ][‾ɐqɔpǝɟɓɥıɾʞlɯudbɹʇnʌʍʎ}{',„┻";
+	
+	public final static ArrayList<PasteService> services = new ArrayList<PasteService>();
 	
 	public static ArrayList<String> getAllUrls(String text) {
 		String[] spl = text.split(" ");
@@ -43,6 +46,27 @@ public class Utils {
 			if (line.startsWith("http://")) return line;
 		} catch (Exception e) {e.printStackTrace();}
 		return url;
+	}
+	
+	public static void initPasteServices() {
+		String key = null;
+		services.add(new ServicePasteKdeOrg());
+		key = Data.config.getString("api-pastebin.com");
+		if (key != null)
+			services.add(new ServicePastebinCom(key));
+		key = Data.config.getString("api-pastebin.ca");
+		if (key != null)
+			services.add(new ServicePastebinCa(key));
+	}
+	
+	public static String paste(CharSequence data) {
+		String link = null;
+		for (PasteService service : services) {
+			link = service.paste(data);
+			if (link == null) continue;
+			if (link.isEmpty() || link.startsWith("http://")) break;
+		}
+		return link;
 	}
 	
 	public static String mungeAllNicks(Channel channel, String message, String... dontMunge) {

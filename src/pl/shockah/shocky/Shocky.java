@@ -1,6 +1,8 @@
 package pl.shockah.shocky;
 
 import java.util.*;
+import java.util.concurrent.*;
+
 import org.pircbotx.*;
 import org.pircbotx.hooks.events.*;
 import pl.shockah.shocky.cmds.Command;
@@ -8,7 +10,9 @@ import pl.shockah.shocky.cmds.Command.EType;
 import pl.shockah.shocky.cmds.CommandCallback;
 
 public class Shocky extends ListenerAdapter {
-	private static TimedActions timed;
+	private static final ScheduledExecutorService timer = Executors.newScheduledThreadPool(1);
+	private static final RunnableSave saver = new RunnableSave();
+	private static ScheduledFuture<?> futureSave = null;
 	private static MultiBotManager multiBot;
 	private static boolean isClosing = false;
 	
@@ -27,24 +31,36 @@ public class Shocky extends ListenerAdapter {
 		} catch (Exception e) {e.printStackTrace();}
 		multiBot.getListenerManager().addListener(new Shocky());
 		
-		timed = new TimedActions();
-		
 		Module.loadNewModules();
+		Utils.initPasteServices();
+		
 		System.out.println("--- Shocky, the IRC bot, up and running! ---");
 		System.out.println("--- type \"help\" to list all available commands ---");
 		try {
 			MultiChannel.join(Data.channels.toArray(new String[0]));
 		} catch (Exception e) {e.printStackTrace();}
 		
+		int delay = Data.config.getInt("main-saveinterval");
+		if (delay <= 0)
+			delay = 300;
+		futureSave = timer.scheduleAtFixedRate(saver, delay, delay, TimeUnit.MINUTES);
+		
 		new ThreadConsoleInput().start();
 	}
 	
 	public static void dataSave() {
-		timed.actionPerformed(null);
+		saver.run();
+	}
+	
+	public static long nextSave(TimeUnit unit) {
+		if (futureSave == null)
+			return -1;
+		return futureSave.getDelay(unit);
 	}
 	
 	public static void die() {die(null);}
 	public static void die(String reason) {
+		timer.shutdown();
 		isClosing = true;
 		Set<PircBotX> bots = getBots();
 		for (Module module : Module.getModules(false)) for (PircBotX bot : bots) module.onDie(bot);

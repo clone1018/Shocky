@@ -4,26 +4,26 @@ import java.util.*;
 import java.util.regex.*;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.pircbotx.*;
+import org.pircbotx.Channel;
+import org.pircbotx.PircBotX;
+import org.pircbotx.User;
 import org.pircbotx.hooks.events.*;
 import pl.shockah.*;
 import pl.shockah.shocky.Data;
 import pl.shockah.shocky.Module;
+import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.events.*;
 import pl.shockah.shocky.lines.*;
 import pl.shockah.shocky.prototypes.IRollback;
-import pl.shockah.shocky.sql.Criterion;
+import pl.shockah.shocky.sql.*;
 import pl.shockah.shocky.sql.Criterion.Operation;
-import pl.shockah.shocky.sql.CriterionNumber;
-import pl.shockah.shocky.sql.CriterionStringEquals;
-import pl.shockah.shocky.sql.QueryInsert;
-import pl.shockah.shocky.sql.QuerySelect;
-import pl.shockah.shocky.sql.SQL;
 
 public class ModuleRollback extends Module implements IRollback {
-	public final ArrayList<PasteService> services = new ArrayList<ModuleRollback.PasteService>();
+	private static final Pattern durationPattern = Pattern.compile("([0-9]+)([smhd])", Pattern.CASE_INSENSITIVE);
+	private static final SimpleDateFormat sdf = new SimpleDateFormat();
+	
 	protected Command cmd;
 	
 	public static final int
@@ -42,8 +42,6 @@ public class ModuleRollback extends Module implements IRollback {
 		} catch (Exception e) {e.printStackTrace();}
 	}
 	public static String toString(Line line) {
-		SimpleDateFormat sdf = new SimpleDateFormat(Data.config.getString("rollback-dateformat"));
-		sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
 		return "["+sdf.format(line.time)+"] "+(Line.getWithChannels() ? "["+line.channel+"] " : " ")+line.getMessage();
 	}
 	
@@ -51,19 +49,17 @@ public class ModuleRollback extends Module implements IRollback {
 	public boolean isListener() {return true;}
 	public void onEnable() {
 		Data.config.setNotExists("rollback-dateformat","dd.MM.yyyy HH:mm:ss");
+		sdf.applyPattern(Data.config.getString("rollback-dateformat"));
+		sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
+		
 		Command.addCommands(this, cmd = new CmdPastebin());
 		Command.addCommand(this, "pb", cmd);
-		
-		services.add(new ServicePasteKdeOrg());
-		services.add(new ServicePastebinCom());
-		services.add(new ServicePastebinCa());
 		
 		SQL.raw("CREATE TABLE IF NOT EXISTS "+SQL.getTable("rollback")+" (channel TEXT NOT NULL,user TEXT NOT NULL,user2 TEXT NOT NULL,type INT(1) UNSIGNED NOT NULL,stamp BIGINT UNSIGNED NOT NULL,txt TEXT NOT NULL)");
 		SQL.raw("ALTER TABLE "+SQL.getTable("rollback")+" ADD INDEX (channel(5),stamp)");
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd);
-		services.clear();
 	}
 	
 	public void onMessage(MessageEvent<PircBotX> event) {
@@ -233,23 +229,22 @@ public class ModuleRollback extends Module implements IRollback {
 				if (aChannel != null) aChannel = aChannel.toLowerCase();
 				
 				ArrayList<Line> list;
-				if (aLines.toLowerCase().matches("^\\-?(?:[0-9]+?[smhd])+$")) {
+				Matcher m = durationPattern.matcher(aLines);
+				if (m.find()) {
 					boolean additive = aLines.charAt(0) != '-';
-					if (!additive) aLines = aLines.substring(1);
-					Pattern p = Pattern.compile("([0-9]+[smhd])");
-					Matcher m = p.matcher(aLines);
 					
 					int time = 0;
-					while (m.find()) {
-						char c = m.group(1).charAt(m.group(1).length()-1);
-						int i = Integer.parseInt(m.group(1).substring(0,m.group(1).length()-1));
+					do {
+						int i = Integer.parseInt(m.group(1));
+						char c = m.group(2).charAt(0);
 						switch (c) {
 							case 's': time += i; break;
 							case 'm': time += i*60; break;
 							case 'h': time += i*3600; break;
 							case 'd': time += i*86400; break;
 						}
-					}
+					} while (m.find());
+					
 					list = getRollbackLines(aChannel,aUser,regex,null,additive,0,time);
 				} else list = getRollbackLines(aChannel,aUser,regex,null,aLines.charAt(0) != '-',Math.abs(Integer.parseInt(aLines)),0);
 				
@@ -270,95 +265,15 @@ public class ModuleRollback extends Module implements IRollback {
 		}
 		
 		public String getLink(ArrayList<Line> lines, boolean withChannel) {
-			String link;
-			for (PasteService service : services) {
-				Line.setWithChannels(withChannel);
-				link = service.paste(lines);
-				Line.setWithChannels(false);
-				if (link == null) continue;
-				if (link.isEmpty() || link.startsWith("http://")) return link;
-			}
+			StringBuilder sb = new StringBuilder();
+			Line.setWithChannels(withChannel);
+			appendLines(sb,lines);
+			Line.setWithChannels(false);
+			
+			String link = Utils.paste(sb);
+			if (link != null)
+				return link;
 			return "Failed with all services";
-		}
-	}
-
-	public interface PasteService {
-		String paste(ArrayList<Line> lines);
-	}
-	public class ServicePasteKdeOrg implements PasteService {
-		public String paste(ArrayList<Line> lines) {
-			HTTPQuery q = new HTTPQuery("http://paste.kde.org/",HTTPQuery.Method.POST);
-			
-			StringBuilder sb = new StringBuilder();
-			sb.append("paste_lang=Text");
-			sb.append("&api_submit=1");
-			sb.append("&mode=xml");
-			sb.append("&paste_private=yes");
-			sb.append("&paste_data=");
-			appendLines(sb,lines);
-			
-			q.connect(true,true);
-			q.write(sb.toString());
-			ArrayList<String> list = q.read();
-			q.close();
-			
-			String pasteId = null, pasteHash = null;
-			for (String s : list) {
-				s = s.trim();
-				if (s.startsWith("<id>")) pasteId = s.substring(4,s.length()-5);
-				if (s.startsWith("<hash>")) pasteHash = s.substring(6,s.length()-7);
-			}
-			
-			if (pasteId != null) {
-				if (pasteHash != null) return "http://paste.kde.org/"+pasteId+"/"+pasteHash+"/";
-				return "http://paste.kde.org/"+pasteId+"/";
-			}
-			return null;
-		}
-	}
-	public class ServicePastebinCom implements PasteService {
-		private static final String apiKey = "caa6c4204f869de432d5434776598b1c";
-		
-		public String paste(ArrayList<Line> lines) {
-			HTTPQuery q = new HTTPQuery("http://pastebin.com/api/api_post.php",HTTPQuery.Method.POST);
-			
-			StringBuilder sb = new StringBuilder();
-			sb.append("api_option=paste");
-			sb.append("&api_dev_key="+apiKey);
-			sb.append("&api_paste_private=1");
-			sb.append("&api_paste_format=text");
-			sb.append("&api_paste_code=");
-			appendLines(sb,lines);
-			
-			q.connect(true,true);
-			q.write(sb.toString());
-			ArrayList<String> list = q.read();
-			q.close();
-			
-			return list.get(0);
-		}
-	}
-	public class ServicePastebinCa implements PasteService {
-		private static final String apiKey = "srDSz+PeUmUWZWm5qhHkK0WVlmQe29cx";
-		
-		public String paste(ArrayList<Line> lines) {
-			HTTPQuery q = new HTTPQuery("http://pastebin.ca/quiet-paste.php",HTTPQuery.Method.POST);
-			
-			StringBuilder sb = new StringBuilder();
-			try {
-				sb.append("api="+URLEncoder.encode(apiKey,"UTF8"));
-				sb.append("&content=");
-				appendLines(sb,lines);
-			} catch (Exception e) {e.printStackTrace();}
-			
-			q.connect(true,true);
-			q.write(sb.toString());
-			ArrayList<String> list = q.read();
-			q.close();
-			
-			String s = list.get(0);
-			if (s.startsWith("SUCCESS")) return "http://pastebin.ca/"+s.substring(7);
-			return null;
 		}
 	}
 }

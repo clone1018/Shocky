@@ -71,7 +71,7 @@ public class ModuleJavaScript extends ScriptModule {
 		SecurityManager sysSecure = System.getSecurityManager();
 		System.setSecurityManager(secure);
 		String output = null;
-		final ExecutorService service = Executors.newFixedThreadPool(1,sandboxFactory);
+		final ExecutorService service = Executors.newSingleThreadExecutor(sandboxFactory);
 		try {
 		    Future<String> f = service.submit(r);
 		    output = f.get(30, TimeUnit.SECONDS);

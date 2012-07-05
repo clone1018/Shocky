@@ -8,7 +8,7 @@ public class SandboxSecurityManager extends SecurityManager
 	@Override
 	public void checkPermission(Permission perm) 
 	{
-		if (!(Thread.currentThread().getThreadGroup() instanceof SandboxThreadGroup))
+		if (!(getThreadGroup() instanceof SandboxThreadGroup))
 			return;
 		if (perm instanceof RuntimePermission)
 		{
@@ -19,11 +19,6 @@ public class SandboxSecurityManager extends SecurityManager
 		}
 		if (perm instanceof FilePermission)
 			throw new SecurityException(perm.getName()+" is not allowed.");
-	}
-	@Override
-	public void checkPermission(Permission perm, Object context) 
-	{
-		checkPermission(perm);
 	}
 	@Override
 	public void checkExit(int status) {
