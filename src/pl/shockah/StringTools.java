@@ -2,7 +2,6 @@ package pl.shockah;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
-import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.commons.lang3.StringEscapeUtils;
@@ -11,38 +10,10 @@ import org.apache.commons.lang3.text.translate.UnicodeUnescaper;
 import pl.shockah.shocky.Data;
 
 public class StringTools {
-	private static HashMap<String,String> htmlEntities;
 	public static final Pattern unicodePattern = Pattern.compile("\\\\u([0-9a-fA-F]{4})");
 	public static final Pattern htmlTagPattern = Pattern.compile("<([^>]+)>");
+	public static final Pattern htmlEscapePattern = Pattern.compile("&(([A-Za-z]+)|#([0-9]+));");
 	public static final UnicodeUnescaper unicodeEscape = new UnicodeUnescaper();
-	
-	static {
-		htmlEntities = new HashMap<String,String>();
-		htmlEntities.put("&lt;","<"); htmlEntities.put("&gt;",">");
-		htmlEntities.put("&amp;","&"); htmlEntities.put("&quot;","\"");
-		htmlEntities.put("&agrave;","a"); htmlEntities.put("&Agrave;","A");
-		htmlEntities.put("&acirc;","â"); htmlEntities.put("&auml;","ä");
-		htmlEntities.put("&Auml;","Ä"); htmlEntities.put("&Acirc;","Â");
-		htmlEntities.put("&aring;","a"); htmlEntities.put("&Aring;","A");
-		htmlEntities.put("&aelig;","a"); htmlEntities.put("&AElig;","A" );
-		htmlEntities.put("&ccedil;","ç"); htmlEntities.put("&Ccedil;","Ç");
-		htmlEntities.put("&eacute;","é"); htmlEntities.put("&Eacute;","É" );
-		htmlEntities.put("&egrave;","e"); htmlEntities.put("&Egrave;","E");
-		htmlEntities.put("&ecirc;","e"); htmlEntities.put("&Ecirc;","E");
-		htmlEntities.put("&euml;","ë"); htmlEntities.put("&Euml;","Ë");
-		htmlEntities.put("&iuml;","i"); htmlEntities.put("&Iuml;","I");
-		htmlEntities.put("&ocirc;","ô"); htmlEntities.put("&Ocirc;","Ô");
-		htmlEntities.put("&ouml;","ö"); htmlEntities.put("&Ouml;","Ö");
-		htmlEntities.put("&oslash;","o"); htmlEntities.put("&Oslash;","O");
-		htmlEntities.put("&szlig;","ß"); htmlEntities.put("&ugrave;","u");
-		htmlEntities.put("&Ugrave;","U"); htmlEntities.put("&ucirc;","u");
-		htmlEntities.put("&Ucirc;","U"); htmlEntities.put("&uuml;","ü");
-		htmlEntities.put("&Uuml;","Ü"); htmlEntities.put("&nbsp;"," ");
-		htmlEntities.put("&copy;","\u00a9");
-		htmlEntities.put("&reg;","\u00ae");
-		htmlEntities.put("&euro;","\u20a0");
-		htmlEntities.put("&bull;","•");
-	}
 	
 	public static String getFilenameStrippedWindows(String fname) {
 		fname = fname.replace('\\','-');
@@ -59,42 +30,13 @@ public class StringTools {
 	}
 	
 	public static String escapeHTML(String s) {
-		s = s.replace("&","&amp;");
-		for (String key : htmlEntities.keySet()) {
-			if (key.equals("&amp;")) continue;
-			s = s.replace(htmlEntities.get(key),key);
-		}
-		return s;
+		return StringEscapeUtils.escapeHtml4(s);
 	}
-	public static String unescapeHTML(String source) {
-		boolean continueLoop;
-		int skip = 0;
-		do {
-			continueLoop = false;
-			int i = source.indexOf("&",skip);
-			if (i > -1) {
-				int j = source.indexOf(";",i);
-				if (j > i) {
-					String entityToLookFor = source.substring(i,j+1);
-					if (entityToLookFor.indexOf("#")==1) {
-						char chr = (char)Integer.parseInt(source.substring(i+2,j));
-						source = source.substring(0,i)+chr+source.substring(j+1);
-						continueLoop = true;
-					} else {
-						String value = htmlEntities.get(entityToLookFor);
-						if (value != null) {
-							source = source.substring(0,i)+value+source.substring(j+1);
-							continueLoop = true;
-						} else if (value == null) {
-							skip = i+1;
-							continueLoop = true;
-						}
-					}
-				}
-			}
-		} while (continueLoop);
-		return source;
+	
+	public static String unescapeHTML(String s) {
+		return StringEscapeUtils.unescapeHtml4(s);
 	}
+
 	public static String stripHTMLTags(CharSequence s) {
 		Matcher m = htmlTagPattern.matcher(s);
 		StringBuffer sb = new StringBuffer();

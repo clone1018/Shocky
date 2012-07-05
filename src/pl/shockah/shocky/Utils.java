@@ -1,12 +1,10 @@
 package pl.shockah.shocky;
 
-import java.util.ArrayList;
-import java.util.Date;
+import java.util.*;
 import java.util.regex.Pattern;
 import org.pircbotx.Channel;
 import org.pircbotx.User;
-import pl.shockah.HTTPQuery;
-import pl.shockah.StringTools;
+import pl.shockah.*;
 import pl.shockah.shocky.paste.*;
 
 public class Utils {
@@ -23,7 +21,7 @@ public class Utils {
 		flipOriginal =	"!().12345679<>?ABCDEFGJKLMPQRTUVWY[]_abcdefghijklmnpqrtuvwy{},'\"┳",
 		flipReplace =	"¡)(˙⇂ᄅƐㄣϛ9Ɫ6><¿∀ℇƆ◖ƎℲפſ丬˥WԀΌᴚ⊥∩ΛMλ][‾ɐqɔpǝɟɓɥıɾʞlɯudbɹʇnʌʍʎ}{',„┻";
 	
-	public final static ArrayList<PasteService> services = new ArrayList<PasteService>();
+	public static final List<PasteService> services = new LinkedList<PasteService>();
 	
 	public static ArrayList<String> getAllUrls(String text) {
 		String[] spl = text.split(" ");
@@ -50,6 +48,7 @@ public class Utils {
 	
 	public static void initPasteServices() {
 		String key = null;
+		services.clear();
 		services.add(new ServicePasteKdeOrg());
 		key = Data.config.getString("api-pastebin.com");
 		if (key != null)

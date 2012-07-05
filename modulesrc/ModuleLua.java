@@ -1,11 +1,11 @@
 import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.charset.Charset;
@@ -76,7 +76,7 @@ public class ModuleLua extends ScriptModule {
 		try {
 			if (binary.exists()) {
 				FileInputStream fs = new FileInputStream(binary);
-				ObjectInputStream is = new ObjectInputStream(fs);
+				DataInputStream is = new DataInputStream(fs);
 				env.set("irc", readValue(is));
 				is.close();
 				fs.close();
@@ -99,7 +99,7 @@ public class ModuleLua extends ScriptModule {
 			if (value.istable()) {
 				if (binary.exists() || binary.createNewFile()) {
 					FileOutputStream fs = new FileOutputStream(binary);
-					ObjectOutputStream os = new ObjectOutputStream(fs);
+					DataOutputStream os = new DataOutputStream(fs);
 					writeValue(os, value);
 					os.flush();
 					os.close();
@@ -111,7 +111,7 @@ public class ModuleLua extends ScriptModule {
 		}
 	}
 	
-	public static void writeTable(ObjectOutputStream os, LuaValue value) throws IOException {
+	public static void writeTable(DataOutputStream os, LuaValue value) throws IOException {
 		LuaTable table = value.checktable();
 		LuaValue[] keys = table.keys();
 		writeEncodedInt(os,keys.length);
@@ -121,7 +121,7 @@ public class ModuleLua extends ScriptModule {
 		}
 	}
 	
-	public static void writeValue(ObjectOutputStream os, LuaValue value) throws IOException {
+	public static void writeValue(DataOutputStream os, LuaValue value) throws IOException {
 		if (value.type() == LuaValue.TFUNCTION && !value.isclosure()) {
 			writeEncodedInt(os,LuaValue.TNIL);
 		} else {
@@ -152,7 +152,7 @@ public class ModuleLua extends ScriptModule {
 		}
 	}
 	
-	public LuaValue readTable(ObjectInputStream is) throws IOException {
+	public LuaValue readTable(DataInputStream is) throws IOException {
 		LuaTable table = new LuaTable();
 		int size = readEncodedInt(is);
 		for (int i = 0; i < size; i++) {
@@ -164,7 +164,7 @@ public class ModuleLua extends ScriptModule {
 		return table;
 	}
 	
-	public LuaValue readValue(ObjectInputStream is) throws IOException {
+	public LuaValue readValue(DataInputStream is) throws IOException {
 		int type = readEncodedInt(is);
 		switch (type) {
 		case LuaValue.TBOOLEAN: return LuaValue.valueOf(is.readBoolean());

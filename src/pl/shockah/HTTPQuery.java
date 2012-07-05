@@ -7,8 +7,8 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.ArrayList;
-
-import org.apache.commons.lang3.tuple.ImmutablePair;
+import java.util.Map;
+import java.util.Map.Entry;
 
 public class HTTPQuery {
 	public enum Method{GET,POST,HEAD}
@@ -52,17 +52,13 @@ public class HTTPQuery {
 	}
 	
 	public void write(String s) {
-		OutputStream os = null;
-		try {
-			c.setRequestProperty("Content-Length",""+s.getBytes().length);
-			os = c.getOutputStream();
-			os.write(s.getBytes());
-		} catch (Exception e) {e.printStackTrace();}
+		write(s.getBytes());
 	}
+	
 	public void write(byte[] bytes) {
 		OutputStream os = null;
 		try {
-			c.setRequestProperty("Content-Length",""+bytes.length);
+			c.setRequestProperty("Content-Length",Integer.toString(bytes.length));
 			os = c.getOutputStream();
 			os.write(bytes);
 		} catch (Exception e) {e.printStackTrace();}
@@ -82,18 +78,18 @@ public class HTTPQuery {
 		ArrayList<String> lines = read();
 		StringBuilder sb = new StringBuilder();
 		for (int i = 0; i < lines.size(); i++) {
-			if (i != 0) sb.append("\n");
+			if (i != 0) sb.append('\n');
 			sb.append(lines.get(i));
 		}
 		return sb.toString();
 	}
 	
-	public static String parseArgs(ArrayList<ImmutablePair<String,String>> args) {
+	public static String parseArgs(Map<String,String> args) {
 		StringBuilder sb = new StringBuilder();
-		for (ImmutablePair<String,String> pair : args) {
-			if (sb.length() != 0) sb.append("&");
+		for (Entry<String, String> pair : args.entrySet()) {
+			if (sb.length() != 0) sb.append('&');
 			try {
-				sb.append(URLEncoder.encode(pair.getLeft()+"="+pair.getRight(),"UTF-8"));
+				sb.append(URLEncoder.encode(pair.getKey()+'='+pair.getValue(),"UTF-8"));
 			} catch (Exception e) {e.printStackTrace();}
 		}
 		return sb.toString();
@@ -101,9 +97,9 @@ public class HTTPQuery {
 	public static String parseArgs(String... args) {
 		StringBuilder sb = new StringBuilder();
 		for (int i = 0; i < args.length; i += 2) {
-			if (sb.length() != 0) sb.append("&");
+			if (sb.length() != 0) sb.append('&');
 			try {
-				sb.append(URLEncoder.encode(args[i],"UTF-8")+"="+URLEncoder.encode(args[i+1],"UTF-8"));
+				sb.append(URLEncoder.encode(args[i]+'='+args[i+1],"UTF-8"));
 			} catch (Exception e) {e.printStackTrace();}
 		}
 		return sb.toString();

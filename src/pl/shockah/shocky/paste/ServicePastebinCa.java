@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import pl.shockah.HTTPQuery;
 
 public class ServicePastebinCa implements PasteService {
+	
 	private final String apiKey;
 	
 	public ServicePastebinCa(String apiKey) {
