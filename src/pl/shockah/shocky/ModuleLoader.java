@@ -33,14 +33,14 @@ public abstract class ModuleLoader {
 		protected Module load(ModuleSource<?> source) {
 			Module module = null;
 			try {
+				Class<?> c = null;
 				if (source.source instanceof File) {
 					File file = (File)source.source;
 					String moduleName = file.getName(); 
 					if (moduleName.endsWith(".class")) moduleName = new StringBuilder(moduleName).reverse().delete(0,6).reverse().toString(); else return null;
 					if (moduleName.contains("$")) return null;
 					
-					Class<?> c = new URLClassLoader(new URL[]{file.getParentFile().toURI().toURL()}).loadClass(moduleName);
-					if (Module.class.isAssignableFrom(c)) return (Module)c.newInstance();
+					c = new URLClassLoader(new URL[]{file.getParentFile().toURI().toURL()}).loadClass(moduleName);
 				} else if (source.source instanceof URL) {
 					URL url = (URL)source.source;
 					String moduleName = url.toString();
@@ -50,9 +50,11 @@ public abstract class ModuleLoader {
 					if (moduleName.endsWith(".class")) moduleName = new StringBuilder(moduleName).reverse().delete(0,6).reverse().toString(); else return null;
 					if (moduleName.contains("$")) return null;
 					
-					Class<?> c = new URLClassLoader(new URL[]{new URL(modulePath)}).loadClass(moduleName);
-					if (Module.class.isAssignableFrom(c)) return (Module)c.newInstance();
+					c = new URLClassLoader(new URL[]{new URL(modulePath)}).loadClass(moduleName);
 				}
+				
+				if (c != null && Module.class.isAssignableFrom(c))
+					module = (Module)c.newInstance();
 			} catch (Exception e) {e.printStackTrace();}
 			return module;
 		}

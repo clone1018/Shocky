@@ -13,6 +13,7 @@ public class StringTools {
 	public static final Pattern unicodePattern = Pattern.compile("\\\\u([0-9a-fA-F]{4})");
 	public static final Pattern htmlTagPattern = Pattern.compile("<([^>]+)>");
 	public static final Pattern htmlEscapePattern = Pattern.compile("&(([A-Za-z]+)|#([0-9]+));");
+	public static final Pattern controlCharPattern = Pattern.compile("(([\r\n]+)|(\t))");
 	public static final UnicodeUnescaper unicodeEscape = new UnicodeUnescaper();
 	
 	public static String getFilenameStrippedWindows(String fname) {
@@ -68,10 +69,6 @@ public class StringTools {
 		return ret;
 	}
 	
-	public static boolean isBoolean(String s) {
-		return (s.equalsIgnoreCase("true")||s.equalsIgnoreCase("false"));
-	}
-	
 	public static String ircFormatted(CharSequence s, boolean urlDecode) {
 		String output = unicodeEscape.translate(s);
 		output = StringEscapeUtils.unescapeHtml4(output);
@@ -95,9 +92,8 @@ public class StringTools {
         StringBuilder sb = new StringBuilder(str.length());
         for (int i = 0; i < str.length(); i++) {
         	char c = str.charAt(i);
-            if (i > 0 && Character.isWhitespace(c) && Character.isWhitespace(str.charAt(i-1))) {
+            if (i > 0 && Character.isWhitespace(c) && Character.isWhitespace(str.charAt(i-1)))
                 continue;
-            }
             if (c == '\r' || c == '\n') {
             	sb.append(' ');
             	continue;
@@ -105,6 +101,23 @@ public class StringTools {
             sb.append(c);
         }
         return sb.toString();
+    }
+    
+    public static String formatLines(CharSequence str) {
+    	StringBuffer sb = new StringBuffer(str.length());
+    	Matcher m = controlCharPattern.matcher(str);
+    	while(m.find()) {
+    		String newline = m.group(2);
+    		String tab = m.group(3);
+    		if (!m.hitEnd()) {
+    			if (newline != null)
+    				m.appendReplacement(sb, " | ");
+    			else if (tab != null)
+    				m.appendReplacement(sb, ",");
+    		}
+    	}
+    	m.appendTail(sb);
+		return sb.toString();
     }
     
     public static String limitLength(CharSequence str) {

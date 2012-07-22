@@ -11,7 +11,7 @@ public class SandboxThreadFactory implements ThreadFactory {
 
     public SandboxThreadFactory(ThreadGroup group) {
         this.group = group;
-        namePrefix = "sandbox-" + poolNumber.getAndIncrement();
+        namePrefix = "sandbox-" + group.getName() + poolNumber.getAndIncrement();
     }
 
     public Thread newThread(Runnable r) {

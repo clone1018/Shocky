@@ -314,6 +314,7 @@ public class ModuleFactoid extends Module implements IFactoid {
 		onMessage(event.getBot(),null,event.getUser(),event.getMessage());
 	}
 	public void onMessage(PircBotX bot, Channel channel, User sender, String msg) {
+		msg = msg.trim();
 		if (msg.length() < 2) return;
 		Config config = channel == null ? Data.config : Data.forChannel(channel);
 		String chars = config.getString("factoid-char");
@@ -410,18 +411,20 @@ public class ModuleFactoid extends Module implements IFactoid {
 			}
 			
 			if (message != null && message.length() > 0) {
-				StringBuilder sb = new StringBuilder(message);
+				StringBuilder sb = new StringBuilder(StringTools.formatLines(message));
 				if (target == null && ping != null) {
 					sb.insert(0, ": ");
 					sb.insert(0, ping);
 				}
+				message = StringTools.limitLength(sb);
 				
-				Shocky.send(bot, target != null?Command.EType.Notice:(channel == null ? Command.EType.Notice : Command.EType.Channel), channel, channel == null ? sender : Shocky.getUser(target), sb.toString());
+				Shocky.send(bot, target != null?Command.EType.Notice:(channel == null ? Command.EType.Notice : Command.EType.Channel), channel, channel == null ? sender : Shocky.getUser(target), message);
 			}
 		}
 	}
 	
 	public String runFactoid(PircBotX bot, Channel channel, User sender, String message) {
+		message = message.trim();
 		LinkedList<String> checkRecursive = new LinkedList<String>();
 		while (true) {
 			String factoid = message.split(" ")[0].toLowerCase();
@@ -486,7 +489,7 @@ public class ModuleFactoid extends Module implements IFactoid {
 				output.insert(0,'\001');
 				output.append('\001');
 			}
-			return StringTools.limitLength(output);
+			return output.toString();
 		}
 	}
 	
@@ -697,7 +700,7 @@ public class ModuleFactoid extends Module implements IFactoid {
 		}
 		
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-			String[] args = message.split(" ");
+			String[] args = message.trim().split(" ");
 			callback.type = EType.Notice;
 			if (args.length < 3 || (args.length == 3 && args[1].equals("."))) {
 				callback.append(help(bot,type,channel,sender));

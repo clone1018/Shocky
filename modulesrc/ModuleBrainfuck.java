@@ -43,7 +43,7 @@ public class ModuleBrainfuck extends ScriptModule {
 			}
 			BrainfuckEngine bfe = new BrainfuckEngine(code.length(),os,is);
 			bfe.interpret(code);
-			return StringTools.limitLength(os.toString());
+			return os.toString();
 		} catch (Exception e) {e.printStackTrace();}
 		return "";
 	}
@@ -62,7 +62,9 @@ public class ModuleBrainfuck extends ScriptModule {
 				return;
 			}
 			
-			callback.append(parse(bot,type,channel,sender,StringTools.implode(args,1," "),null));
+			String output = parse(bot,type,channel,sender,StringTools.implode(args,1," "),null);
+			if (output != null && !output.isEmpty())
+				callback.append(StringTools.limitLength(StringTools.formatLines(output)));
 		}
 	}
 }

@@ -55,11 +55,11 @@ public class ModulePython extends ScriptModule {
 			return result.get(result.size()-1);
 		
 		for (String line : result) {
-			if (sb.length() != 0) sb.append(" | ");
+			if (sb.length() != 0) sb.append('\n');
 			sb.append(line);
 		}
 		
-		return StringTools.limitLength(sb);
+		return sb.toString();
 	}
 	
 	public class CmdPython extends Command {
@@ -77,7 +77,10 @@ public class ModulePython extends ScriptModule {
 			}
 			
 			System.out.println(message);
-			callback.append(parse(bot,type,channel,sender,StringTools.implode(args,1," "),null));
+			String output = parse(bot,type,channel,sender,StringTools.implode(args,1," "),null);
+			if (output != null && !output.isEmpty()) {
+				callback.append(StringTools.limitLength(StringTools.formatLines(output)));
+			}
 		}
 	}
 }

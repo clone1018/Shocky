@@ -142,18 +142,21 @@ public class Data {
 			int o = 0;
 			switch (type) {
 			case 'n':
-				value = user.getNick().toLowerCase();
+				value = user.getNick();
 				break;
 			case 'h':
-				value = user.getHostmask().toLowerCase();
+				value = user.getHostmask();
 				break;
 			case 'i':
-				value = user.getLogin().toLowerCase();
+				value = user.getLogin();
 				break;
 			case 's':
-				value = Whois.getWhoisLogin(user).toLowerCase();
+				value = Whois.getWhoisLogin(user);
 				break;
 			}
+			if (value == null)
+				continue start;
+			value = value.toLowerCase();
 			for (String part : array) {
 				int idx = value.indexOf(part, o);
 				if (idx == -1)

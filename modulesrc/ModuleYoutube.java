@@ -53,8 +53,12 @@ public class ModuleYoutube extends Module {
 			q = new HTTPQuery("http://gdata.youtube.com/feeds/api/videos?max-results=1&v=2&alt=jsonc&q="+URLEncoder.encode(query,"UTF8"));
 			q.connect(true,false);
 			
-			JSONObject jItem = new JSONObject(q.readWhole()).getJSONObject("data").getJSONArray("items").getJSONObject(0);
+			JSONObject jItem = new JSONObject(q.readWhole()).getJSONObject("data");
 			q.close();
+			
+			if (jItem.getInt("totalItems")==0)
+				return null;
+			jItem = jItem.getJSONArray("items").getJSONObject(0);
 			
 			String vID = jItem.getString("id");
 			String vUploader = jItem.getString("uploader");
@@ -161,6 +165,9 @@ public class ModuleYoutube extends Module {
 			if (search != null && !search.isEmpty()) {
 				search = Utils.mungeAllNicks(channel,search,sender.getNick());
 				callback.append(search);
+			} else {
+				callback.type = EType.Notice;
+				callback.append("No results were found.");
 			}
 		}
 	}

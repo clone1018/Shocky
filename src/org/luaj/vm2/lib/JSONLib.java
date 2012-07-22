@@ -13,6 +13,7 @@ import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Varargs;
 
 import pl.shockah.HTTPQuery;
+import pl.shockah.HTTPQuery.Method;
 import pl.shockah.StringTools;
 
 public class JSONLib extends VarArgFunction {
@@ -61,16 +62,16 @@ public class JSONLib extends VarArgFunction {
 		try {
 			String url = args.checkjstring(1);
 			String post = args.optjstring(2, null);
-			HTTPQuery.Method method = HTTPQuery.Method.GET;
+			Method method = Method.GET;
 			if (post != null) {
-				if (!post.isEmpty())
-					method = HTTPQuery.Method.POST;
-				else if (post.contentEquals("HEAD"))
-					method = HTTPQuery.Method.HEAD;
+				if (post.contentEquals("HEAD"))
+					method = Method.HEAD;
+				else if (!post.isEmpty())
+					method = Method.POST;
 			}
 			HTTPQuery q = new HTTPQuery(url, method);
-			q.connect(true, method == HTTPQuery.Method.POST);
-			if (method == HTTPQuery.Method.POST)
+			q.connect(true, method == Method.POST);
+			if (method == Method.POST)
 				q.write(post);
 			return varargsOf(new LuaValue[] {
 					valueOf(q.readWhole()),

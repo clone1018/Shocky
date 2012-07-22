@@ -50,11 +50,11 @@ public class ModulePHP extends ScriptModule {
 		
 		sb = new StringBuilder();
 		for (String line : q.read()) {
-			if (sb.length() != 0) sb.append(" | ");
+			if (sb.length() != 0) sb.append('\n');
 			sb.append(line);
 		}
 		
-		return StringTools.limitLength(sb.toString());
+		return sb.toString();
 	}
 	
 	public class CmdPHP extends Command {
@@ -69,7 +69,11 @@ public class ModulePHP extends ScriptModule {
 				return;
 			}
 			
-			callback.append(parse(bot,type,channel,sender,StringTools.implode(args,1," "),null));
+			System.out.println(message);
+			String output = parse(bot,type,channel,sender,StringTools.implode(args,1," "),null);
+			if (output != null && !output.isEmpty()) {
+				callback.append(StringTools.limitLength(StringTools.formatLines(output)));
+			}
 		}
 	}
 }

@@ -44,7 +44,7 @@ public class ModuleJavaScript extends ScriptModule {
 		Command.removeCommands(cmd);
 	}
 
-	public String parse(final PircBotX bot, EType type, Channel channel, User sender, String code, String message) {
+	public synchronized String parse(final PircBotX bot, EType type, Channel channel, User sender, String code, String message) {
 		if (code == null) return "";
 		
 		ScriptEngineManager mgr = new ScriptEngineManager();
@@ -88,14 +88,8 @@ public class ModuleJavaScript extends ScriptModule {
 		}
 		if (output == null || output.isEmpty())
 			return null;
-		
-		StringBuilder sb = new StringBuilder();
-		for(String line : output.split("\n")) {
-			if (sb.length() != 0) sb.append(" | ");
-			sb.append(line);
-		}
 
-		return StringTools.limitLength(sb);
+		return output;
 	}
 
 	public class CmdJavascript extends Command {
@@ -114,8 +108,9 @@ public class ModuleJavaScript extends ScriptModule {
 
 			System.out.println(message);
 			String output = parse(bot,type,channel,sender,StringTools.implode(args,1," "),null);
-			if (output != null && !output.isEmpty())
-				callback.append(output);
+			if (output != null && !output.isEmpty()) {
+				callback.append(StringTools.limitLength(StringTools.formatLines(output)));
+			}
 		}
 	}
 	
@@ -167,7 +162,7 @@ public class ModuleJavaScript extends ScriptModule {
 		}
 
 		@Override
-		public String call() throws Exception {
+		public synchronized String call() throws Exception {
 			StringWriter sw = new StringWriter();
 			PrintWriter pw = new PrintWriter(sw);
 			ScriptContext context = engine.getContext();

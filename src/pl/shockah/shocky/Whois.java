@@ -2,7 +2,6 @@ package pl.shockah.shocky;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.Date;
 import java.util.HashMap;
 import javax.swing.Timer;
 import org.pircbotx.PircBotX;
@@ -18,8 +17,8 @@ public class Whois extends ListenerAdapter implements ActionListener {
 	public static String getWhoisLogin(User user) {
 		if (map.containsKey(user.getNick())) return map.get(user.getNick());
 		if (mapRecheck.containsKey(user.getNick())) {
-			if (mapRecheck.get(user.getNick()) > new Date().getTime()) {
-				mapRecheck.put(user.getNick(),new Date().getTime()+1000);
+			if (mapRecheck.get(user.getNick()) > System.currentTimeMillis()) {
+				mapRecheck.put(user.getNick(),System.currentTimeMillis()+1000);
 				return null;
 			}
 		}
@@ -29,7 +28,7 @@ public class Whois extends ListenerAdapter implements ActionListener {
 		String login = map.get(user.getNick());
 		if (login == null) {
 			map.remove(user.getNick());
-			mapRecheck.put(user.getNick(),new Date().getTime()+1000);
+			mapRecheck.put(user.getNick(),System.currentTimeMillis()+1000);
 		}
 		return login;
 	}

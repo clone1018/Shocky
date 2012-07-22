@@ -41,7 +41,7 @@ public class ModuleRegexReplace extends Module {
 		if (Data.isBlacklisted(event.getUser())) return;
 		IRollback module = (IRollback)Module.getModule("rollback");
 		if (module == null) return;
-		String s = event.getMessage();
+		String s = event.getMessage().trim();
 		if (!s.startsWith("s/")&&!s.startsWith("m/")) return;
 		String[] args = s.split("/", -1);
 		boolean replace = args[0].contentEquals("s");
@@ -53,10 +53,14 @@ public class ModuleRegexReplace extends Module {
 		
 		if (args.length != flagPos+1) return;
 		if (args[1].isEmpty()) return;
+		
+		String[] params = args[flagPos].split(" ",-1);
+		String user = null;
+		
 		int flags = 0;
 		boolean single = true;
-		if (!args[flagPos].isEmpty()) {
-			for (char c : args[flagPos].toCharArray()) {
+		if (params.length > 0) {
+			for (char c : params[0].toCharArray()) {
 				switch (c) {
 				case 'd': flags |= Pattern.UNIX_LINES; break;
 				case 'g': single = false; break;
@@ -67,10 +71,13 @@ public class ModuleRegexReplace extends Module {
 				case 'x': flags |= Pattern.COMMENTS; break;
 				}
 			}
+			
+			if (params.length > 1)
+				user = params[1];
 		}
 		Pattern pattern = Pattern.compile(args[1],flags);
 		Matcher matcher = pattern.matcher("");
-		ArrayList<LineMessage> lines = module.getRollbackLines(LineMessage.class, event.getChannel().getName(), null, null, s, true, 10, 0);
+		ArrayList<LineMessage> lines = module.getRollbackLines(LineMessage.class, event.getChannel().getName(), user, null, s, true, 10, 0);
 		
 		final ExecutorService service = Executors.newFixedThreadPool(1);
 		try {
@@ -128,11 +135,11 @@ public class ModuleRegexReplace extends Module {
 									color.pop();
 							}
 							
-							if (color.isEmpty()) {
+							if (color.isEmpty() && last != -1) {
 								last = -1;
 								sb2.append(Colors.NORMAL);
 							}
-							else if (last != color.peek()) {
+							else if (!color.isEmpty() && last != color.peek()) {
 								sb2.append(groupColors[color.peek()%groupColors.length]);
 								last = color.peek();
 							}

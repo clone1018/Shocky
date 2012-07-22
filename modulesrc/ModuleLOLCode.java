@@ -39,9 +39,7 @@ public class ModuleLOLCode extends ScriptModule {
 			return "";
 		}
 		
-		s = StringTools.implode(s.split("[\r\n]+"), " | ");
-		
-		return StringTools.limitLength(s);
+		return s;
 	}
 	
 	public class CmdLOLCode extends Command {
@@ -58,9 +56,10 @@ public class ModuleLOLCode extends ScriptModule {
 			}
 			
 			System.out.println(message);
-			String out = parse(bot,type,channel,sender,StringTools.implode(args,1," "),null);
-			if (out != null && out.length()>0)
-				callback.append(out);
+			String output = parse(bot,type,channel,sender,StringTools.implode(args,1," "),null);
+			if (output != null && !output.isEmpty()) {
+				callback.append(StringTools.limitLength(StringTools.formatLines(output)));
+			}
 		}
 	}
 	
