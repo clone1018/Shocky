@@ -3,6 +3,7 @@ package pl.shockah.shocky;
 import java.io.Console;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
@@ -23,6 +24,7 @@ public class Data {
 	public static final ArrayList<String> controllers = new ArrayList<String>();
 	public static final ArrayList<String> channels = new ArrayList<String>();
 	public static final ArrayList<String> blacklistNicks = new ArrayList<String>();
+	public static final ArrayList<String> protectedKeys = new ArrayList<String>();
 	static {
 		initializeLineTypes();
 	}
@@ -46,6 +48,11 @@ public class Data {
 		Data.config.setNotExists("main-sqlprefix","");
 		Data.config.setNotExists("main-bitlyuser","");
 		Data.config.setNotExists("main-bitlyapikey","");
+		
+		protectedKeys.addAll(Arrays.asList(new String[]{
+			"main-botname","main-server","main-version","main-verborse","main-maxchannels","main-nickservpass","main-messagelength","main-messagedelay","main-saveinterval",
+			"main-sqlurl","main-sqluser","main-sqlpass","main-sqldb","main-sqlprefix","main-bitlyuser","main-bitlyapikey"
+		}));
 		
 		Console c = System.console();
 		if (c == null) System.out.println("--- Not running in console, using default first-run settings ---"); else {

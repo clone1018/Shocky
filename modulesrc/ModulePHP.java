@@ -18,6 +18,7 @@ public class ModulePHP extends ScriptModule {
 	public void onEnable() {
 		Data.config.setNotExists("php-url","http://localhost/shocky/shocky.php");
 		Command.addCommands(this, cmd = new CmdPHP());
+		Data.protectedKeys.add("php-url");
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd);
