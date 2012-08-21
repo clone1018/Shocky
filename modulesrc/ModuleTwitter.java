@@ -8,6 +8,7 @@ import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 import org.pircbotx.hooks.events.MessageEvent;
 import pl.shockah.HTTPQuery;
+import pl.shockah.StringTools;
 import pl.shockah.XMLObject;
 import pl.shockah.shocky.Data;
 import pl.shockah.shocky.Module;
@@ -49,7 +50,7 @@ public class ModuleTwitter extends Module {
 			try {
 				String author = user.getElement("name").get(0).getValue();
 				author += " (@"+user.getElement("screen_name").get(0).getValue()+")";
-				String tweet = status.getElement("text").get(0).getValue();
+				String tweet = StringTools.unescapeHTML(status.getElement("text").get(0).getValue());
 				Date date = sdf.parse(status.getElement("created_at").get(0).getValue());
 				Shocky.sendChannel(event.getBot(),event.getChannel(),Utils.mungeAllNicks(event.getChannel(),event.getUser().getNick()+": "+author+", "+Utils.timeAgo(date)+": "+tweet,event.getUser().getNick()));
 			} catch (Exception e) {e.printStackTrace();}
