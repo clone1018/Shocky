@@ -27,21 +27,16 @@ public class ModulePHP extends ScriptModule {
 	public String parse(PircBotX bot, EType type, Channel channel, User sender, String code, String message) {
 		if (code == null) return "";
 		
-		StringBuilder sb = new StringBuilder("$channel = \""+channel.getName()+"\";$bot = \""+bot.getNick().replace("\"","\\\"")+"\";$sender = \""+sender.getNick().replace("\"","\\\"")+"\";");
+		StringBuilder sb = new StringBuilder("$channel = '"+channel.getName().replace("'","\\'")+"';$bot = '"+bot.getNick().replace("'","\\'")+"';$sender = '"+sender.getNick().replace("'","\\'")+"';");
 		if (message != null) {
 			String[] args = message.split(" ");
 			String argsImp = StringTools.implode(args,1," "); if (argsImp == null) argsImp = "";
-			sb.append("$argc = "+(args.length-1)+";$args = \""+argsImp.replace("\"","\\\"")+"\";$ioru = \""+(args.length-1 == 0 ? sender.getNick() : argsImp).replace("\"","\\\"")+"\";");
-			sb.append("$arg = array(");
-			for (int i = 1; i < args.length; i++) {
-				if (i != 1) sb.append(",");
-				sb.append("\""+args[i].replace("\"","\\\"")+"\"");
-			}
-			sb.append(");");
+			sb.append("$argc = "+(args.length-1)+";$args = '"+argsImp.replace("'","\\'")+"';$ioru = '"+(args.length-1 == 0 ? sender.getNick() : argsImp).replace("'","\\'")+"';");
+			sb.append("$arg = explode(' ',$args);");
 		}
 		
 		User[] users = channel.getUsers().toArray(new User[channel.getUsers().size()]);
-		sb.append("$randnick = \""+users[new Random().nextInt(users.length)].getNick().replace("\"","\\\"")+"\";");
+		sb.append("$randnick = '"+users[new Random().nextInt(users.length)].getNick().replace("'","\\'")+"';");
 		
 		code = sb.toString()+code;
 		
