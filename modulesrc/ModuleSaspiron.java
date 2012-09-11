@@ -44,10 +44,10 @@ public class ModuleSaspiron extends Module {
 				if (sb.length() == 0) sb.append(" ");
 				if (args[i].length() < 4) {
 					if (rnd.nextInt(10) == 0) sb.append(three[rnd.nextInt(three.length)]).append(" ");
-					else sb.append(TheWords.remove(rnd.nextInt(TheWords.size())));
+					else sb.append(TheWords.remove(rnd.nextInt(TheWords.size()))).append(" ");
 				} else {
 					if (rnd.nextInt(30) == 0) sb.append(four[rnd.nextInt(four.length)]).append(" ");
-					sb.append(TheOtherWords.remove(rnd.nextInt(TheOtherWords.size())));
+					sb.append(TheOtherWords.remove(rnd.nextInt(TheOtherWords.size()))).append(" ");
 				}
 			}
 			
