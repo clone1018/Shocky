@@ -63,6 +63,7 @@ public class ModuleWolframAlpha extends Module {
 		Command.addCommands(this, cmd = new CmdWolframAlpha());
 		Command.addCommand(this, "wa", cmd);
 		Data.config.setNotExists("wolfram-apikey","");
+		Data.protectedKeys.add("wolfram-apikey");
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd);

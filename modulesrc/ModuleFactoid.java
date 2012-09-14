@@ -42,6 +42,8 @@ public class ModuleFactoid extends Module implements IFactoid {
 		Data.config.setNotExists("factoid-show",true);
 		Data.config.setNotExists("php-url","http://localhost/shocky/shocky.php");
 		Data.config.setNotExists("python-url","http://eval.appspot.com/eval");
+		Data.protectedKeys.add("php-url");
+		Data.protectedKeys.add("python-url");
 		
 		SQL.raw("CREATE TABLE IF NOT EXISTS "+SQL.getTable("factoid")+" (channel TEXT NOT NULL,factoid TEXT,author TEXT,rawtext TEXT,stamp INT(10) UNSIGNED NOT NULL,locked INT(1) UNSIGNED NOT NULL DEFAULT 0,forgotten INT(1) UNSIGNED NOT NULL DEFAULT 0)");
 		

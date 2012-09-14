@@ -29,8 +29,13 @@ public class CmdSet extends Command {
 		Config config;
 		if (global)
 			config = Data.config;
-		else
+		else {
+			if (key != null && Data.protectedKeys.contains(key)) {
+				callback.append("Key "+key+" is protected");
+				return;
+			}
 			config = Data.forChannel(channel);
+		}
 		
 		if (key != null && value != null) {
 			config.set(key,value);

@@ -28,8 +28,13 @@ public class CmdGet extends Command {
 		Config config;
 		if (global)
 			config = Data.config;
-		else
+		else {
+			if (key != null && Data.protectedKeys.contains(key)) {
+				callback.append("Key "+key+" is protected");
+				return;
+			}
 			config = Data.forChannel(channel);
+		}
 		
 		if (key != null) {
 			callback.append(key+": "+config.getString(key));

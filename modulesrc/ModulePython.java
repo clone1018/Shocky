@@ -19,6 +19,7 @@ public class ModulePython extends ScriptModule {
 	public void onEnable() {
 		Data.config.setNotExists("python-url","http://eval.appspot.com/eval");
 		Command.addCommands(this, cmd = new CmdPython());
+		Data.protectedKeys.add("python-url");
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd);
