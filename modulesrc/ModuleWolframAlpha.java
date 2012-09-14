@@ -21,7 +21,7 @@ public class ModuleWolframAlpha extends Module {
 		if (apiKey.isEmpty()) return ">>> WolframAlpha module can't be used without setting up an API key. Get one at http://products.wolframalpha.com/developers/ <<<";
 		
 		try {
-			HTTPQuery q = new HTTPQuery("http://api.wolframalpha.com/v2/query?appid="+apiKey+"&format=Plaintext&input="+URLEncoder.encode(query,"UTF8"));
+			HTTPQuery q = HTTPQuery.create("http://api.wolframalpha.com/v2/query?appid="+apiKey+"&format=Plaintext&input="+URLEncoder.encode(query,"UTF8"));
 			q.connect(true,false);
 			XMLObject xBase = XMLObject.deserialize(q.readWhole());
 			q.close();

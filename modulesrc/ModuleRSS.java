@@ -109,9 +109,10 @@ public class ModuleRSS extends Module {
 					ArrayList<FeedEntry> ret = new ArrayList<FeedEntry>();
 					Date newest = null;
 					
-					HTTPQuery q = new HTTPQuery(url);
+					HTTPQuery q = HTTPQuery.create(url);
 					q.connect(true,false);
 					XMLObject xBase = XMLObject.deserialize(q.readWhole());
+					q.close();
 					if (xBase.getAllElements().get(0).getName().equals("feed")) {
 						ArrayList<XMLObject> xEntries = xBase.getElement("feed").get(0).getElement("entry");
 						for (XMLObject xEntry : xEntries) {

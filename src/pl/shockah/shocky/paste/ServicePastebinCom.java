@@ -12,7 +12,7 @@ public class ServicePastebinCom implements PasteService {
 	}
 	
 	public String paste(CharSequence data) {
-		HTTPQuery q = new HTTPQuery("http://pastebin.com/api/api_post.php",HTTPQuery.Method.POST);
+		HTTPQuery q = HTTPQuery.create("http://pastebin.com/api/api_post.php",HTTPQuery.Method.POST);
 		
 		StringBuilder sb = new StringBuilder(data.length()+150);
 		sb.append("api_option=paste");
@@ -24,7 +24,7 @@ public class ServicePastebinCom implements PasteService {
 		
 		q.connect(true,true);
 		q.write(sb.toString());
-		ArrayList<String> list = q.read();
+		ArrayList<String> list = q.readLines();
 		q.close();
 		
 		return list.get(0);

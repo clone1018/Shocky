@@ -43,7 +43,7 @@ public class ModuleRegexReplace extends Module {
 		if (module == null) return;
 		String s = event.getMessage().trim();
 		if (!s.startsWith("s/")&&!s.startsWith("m/")) return;
-		String[] args = s.split("/", -1);
+		String[] args = s.split("(?<!\\\\)/", -1);
 		boolean replace = args[0].contentEquals("s");
 		if (!replace && event.getChannel().getMode().contains("c")) return;
 		

@@ -47,13 +47,14 @@ public class ModuleGoogle extends Module {
 		HTTPQuery q;
 		StringBuilder result = new StringBuilder();
 		try {
-			q = new HTTPQuery("http://ajax.googleapis.com/ajax/services/search/"+(cmd instanceof CmdGoogleImg?"images":"web")+"?v=1.0&safe=off&q=" + URLEncoder.encode(sb.toString(), "UTF8"));
+			q = HTTPQuery.create("http://ajax.googleapis.com/ajax/services/search/"+(cmd instanceof CmdGoogleImg?"images":"web")+"?v=1.0&safe=off&q=" + URLEncoder.encode(sb.toString(), "UTF8"));
 		} catch (Exception e) {
 			e.printStackTrace();
 			return;
 		}
 		q.connect(true, false);
 		String line = q.readWhole();
+		q.close();
 		
 		try {
 			JSONObject json = new JSONObject(line);

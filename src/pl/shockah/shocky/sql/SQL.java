@@ -5,6 +5,7 @@ import pl.shockah.HTTPQuery;
 import pl.shockah.shocky.Data;
 
 public class SQL {
+
 	public static String raw(String query) {return queryRaw(query);}
 	public static JSONObject select(QuerySelect query) {return queryJSON(query.getSQLQuery());}
 	public static String insert(QueryInsert query) {return queryInsertId(query.getSQLQuery());}
@@ -12,7 +13,7 @@ public class SQL {
 	public static String update(QueryUpdate query) {return queryRaw(query.getSQLQuery());}
 	
 	public static String queryRaw(String query) {
-		HTTPQuery q = new HTTPQuery(Data.config.getString("main-sqlurl"),HTTPQuery.Method.POST);
+		HTTPQuery q = HTTPQuery.create(Data.config.getString("main-sqlurl"),HTTPQuery.Method.POST);
 		q.connect(true,true);
 		q.write(HTTPQuery.parseArgs("type","raw","q",query,"eval",getEval()));
 		String s = q.readWhole();
@@ -20,7 +21,7 @@ public class SQL {
 		return s;
 	}
 	public static String queryInsertId(String query) {
-		HTTPQuery q = new HTTPQuery(Data.config.getString("main-sqlurl"),HTTPQuery.Method.POST);
+		HTTPQuery q = HTTPQuery.create(Data.config.getString("main-sqlurl"),HTTPQuery.Method.POST);
 		q.connect(true,true);
 		q.write(HTTPQuery.parseArgs("type","insertid","q",query,"eval",getEval()));
 		String s = q.readWhole();
@@ -28,7 +29,7 @@ public class SQL {
 		return s;
 	}
 	public static JSONObject queryJSON(String query) {
-		HTTPQuery q = new HTTPQuery(Data.config.getString("main-sqlurl"),HTTPQuery.Method.POST);
+		HTTPQuery q = HTTPQuery.create(Data.config.getString("main-sqlurl"),HTTPQuery.Method.POST);
 		q.connect(true,true);
 		q.write(HTTPQuery.parseArgs("type","json","q",query,"eval",getEval()));
 		try {

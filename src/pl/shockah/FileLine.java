@@ -15,7 +15,7 @@ public class FileLine {
 		if (!file.exists()) return ret;
 		
 		try {
-			BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file),"UTF-8"));
+			BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file),Helper.utf8));
 			String line; while ((line = br.readLine()) != null) ret.add(line);
 			br.close();
 		} catch (Exception e) {e.printStackTrace();}
@@ -26,7 +26,7 @@ public class FileLine {
 		if (!file.exists()) return ret;
 		
 		try {
-			BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file),"UTF-8"));
+			BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file),Helper.utf8));
 			String line; boolean first = true; while ((line = br.readLine()) != null) {
 				if (first) first = false; else ret += "\n";
 				ret += line;
@@ -41,7 +41,7 @@ public class FileLine {
 		try {
 			file.createNewFile();
 			
-			BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file),"UTF-8"));
+			BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file),Helper.utf8));
 			for (int i = 0; i < lines.size(); i++) {
 				if (i != 0) bw.write('\n');
 				bw.write(lines.get(i));

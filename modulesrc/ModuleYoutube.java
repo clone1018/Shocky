@@ -27,7 +27,7 @@ public class ModuleYoutube extends Module {
 		HTTPQuery q = null;
 		
 		try {
-			q = new HTTPQuery("http://gdata.youtube.com/feeds/api/videos/"+URLEncoder.encode(vID,"UTF8")+"?v=2&alt=jsonc");
+			q = HTTPQuery.create("http://gdata.youtube.com/feeds/api/videos/"+URLEncoder.encode(vID,"UTF8")+"?v=2&alt=jsonc");
 			q.connect(true,false);
 			
 			JSONObject jItem = new JSONObject(q.readWhole()).getJSONObject("data");
@@ -50,7 +50,7 @@ public class ModuleYoutube extends Module {
 		HTTPQuery q = null;
 		
 		try {
-			q = new HTTPQuery("http://gdata.youtube.com/feeds/api/videos?max-results=1&v=2&alt=jsonc&q="+URLEncoder.encode(query,"UTF8"));
+			q = HTTPQuery.create("http://gdata.youtube.com/feeds/api/videos?max-results=1&v=2&alt=jsonc&q="+URLEncoder.encode(query,"UTF8"));
 			q.connect(true,false);
 			
 			JSONObject jItem = new JSONObject(q.readWhole()).getJSONObject("data");

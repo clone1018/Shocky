@@ -1,4 +1,4 @@
-package pl.shockah.shocky;
+package pl.shockah.shocky.sql;
 import org.json.JSONObject;
 
 public final class Factoid {

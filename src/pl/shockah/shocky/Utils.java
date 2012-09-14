@@ -1,6 +1,7 @@
 package pl.shockah.shocky;
 
 import java.util.*;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.pircbotx.Channel;
 import org.pircbotx.User;
@@ -15,8 +16,8 @@ public class Utils {
 		mungeOriginal =	"abcdefghijklmnoprstuwxyzABCDEGHIJKLMORSTUWYZ0123456789",
 		mungeReplace =	"äḃċđëƒġħíĵķĺṁñöρŗšţüωχÿźÅḂÇĎĒĠĦÍĴĶĹṀÖŖŠŢŮŴỲŻ０１２３４５６７８９";
 	private static final String
-		oddOriginal =	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
-		oddReplace =	"αвcđєfġнίנкlмиoρqяsтυvωxуzαвcđєfġнίנкlмиoρqяsтυvωxуz";
+		oddOriginal =	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+		oddReplace =	"αвcđєfġнίנкlмиoρqяsтυvωxуzαвcđєfġнίנкlмиoρqяsтυvωxуz０１２３４５６７８９";
 	private static final String
 		flipOriginal =	"!().12345679<>?ABCDEFGJKLMPQRTUVWY[]_abcdefghijklmnpqrtuvwy{},'\"┳",
 		flipReplace =	"¡)(˙⇂ᄅƐㄣϛ9Ɫ6><¿∀ℇƆ◖ƎℲפſ丬˥WԀΌᴚ⊥∩ΛMλ][‾ɐqɔpǝɟɓɥıɾʞlɯudbɹʇnʌʍʎ}{',„┻";
@@ -35,10 +36,14 @@ public class Utils {
 		return text;
 	}
 	public static String shortenUrl(String url) {
+		String login = Data.config.getString("main-bitlyuser");
+		String key = Data.config.getString("main-bitlyapikey");
+		if (login==null || key==null)
+			return url;
 		try {
-			HTTPQuery q = new HTTPQuery("http://api.bitly.com/v3/shorten?"+HTTPQuery.parseArgs("format","txt","login",Data.config.getString("main-bitlyuser"),"apiKey",Data.config.getString("main-bitlyapikey"),"longUrl",url));
+			HTTPQuery q = HTTPQuery.create("http://api.bitly.com/v3/shorten?"+HTTPQuery.parseArgs("format","txt","login",login,"apiKey",key,"longUrl",url));
 			q.connect(true,true,false);
-			String line = q.read().get(0);
+			String line = q.readWhole().trim();
 			q.close();
 			
 			if (line.startsWith("http://")) return line;
@@ -70,14 +75,16 @@ public class Utils {
 	
 	public static String mungeAllNicks(Channel channel, String message, String... dontMunge) {
 		if (channel == null) return message;
-		String[] spl = message.split(" ");
-l1:		for (int i = 0; i < spl.length; i++) {
-			for (String dont : dontMunge) if (regexNick(dont.toLowerCase()).matcher(spl[i].toLowerCase()).find()) continue l1;
-			for (User user : channel.getUsers()) {
-				if (regexNick(user.getNick().toLowerCase()).matcher(spl[i].toLowerCase()).find()) spl[i] = mungeNick(spl[i]);
-			}
+		getUsers: for (User user : channel.getUsers()) {
+			String nick = user.getNick();
+			for (String dont : dontMunge)
+				if (nick.equalsIgnoreCase(dont)) continue getUsers;
+			Pattern pattern = Pattern.compile(Pattern.quote(nick),Pattern.CASE_INSENSITIVE);
+			Matcher matcher = pattern.matcher(message);
+			if (matcher.find())
+				message = matcher.replaceAll(mungeNick(nick));
 		}
-		return StringTools.implode(spl," ");
+		return message;
 	}
 	public static String mungeNick(String nick) {
 		char[] chars = nick.toCharArray();
@@ -132,11 +139,11 @@ l1:		for (int i = 0; i < spl.length; i++) {
 		d = (int)dif%7; dif /= 7;
 		w = (int)dif;
 		
-		if (w > 0) {if (sb.length() != 0) sb.append(" "); sb.append(""+w+"w");}
-		if (w+d > 0) {if (sb.length() != 0) sb.append(" "); sb.append(""+d+"d");}
-		if (w+d+h > 0) {if (sb.length() != 0) sb.append(" "); sb.append(""+h+"h");}
-		if (w+d+h+m > 0) {if (sb.length() != 0) sb.append(" "); sb.append(""+m+"m");}
-		if (w+d+h+m+s > 0) {if (sb.length() != 0) sb.append(" "); sb.append(""+s+"s");}
+		if (w > 0) {if (sb.length() != 0) sb.append(' '); sb.append(w); sb.append('w');}
+		if (w+d > 0) {if (sb.length() != 0) sb.append(' '); sb.append(d); sb.append('d');}
+		if (w+d+h > 0) {if (sb.length() != 0) sb.append(' '); sb.append(h); sb.append('h');}
+		if (w+d+h+m > 0) {if (sb.length() != 0) sb.append(' '); sb.append(m); sb.append('m');}
+		if (w+d+h+m+s > 0) {if (sb.length() != 0) sb.append(' '); sb.append(s); sb.append('s');}
 		if (sb.length() == 0) return "now";
 		sb.append(" ago");
 		return sb.toString();

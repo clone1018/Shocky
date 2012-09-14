@@ -6,7 +6,7 @@ import pl.shockah.HTTPQuery;
 public class ServicePasteKdeOrg implements PasteService {
 	
 	public String paste(CharSequence data) {
-		HTTPQuery q = new HTTPQuery("http://paste.kde.org/",HTTPQuery.Method.POST);
+		HTTPQuery q = HTTPQuery.create("http://paste.kde.org/",HTTPQuery.Method.POST);
 		
 		StringBuilder sb = new StringBuilder(data.length()+100);
 		sb.append("paste_lang=Text");
@@ -18,7 +18,7 @@ public class ServicePasteKdeOrg implements PasteService {
 		
 		q.connect(true,true);
 		q.write(sb.toString());
-		ArrayList<String> list = q.read();
+		ArrayList<String> list = q.readLines();
 		q.close();
 		
 		String pasteId = null, pasteHash = null;

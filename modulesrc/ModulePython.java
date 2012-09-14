@@ -46,11 +46,12 @@ public class ModulePython extends ScriptModule {
 		code = sb.toString()+code;
 		
 		System.out.println(Data.forChannel(channel).getString("python-url")+"?"+HTTPQuery.parseArgs("statement",code));
-		HTTPQuery q = new HTTPQuery(Data.forChannel(channel).getString("python-url")+"?"+HTTPQuery.parseArgs("statement",code));
+		HTTPQuery q = HTTPQuery.create(Data.forChannel(channel).getString("python-url")+"?"+HTTPQuery.parseArgs("statement",code));
 		q.connect(true,false);
 		
 		sb = new StringBuilder();
-		ArrayList<String> result = q.read();
+		ArrayList<String> result = q.readLines();
+		q.close();
 		if (result.size()>0 && result.get(0).contentEquals("Traceback (most recent call last):"))
 			return result.get(result.size()-1);
 		

@@ -30,9 +30,9 @@ import pl.shockah.shocky.threads.SandboxThreadGroup;
 
 public class ModuleJavaScript extends ScriptModule {
 	protected Command cmd;
-	protected SecurityManager secure = new SandboxSecurityManager();
-	ThreadGroup sandboxGroup = new SandboxThreadGroup("javascript");
-	ThreadFactory sandboxFactory = new SandboxThreadFactory(sandboxGroup);
+	private final SandboxThreadGroup sandboxGroup = new SandboxThreadGroup("javascript");
+	private final SandboxSecurityManager secure = new SandboxSecurityManager(sandboxGroup);
+	private final ThreadFactory sandboxFactory = new SandboxThreadFactory(sandboxGroup);
 
 	public String name() {return "javascript";}
 	public String identifier() {return "js";}
@@ -54,8 +54,8 @@ public class ModuleJavaScript extends ScriptModule {
 			String[] args = message.split(" ");
 			String argsImp = StringTools.implode(args,1," "); if (argsImp == null) argsImp = "";
 			engine.put("argc",(args.length-1));
-			engine.put("args",argsImp.replace("\"","\\\""));
-			engine.put("ioru",(args.length-1 == 0 ? sender.getNick() : argsImp).replace("\"","\\\""));
+			engine.put("args",argsImp);
+			engine.put("ioru",(args.length-1 == 0 ? sender.getNick() : argsImp));
 			engine.put("arg",Arrays.copyOfRange(args, 1, args.length));
 		}
 		
@@ -68,23 +68,22 @@ public class ModuleJavaScript extends ScriptModule {
 
 		JSRunner r = new JSRunner(engine, code);
 
-		SecurityManager sysSecure = System.getSecurityManager();
-		System.setSecurityManager(secure);
-		String output = null;
 		final ExecutorService service = Executors.newSingleThreadExecutor(sandboxFactory);
+		TimeUnit unit = TimeUnit.SECONDS;
+		String output = null;
 		try {
-		    Future<String> f = service.submit(r);
-		    output = f.get(30, TimeUnit.SECONDS);
+			Future<String> f = service.submit(r);
+		    output = f.get(30, unit);
 		}
 		catch(TimeoutException e) {
 		    output = "Script timed out";
 		}
 		catch(Exception e) {
-		    throw new RuntimeException(e);
+			e.printStackTrace();
+			output = e.getMessage();
 		}
 		finally {
 		    service.shutdown();
-		    System.setSecurityManager(sysSecure);
 		}
 		if (output == null || output.isEmpty())
 			return null;
@@ -162,24 +161,33 @@ public class ModuleJavaScript extends ScriptModule {
 		}
 
 		@Override
-		public synchronized String call() throws Exception {
-			StringWriter sw = new StringWriter();
-			PrintWriter pw = new PrintWriter(sw);
-			ScriptContext context = engine.getContext();
-			context.setWriter(pw);
-			context.setErrorWriter(pw);
+		public String call() throws Exception {
+			synchronized (secure) {
+				StringWriter sw = new StringWriter();
+				PrintWriter pw = new PrintWriter(sw);
+				ScriptContext context = engine.getContext();
+				context.setWriter(pw);
+				context.setErrorWriter(pw);
 			
-			try {
-				Object out = engine.eval(code);
-				if (sw.getBuffer().length() != 0)
-					return sw.toString();
-				if (out != null)
-					return out.toString();
+				SecurityManager sysSecure = System.getSecurityManager();
+				try {
+					System.setSecurityManager(secure);
+					secure.enabled = true;
+					Object out = engine.eval(code);
+					if (sw.getBuffer().length() != 0)
+						return sw.toString();
+					if (out != null)
+						return out.toString();
+				}
+				catch(ScriptException ex) {
+					return ex.getMessage();
+				}
+				finally {
+					secure.enabled = false;
+					System.setSecurityManager(sysSecure);
+				}
+				return null;
 			}
-			catch(ScriptException ex) {
-				return ex.getMessage();
-			}
-			return null;
 		}
 		
 	}

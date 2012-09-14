@@ -19,25 +19,14 @@ import pl.shockah.shocky.prototypes.IFactoid;
 import pl.shockah.shocky.prototypes.IRollback;
 import pl.shockah.shocky.sql.CriterionNumber;
 import pl.shockah.shocky.sql.CriterionStringEquals;
+import pl.shockah.shocky.sql.Factoid;
 import pl.shockah.shocky.sql.QueryInsert;
 import pl.shockah.shocky.sql.QuerySelect;
 import pl.shockah.shocky.sql.QueryUpdate;
 import pl.shockah.shocky.sql.SQL;
 
 public class ModuleFactoid extends Module implements IFactoid {
-	
-	static {
-		try {
-			Class.forName("pl.shockah.shocky.Factoid");
-			Class.forName("pl.shockah.shocky.sql.QuerySelect");
-			Class.forName("pl.shockah.shocky.sql.Criterion");
-			Class.forName("pl.shockah.shocky.sql.CriterionNumber");
-			Class.forName("pl.shockah.shocky.sql.CriterionNumber$Operation");
-			Class.forName("pl.shockah.shocky.sql.CriterionStringEquals");
-		} catch (ClassNotFoundException e) {
-		}
-	}
-	
+
 	protected Command cmdR, cmdF, cmdU, cmdFCMD, cmdManage;
 	private Map<CmdFactoid,String> fcmds = new HashMap<CmdFactoid,String>();
 	private HashMap<String,Function> functions = new HashMap<String,Function>();
@@ -237,9 +226,9 @@ public class ModuleFactoid extends Module implements IFactoid {
 		func = new Function(){
 			public String name() {return "bitflip";}
 			public String result(String arg) throws Exception {
-				byte[] array = arg.getBytes("UTF-8");
+				byte[] array = arg.getBytes(Helper.utf8);
 				for (int i = 0; i < array.length; i++) array[i] = (byte) (~array[i] - 0x80 & 0xFF);
-				return new String(array, "UTF-8").replaceAll("[\\r\\n]", "");
+				return new String(array, Helper.utf8).replaceAll("[\\r\\n]", "");
 			}
 		};
 		functions.put(func.name(), func);

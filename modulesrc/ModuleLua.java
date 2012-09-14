@@ -28,9 +28,9 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 	public static final File scripts = new File("data","lua").getAbsoluteFile();
 	
 	protected Command cmd;
-	protected SecurityManager secure = new SandboxSecurityManager(scripts);
-	ThreadGroup sandboxGroup = new SandboxThreadGroup("lua");
-	ThreadFactory sandboxFactory = new SandboxThreadFactory(sandboxGroup);
+	private final SandboxThreadGroup sandboxGroup = new SandboxThreadGroup("lua");
+	private final SandboxSecurityManager secure = new SandboxSecurityManager(sandboxGroup,scripts);
+	private final ThreadFactory sandboxFactory = new SandboxThreadFactory(sandboxGroup);
 	LuaTable env = null;
 	LuaTable envMeta = null;
 
@@ -40,8 +40,35 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 	public String identifier() {return "lua";}
 	@Override
 	public void onEnable() {
-		BaseLib.FINDER = this;
+		initLua();
 		Command.addCommands(this, cmd = new CmdLua());
+	}
+	@Override
+	public void onDisable() {
+		Command.removeCommands(cmd);
+	}
+	
+	@Override
+	public void onDataSave() {
+		try {
+			LuaValue value = env.get("irc");
+			if (value.istable()) {
+				if (binary.exists() || binary.createNewFile()) {
+					FileOutputStream fs = new FileOutputStream(binary);
+					DataOutputStream os = new DataOutputStream(fs);
+					writeValue(os, value);
+					os.flush();
+					os.close();
+					fs.close();
+				}
+			}
+		} catch(Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private void initLua() {
+		BaseLib.FINDER = this;
 		env = new LuaTable();
 		env.load(new JseBaseLib());
 		env.load(new PackageLib());
@@ -77,29 +104,6 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 		
 		envMeta = new LuaTable();
 		envMeta.rawset(LuaValue.INDEX, env);
-	}
-	@Override
-	public void onDisable() {
-		Command.removeCommands(cmd);
-	}
-	
-	@Override
-	public void onDataSave() {
-		try {
-			LuaValue value = env.get("irc");
-			if (value.istable()) {
-				if (binary.exists() || binary.createNewFile()) {
-					FileOutputStream fs = new FileOutputStream(binary);
-					DataOutputStream os = new DataOutputStream(fs);
-					writeValue(os, value);
-					os.flush();
-					os.close();
-					fs.close();
-				}
-			}
-		} catch(Exception e) {
-			e.printStackTrace();
-		}
 	}
 	
 	@Override
@@ -246,9 +250,6 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 		FactoidFunction.initFields(module, bot, channel, sender);
 
 		LuaRunner r = new LuaRunner(subTable,code);
-
-		SecurityManager sysSecure = System.getSecurityManager();
-		System.setSecurityManager(secure);
 		final ExecutorService service = Executors.newSingleThreadExecutor(sandboxFactory);
 		try {
 			Future<String> f = service.submit(r);
@@ -262,7 +263,6 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 		}
 		finally {
 		    service.shutdown();
-		    System.setSecurityManager(sysSecure);
 		    FactoidFunction.initFields(null, null, null, null);
 		}
 		if (output == null || output.isEmpty())
@@ -288,7 +288,7 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			System.out.println(message);
 			String output = parse(bot,type,channel,sender,StringTools.implode(args,1," "),null);
 			if (output != null && !output.isEmpty())
-				callback.append(StringTools.limitLength(StringTools.formatLines(output)));
+				callback.append(StringTools.limitLength(StringTools.formatLines(Utils.mungeAllNicks(channel, output))));
 		}
 	}
 	
@@ -303,21 +303,31 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 		}
 
 		@Override
-		public synchronized String call() throws Exception {
-			ByteArrayOutputStream sw = new ByteArrayOutputStream();
-			PrintStream pw = new PrintStream(sw);
-			BaseLib.instance.STDERR = pw;
-			BaseLib.instance.STDOUT = pw;
+		public String call() throws Exception {
+			synchronized (secure) {
+				ByteArrayOutputStream sw = new ByteArrayOutputStream();
+				PrintStream pw = new PrintStream(sw);
+				BaseLib.instance.STDERR = pw;
+				BaseLib.instance.STDOUT = pw;
 			
-			try {
-				LuaFunction func = LuaC.instance.load(new ByteArrayInputStream(code.getBytes(Helper.utf8)), "script", sandbox);
-				Varargs out = func.invoke();
-				if (sw.size() > 0)
-					return sw.toString("UTF-8");
-				return out.tojstring();
-			}
-			catch(LuaError ex) {
-				return ex.getMessage();
+				SecurityManager sysSecure = System.getSecurityManager();
+			
+				try {
+					LuaFunction func = LuaC.instance.load(new ByteArrayInputStream(code.getBytes(Helper.utf8)), "script", sandbox);
+				
+					System.setSecurityManager(secure);
+					secure.enabled = true;
+					Varargs out = func.invoke();
+					if (sw.size() > 0)
+						return sw.toString("UTF-8");
+					return out.tojstring();
+				}
+				catch(LuaError ex) {
+					return ex.getMessage();
+				} finally {
+					secure.enabled = false;
+			    	System.setSecurityManager(sysSecure);
+				}
 			}
 		}
 	}
@@ -462,7 +472,7 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			LuaValue[] values = new LuaValue[users.size()];
 			int i = 0;
 			for (User user : users)
-				values[i++] = valueOf(Utils.odd(user.getNick()));
+				values[i++] = valueOf(user.getNick());
 			return listOf(values);
 		}
 	}

@@ -44,17 +44,14 @@ public class ModulePHP extends ScriptModule {
 		
 		code = sb.toString()+code;
 		
-		HTTPQuery q = new HTTPQuery(Data.forChannel(channel).getString("php-url"),HTTPQuery.Method.POST);
+		HTTPQuery q = HTTPQuery.create(Data.forChannel(channel).getString("php-url"),HTTPQuery.Method.POST);
 		q.connect(true,true);
 		q.write(HTTPQuery.parseArgs("code",code));
 		
-		sb = new StringBuilder();
-		for (String line : q.read()) {
-			if (sb.length() != 0) sb.append('\n');
-			sb.append(line);
-		}
+		String ret = q.readWhole();
+		q.close();
 		
-		return sb.toString();
+		return ret;
 	}
 	
 	public class CmdPHP extends Command {

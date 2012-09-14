@@ -18,7 +18,7 @@ public class ModuleQuestionParty extends Module {
 	public Pattern itemPattern = Pattern.compile("<li>(.+)");
 	
 	public String getQ() {
-		HTTPQuery q = new HTTPQuery("http://questionparty.com/questions/rand/");
+		HTTPQuery q = HTTPQuery.create("http://questionparty.com/questions/rand/");
 		
 		q.connect(true,false);
 		String html = q.readWhole();

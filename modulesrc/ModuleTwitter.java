@@ -40,9 +40,10 @@ public class ModuleTwitter extends Module {
 			if (!statusUrl.matcher(url).find()) continue;
 			String id = url.substring(url.length()-new StringBuilder(url).reverse().indexOf("/"),url.length());
 			
-			HTTPQuery q = new HTTPQuery("http://api.twitter.com/1/statuses/show.xml?trim_user=false&id="+id);
+			HTTPQuery q = HTTPQuery.create("http://api.twitter.com/1/statuses/show.xml?trim_user=false&id="+id);
 			q.connect(true,false);
 			XMLObject xBase = XMLObject.deserialize(q.readWhole());
+			q.close();
 			XMLObject status = xBase.getElement("status").get(0);
 			XMLObject user = status.getElement("user").get(0);
 			
@@ -79,9 +80,11 @@ public class ModuleTwitter extends Module {
 				return;
 			}
 			
-			HTTPQuery q = new HTTPQuery("http://api.twitter.com/1/statuses/user_timeline.xml?"+HTTPQuery.parseArgs("trim_user","false","screen_name",nick));
+			HTTPQuery q = HTTPQuery.create("http://api.twitter.com/1/statuses/user_timeline.xml?"+HTTPQuery.parseArgs("trim_user","false","screen_name",nick));
 			q.connect(true,false);
 			XMLObject xBase = XMLObject.deserialize(q.readWhole()).getElement("statuses").get(0);
+			q.close();
+			
 			XMLObject status = xBase.getElement("status").get(index-1);
 			XMLObject user = status.getElement("user").get(0);
 			

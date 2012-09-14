@@ -1,9 +1,11 @@
 package pl.shockah;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.ArrayList;
@@ -13,16 +15,31 @@ import java.util.Map.Entry;
 public class HTTPQuery {
 	public enum Method{GET,POST,HEAD}
 	
-	protected URL url = null;
-	protected Method method;
+	public final URL url;
+	public final Method method;
 	protected HttpURLConnection c;
 	
-	public HTTPQuery(String adr) {this(adr,Method.GET);}
-	public HTTPQuery(String adr, Method method) {
+	public static HTTPQuery create(String addr) {
+		return create(addr, Method.GET);
+	}
+	
+	public static HTTPQuery create(String addr, Method method) {
 		try {
-			url = new URL(adr);
-			this.method = method;
-		} catch (Exception e) {e.printStackTrace();}
+			URL url = new URL(addr);
+			return new HTTPQuery(url,method);
+		} catch (MalformedURLException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+	
+	public HTTPQuery(URL url) {
+		this(url,Method.GET);
+	}
+	
+	public HTTPQuery(URL url, Method method) {
+		this.url = url;
+		this.method = method;
 	}
 	
 	public void connect(boolean input, boolean output) {connect(false,input,output);}
@@ -30,11 +47,14 @@ public class HTTPQuery {
 		try {
 			c = (HttpURLConnection)url.openConnection();
 			c.setRequestMethod(method.name());
-			c.setRequestProperty("Content-Type","application/x-www-form-urlencoded");
+			if (method == Method.POST)
+				c.setRequestProperty("Content-Type","application/x-www-form-urlencoded");
 			
 			c.setUseCaches(cache);
 			c.setDoInput(input);
 			c.setDoOutput(output);
+			c.setConnectTimeout(60000);
+			c.setReadTimeout(60000);
 		} catch (Exception e) {e.printStackTrace();}
 	}
 	public HttpURLConnection getConnection() {
@@ -64,22 +84,44 @@ public class HTTPQuery {
 		} catch (Exception e) {e.printStackTrace();}
 	}
 	
-	public ArrayList<String> read() {
+	public ArrayList<String> readLines() {
 		ArrayList<String> ret = new ArrayList<String>();
+		BufferedReader br = null;
 		try {
-			BufferedReader br = new BufferedReader(new InputStreamReader(c.getInputStream(),"UTF-8"));
+			br = new BufferedReader(new InputStreamReader(c.getInputStream(),Helper.utf8));
 			String line;
-			while ((line = br.readLine()) != null) ret.add(line);
-			br.close();
-		} catch (Exception e) {e.printStackTrace();}
+			while ((line = br.readLine()) != null)
+				ret.add(line);
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				if (br != null)
+					br.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 		return ret;
 	}
 	public String readWhole() {
-		ArrayList<String> lines = read();
-		StringBuilder sb = new StringBuilder();
-		for (int i = 0; i < lines.size(); i++) {
-			if (i != 0) sb.append('\n');
-			sb.append(lines.get(i));
+		char[] buffer = new char[1024];
+		StringBuilder sb = new StringBuilder(buffer.length);
+		InputStreamReader is = null;
+		try {
+			is = new InputStreamReader(c.getInputStream(),Helper.utf8);
+			int count = 0;
+			while ((count=is.read(buffer))>0)
+				sb.append(buffer, 0, count);
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+				try {
+					if (is != null)
+						is.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 		}
 		return sb.toString();
 	}

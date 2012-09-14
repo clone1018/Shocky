@@ -131,8 +131,10 @@ public class StringTools {
 	public static <T> String implode(T[] spl, int a, int b, String separator) {
 		StringBuffer sb = new StringBuffer();
 		while (a <= b) {
+			T s = spl[a++];
+			if (s == null) continue;
 			if (sb.length() != 0) sb.append(separator);
-			sb.append(spl[a++]);
+			sb.append(s);
 		}
 		return sb.toString();
 	}
