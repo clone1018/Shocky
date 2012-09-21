@@ -26,7 +26,8 @@ public class SandboxSecurityManager extends SecurityManager
 		{
 			RuntimePermission runtime = (RuntimePermission)perm;
 			if (runtime.getName().contentEquals("shutdownHooks") ||
-				runtime.getName().contentEquals("setSecurityManager"))
+				runtime.getName().contentEquals("setSecurityManager") ||
+				runtime.getName().contentEquals("accessClassInPackage.sun.reflect"))
 				throw new SecurityException(perm.getName()+" is not allowed.");
 		}
 		if (perm instanceof FilePermission) {
