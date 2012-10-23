@@ -28,6 +28,7 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 	public static final File scripts = new File("data","lua").getAbsoluteFile();
 	
 	protected Command cmd;
+	protected Command cmdreset;
 	protected SecurityManager secure = new SandboxSecurityManager(scripts);
 	ThreadGroup sandboxGroup = new SandboxThreadGroup("lua");
 	ThreadFactory sandboxFactory = new SandboxThreadFactory(sandboxGroup);
@@ -41,43 +42,10 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 	@Override
 	public void onEnable() {
 		BaseLib.FINDER = this;
-		Command.addCommands(this, cmd = new CmdLua());
-		env = new LuaTable();
-		env.load(new JseBaseLib());
-		env.load(new PackageLib());
-		env.load(new TableLib());
-		env.load(new StringLib());
-		env.load(new JseMathLib());
-		
-		env.load(new BotLib());
-		env.load(new JSONLib());
-		
-		env.set("factoid", new FactoidData());
-		
-		try {
-			if (!scripts.exists())
-				scripts.mkdirs();
-			if (binary.exists()) {
-				FileInputStream fs = new FileInputStream(binary);
-				DataInputStream is = new DataInputStream(fs);
-				env.set("irc", readValue(is));
-				is.close();
-				fs.close();
-			} else {
-				env.set("irc", new LuaTable());
-			}
-		} catch(Exception e) {
-			e.printStackTrace();
-		}
-		
-		LuaThread.setGlobals(env);
-		LuaC.install();
-		
-		BaseLib.instance.STDIN = new ZeroInputStream();
-		
-		envMeta = new LuaTable();
-		envMeta.rawset(LuaValue.INDEX, env);
+		Command.addCommands(this, cmd = new CmdLua(), cmdreset = new CmdLuaReset());
+		setupLuaEnv();
 	}
+
 	@Override
 	public void onDisable() {
 		Command.removeCommands(cmd);
@@ -119,6 +87,45 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 		return null;
 	}
 	
+	public static void setupLuaEnv() {
+		env = new LuaTable();
+		env.load(new JseBaseLib());
+		env.load(new PackageLib());
+		env.load(new TableLib());
+		env.load(new StringLib());
+		env.load(new JseMathLib());
+		
+		env.load(new BotLib());
+		env.load(new JSONLib());
+		
+		env.set("factoid", new FactoidData());
+		
+		try {
+			if (!scripts.exists())
+				scripts.mkdirs();
+			if (binary.exists()) {
+				FileInputStream fs = new FileInputStream(binary);
+				DataInputStream is = new DataInputStream(fs);
+				env.set("irc", readValue(is));
+				is.close();
+				fs.close();
+			} else {
+				env.set("irc", new LuaTable());
+			}
+		} catch(Exception e) {
+			e.printStackTrace();
+		}
+		
+		LuaThread.setGlobals(env);
+		LuaC.install();
+		
+		BaseLib.instance.STDIN = new ZeroInputStream();
+		
+		envMeta = new LuaTable();
+		envMeta.rawset(LuaValue.INDEX, env);
+	}
+
+
 	public static void writeTable(DataOutputStream os, LuaValue value) throws IOException {
 		LuaTable table = value.checktable();
 		LuaValue[] keys = table.keys();
@@ -292,6 +299,18 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 		}
 	}
 	
+	public class CmdLuaReset extends Command {
+		public String command() {return "resetlua";}
+		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+			return "resetlua\nresetlua - resets the Lua enviroment. (Note: The irc table is persistent.)";
+		}
+
+		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
+			onDataSave(); // keep persistent!
+			setupLuaEnv();
+		}
+	}
+
 	public class LuaRunner implements Callable<String> {
 		
 		private final LuaTable sandbox;
