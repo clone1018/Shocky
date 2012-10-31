@@ -1,6 +1,7 @@
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -12,12 +13,14 @@ import java.util.concurrent.TimeoutException;
 
 import javax.script.ScriptContext;
 import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
+
+import com.sun.script.javascript.RhinoScriptEngine;
+
 import pl.shockah.StringTools;
 import pl.shockah.shocky.ScriptModule;
 import pl.shockah.shocky.Utils;
@@ -39,16 +42,22 @@ public class ModuleJavaScript extends ScriptModule {
 	public void onEnable() {
 		Command.addCommands(this, cmd = new CmdJavascript());
 		Command.addCommand(this, "js",cmd);
+		
+		try {
+			Class.forName("ModuleJavaScript$Sandbox");
+			Class.forName("ModuleJavaScript$JSRunner");
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+		}
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd);
 	}
 
-	public synchronized String parse(final PircBotX bot, EType type, Channel channel, User sender, String code, String message) {
+	public synchronized String parse(Map<Integer,Object> cache, final PircBotX bot, EType type, Channel channel, User sender, String code, String message) {
 		if (code == null) return "";
 		
-		ScriptEngineManager mgr = new ScriptEngineManager();
-		ScriptEngine engine = mgr.getEngineByName("JavaScript");
+		RhinoScriptEngine engine = new RhinoScriptEngine();
 		
 		if (message != null) {
 			String[] args = message.split(" ");
@@ -106,7 +115,7 @@ public class ModuleJavaScript extends ScriptModule {
 			}
 
 			System.out.println(message);
-			String output = parse(bot,type,channel,sender,StringTools.implode(args,1," "),null);
+			String output = parse(null,bot,type,channel,sender,StringTools.implode(args,1," "),null);
 			if (output != null && !output.isEmpty()) {
 				callback.append(StringTools.limitLength(StringTools.formatLines(output)));
 			}

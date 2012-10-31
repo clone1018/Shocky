@@ -53,7 +53,7 @@ public class ModuleTwitter extends Module {
 				author += " (@"+user.getElement("screen_name").get(0).getValue()+")";
 				String tweet = StringTools.unescapeHTML(status.getElement("text").get(0).getValue());
 				Date date = sdf.parse(status.getElement("created_at").get(0).getValue());
-				Shocky.sendChannel(event.getBot(),event.getChannel(),Utils.mungeAllNicks(event.getChannel(),event.getUser().getNick()+": "+author+", "+Utils.timeAgo(date)+": "+tweet,event.getUser().getNick()));
+				Shocky.sendChannel(event.getBot(),event.getChannel(),Utils.mungeAllNicks(event.getChannel(),0,event.getUser().getNick()+": "+author+", "+Utils.timeAgo(date)+": "+tweet,event.getUser().getNick()));
 			} catch (Exception e) {e.printStackTrace();}
 		}
 	}
@@ -94,7 +94,7 @@ public class ModuleTwitter extends Module {
 				author += " (@"+user.getElement("screen_name").get(0).getValue()+")";
 				String tweet = status.getElement("text").get(0).getValue();
 				Date date = sdf.parse(status.getElement("created_at").get(0).getValue());
-				Shocky.sendChannel(bot,channel,Utils.mungeAllNicks(channel,sender.getNick()+": "+author+", "+Utils.timeAgo(date)+": "+tweet,sender.getNick()));
+				Shocky.sendChannel(bot,channel,Utils.mungeAllNicks(channel,0,sender.getNick()+": "+author+", "+Utils.timeAgo(date)+": "+tweet,sender.getNick()));
 			} catch (Exception e) {e.printStackTrace();}
 		}
 	}

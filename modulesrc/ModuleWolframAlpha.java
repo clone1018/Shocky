@@ -88,7 +88,7 @@ public class ModuleWolframAlpha extends Module {
 			
 			String result = getResult(channel, sb.toString());
 			if (result == null) return;
-			result = Utils.mungeAllNicks(channel,result,sender.getNick());
+			result = Utils.mungeAllNicks(channel,0,result,sender.getNick());
 			callback.append(result);
 		}
 	}

@@ -314,7 +314,7 @@ public class ModuleRSS extends Module {
 			Channel channel = Shocky.getChannel(s);
 			if (channel == null) return;
 			PircBotX bot = Shocky.getBotForChannel(s);
-			for (FeedEntry entry : entries) Shocky.sendChannel(bot,channel,Utils.mungeAllNicks(channel,"RSS: "+entry));
+			for (FeedEntry entry : entries) Shocky.sendChannel(bot,channel,Utils.mungeAllNicks(channel,0,"RSS: "+entry));
 		}
 	}
 }

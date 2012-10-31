@@ -122,7 +122,7 @@ public class ModuleQuote extends Module {
 			if (aId < 0) aId = list.size()-aId-1;
 			aId = Math.min(Math.max(aId,1),list.size()+1);
 			
-			String quote = Utils.mungeAllNicks(channel, list.get(aId-1).quote);
+			String quote = Utils.mungeAllNicks(channel, 0, list.get(aId-1).quote);
 			callback.append("["+aChannel+": "+(aId)+"/"+(list.size())+"] "+quote);
 		}
 	}

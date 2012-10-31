@@ -1,4 +1,6 @@
 import java.io.*;
+import java.util.Map;
+
 import org.pircbotx.*;
 
 import com.lolcode.Runtime;
@@ -22,7 +24,7 @@ public class ModuleLOLCode extends ScriptModule {
 		Command.removeCommands(cmd);
 	}
 	
-	public String parse(PircBotX bot, EType type, Channel channel, User sender, String code, String message) {
+	public String parse(Map<Integer,Object> cache, PircBotX bot, EType type, Channel channel, User sender, String code, String message) {
 		if (code == null) return "";
 		String lines = code.replace(';', '\n').replace('>', '\t');
 		
@@ -56,7 +58,7 @@ public class ModuleLOLCode extends ScriptModule {
 			}
 			
 			System.out.println(message);
-			String output = parse(bot,type,channel,sender,StringTools.implode(args,1," "),null);
+			String output = parse(null,bot,type,channel,sender,StringTools.implode(args,1," "),null);
 			if (output != null && !output.isEmpty()) {
 				callback.append(StringTools.limitLength(StringTools.formatLines(output)));
 			}

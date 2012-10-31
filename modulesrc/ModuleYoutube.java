@@ -104,7 +104,7 @@ public class ModuleYoutube extends Module {
 				if (s.startsWith("http://") || s.startsWith("www.//") || s.startsWith("youtu.be/") || s.startsWith("youtube/")) return;
 				String result = getVideoSearch(s,!Data.forChannel(event.getChannel()).getBoolean("yt-otherbot"),true);
 				if (result == null) return;
-				s = Utils.mungeAllNicks(event.getChannel(),result);
+				s = Utils.mungeAllNicks(event.getChannel(),0,result);
 				Shocky.sendChannel(event.getBot(),event.getChannel(),event.getUser().getNick()+": "+s);
 				break;
 			}
@@ -131,7 +131,7 @@ public class ModuleYoutube extends Module {
 				if (s.startsWith("http://") || s.startsWith("www.//") || s.startsWith("youtu.be/") || s.startsWith("youtube/")) return;
 				String result = getVideoSearch(s,!Data.forChannel(event.getChannel()).getBoolean("yt-otherbot"),true);
 				if (result == null) return;
-				s = Utils.mungeAllNicks(event.getChannel(),result);
+				s = Utils.mungeAllNicks(event.getChannel(),0,result);
 				Shocky.sendChannel(event.getBot(),event.getChannel(),event.getUser().getNick()+": "+s);
 				break;
 			}
@@ -163,7 +163,7 @@ public class ModuleYoutube extends Module {
 			
 			String search = getVideoSearch(sb.toString(),!Data.forChannel(channel).getBoolean("yt-otherbot"),true);
 			if (search != null && !search.isEmpty()) {
-				search = Utils.mungeAllNicks(channel,search,sender.getNick());
+				search = Utils.mungeAllNicks(channel,0,search,sender.getNick());
 				callback.append(search);
 			} else {
 				callback.type = EType.Notice;

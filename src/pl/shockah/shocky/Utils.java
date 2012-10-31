@@ -73,58 +73,73 @@ public class Utils {
 		return link;
 	}
 	
-	public static String mungeAllNicks(Channel channel, String message, String... dontMunge) {
-		if (channel == null) return message;
+	public static String mungeAllNicks(Channel channel, int threshold, CharSequence message, String... dontMunge) {
+		if (channel == null) return message.toString();
+		String temp = message.toString();
+		int total = 0;
 		getUsers: for (User user : channel.getUsers()) {
 			String nick = user.getNick();
 			for (String dont : dontMunge)
 				if (nick.equalsIgnoreCase(dont)) continue getUsers;
-			Pattern pattern = Pattern.compile(Pattern.quote(nick),Pattern.CASE_INSENSITIVE);
+			Pattern pattern = Pattern.compile(String.format("\\b\\Q%s\\E\\b", nick),Pattern.CASE_INSENSITIVE);
 			Matcher matcher = pattern.matcher(message);
-			if (matcher.find())
+			if (matcher.find()) {
 				message = matcher.replaceAll(mungeNick(nick));
+				total++;
+			}
 		}
-		return message;
+		if (total <= threshold)
+			return temp;
+		return message.toString();
 	}
-	public static String mungeNick(String nick) {
-		char[] chars = nick.toCharArray();
-		for (int i = 0; i < chars.length; i++) {
-			int iof = mungeOriginal.indexOf(chars[i]);
-			if (iof == -1) continue;
+	public static String mungeNick(CharSequence str) {
+		char[] chars = new char[str.length()];
+		for (int i = 0; i < str.length(); i++) {
+			char source = str.charAt(i);
+			int iof = mungeOriginal.indexOf(source);
+			if (iof == -1) {
+				chars[i] = source;
+				continue;
+			}
 			chars[i] = mungeReplace.charAt(iof);
 		}
-		return String.copyValueOf(chars);
-	}
-	private static Pattern regexNick(String nick) {
-		return Pattern.compile("^[<+@\\(]*"+Pattern.quote(nick)+"(?!"+patternNick.pattern()+")[>\\)]*");
+		return new String(chars);
 	}
 	
-	public static String flip(String str) {
-		char[] chars = str.toCharArray();
-		for (int i = 0; i < chars.length; i++) {
-			int iof1 = flipOriginal.indexOf(chars[i]);
-			int iof2 = flipReplace.indexOf(chars[i]);
-			if (iof1 == -1 && iof2 == -1) continue;
+	public static String flip(CharSequence str) {
+		char[] chars = new char[str.length()];
+		for (int i = 0; i < str.length(); i++) {
+			char source = str.charAt(i);
+			int iof1 = flipOriginal.indexOf(source);
+			int iof2 = flipReplace.indexOf(source);
+			if (iof1 == -1 && iof2 == -1) {
+				chars[i] = source;
+				continue;
+			}
 			if (iof1 != -1)
 				chars[i] = flipReplace.charAt(iof1);
 			else if (iof2 != -1)
 				chars[i] = flipOriginal.charAt(iof2);
 		}
-		return String.copyValueOf(chars);
+		return new String(chars);
 	}
 	
-	public static String odd(String str) {
-		char[] chars = str.toCharArray();
-		for (int i = 0; i < chars.length; i++) {
-			int iof1 = oddOriginal.indexOf(chars[i]);
-			int iof2 = oddReplace.indexOf(chars[i]);
-			if (iof1 == -1 && iof2 == -1) continue;
+	public static String odd(CharSequence str) {
+		char[] chars = new char[str.length()];
+		for (int i = 0; i < str.length(); i++) {
+			char source = str.charAt(i);
+			int iof1 = oddOriginal.indexOf(source);
+			int iof2 = oddReplace.indexOf(source);
+			if (iof1 == -1 && iof2 == -1) {
+				chars[i] = source;
+				continue;
+			}
 			if (iof1 != -1)
 				chars[i] = oddReplace.charAt(iof1);
 			else if (iof2 != -1)
 				chars[i] = oddOriginal.charAt(iof2);
 		}
-		return String.copyValueOf(chars);
+		return new String(chars);
 	}
 	
 	public static String timeAgo(Date date) {return timeAgo(date,new Date());}

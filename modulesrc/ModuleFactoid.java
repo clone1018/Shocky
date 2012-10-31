@@ -28,9 +28,10 @@ import pl.shockah.shocky.sql.SQL;
 public class ModuleFactoid extends Module implements IFactoid {
 
 	protected Command cmdR, cmdF, cmdU, cmdFCMD, cmdManage;
-	private Map<CmdFactoid,String> fcmds = new HashMap<CmdFactoid,String>();
-	private HashMap<String,Function> functions = new HashMap<String,Function>();
-	private static Pattern functionPattern = Pattern.compile("([a-zA-Z_][a-zA-Z0-9_]*)\\(.*?\\)");
+	private final Map<CmdFactoid,String> fcmds = new HashMap<CmdFactoid,String>();
+	private final HashMap<String,Function> functions = new HashMap<String,Function>();
+	private static final Pattern functionPattern = Pattern.compile("\\$([a-zA-Z_][a-zA-Z0-9_]*)\\(.*?\\)");
+	private static final int factoidHash = "factoid".hashCode();
 	
 	public String name() {return "factoid";}
 	public boolean isListener() {return true;}
@@ -305,7 +306,7 @@ public class ModuleFactoid extends Module implements IFactoid {
 		onMessage(event.getBot(),null,event.getUser(),event.getMessage());
 	}
 	public void onMessage(PircBotX bot, Channel channel, User sender, String msg) {
-		msg = msg.trim();
+		msg = StringTools.trimWhitespace(msg);
 		if (msg.length() < 2) return;
 		Config config = channel == null ? Data.config : Data.forChannel(channel);
 		String chars = config.getString("factoid-char");
@@ -356,7 +357,7 @@ public class ModuleFactoid extends Module implements IFactoid {
 				sb.append(msg);
 				sb.append(": ");
 				sb.append(f.rawtext);
-				Shocky.send(bot,target != null?Command.EType.Notice:(channel == null ? Command.EType.Notice : Command.EType.Channel),channel,channel == null ? sender : Shocky.getUser(target),sb.toString());
+				Shocky.send(bot,target != null?Command.EType.Notice:(channel == null ? Command.EType.Notice : Command.EType.Channel),channel,channel == null ? sender : Shocky.getUser(target),StringTools.limitLength(sb.toString()));
 				return;
 			}
 			for (i = 0; i < charsby.length(); i++) if (msg.charAt(0) == charsby.charAt(i)) {
@@ -383,22 +384,32 @@ public class ModuleFactoid extends Module implements IFactoid {
 			args = msg.split(" ");
 			String factoid = args[0].toLowerCase();
 			String[] chain = factoid.split(config.getString("factoid-charchain"));
-			
+			HashMap<Integer,Object> cache = new HashMap<Integer,Object>();
 			for (i = 0; i < chain.length; i++) {
+				int key = factoidHash+chain[i].hashCode();
 				Factoid f = null;
-				if (channel != null)
+				if (cache != null) {
+					if (cache.containsKey(key))
+					{
+						Object obj = cache.get(key);
+						if (obj instanceof Factoid)
+							f = (Factoid)obj;
+					}
+				}
+				if (f == null && channel != null)
 					f = getLatest(channel.getName(),chain[i],false);
 				if (f == null)
 					f = getLatest(null,chain[i],false);
 				if (f == null)
 					return;
+				if (cache != null && !cache.containsKey(key))
+					cache.put(key, f);
 			}
 
 			String message = StringTools.implode(args, 1," ");
-			
 			for (i = 0; i < chain.length; i++) {
 				msg = chain[i] + ' ' + message;
-				message = runFactoid(bot, channel, sender, msg);
+				message = runFactoid(cache, bot, channel, sender, msg);
 			}
 			
 			if (message != null && message.length() > 0) {
@@ -414,19 +425,30 @@ public class ModuleFactoid extends Module implements IFactoid {
 		}
 	}
 	
-	public String runFactoid(PircBotX bot, Channel channel, User sender, String message) {
-		message = message.trim();
+	public String runFactoid(Map<Integer,Object> cache, PircBotX bot, Channel channel, User sender, String message) {
+		message = StringTools.trimWhitespace(message);
 		LinkedList<String> checkRecursive = new LinkedList<String>();
 		while (true) {
 			String factoid = message.split(" ")[0].toLowerCase();
+			int key = factoidHash+factoid.hashCode();
 
 			Factoid f = null;
-			if (channel != null)
+			if (cache != null) {
+				if (cache.containsKey(key))
+				{
+					Object obj = cache.get(key);
+					if (obj instanceof Factoid)
+						f = (Factoid)obj;
+				}
+			}
+			if (f == null && channel != null)
 				f = getLatest(channel.getName(),factoid,false);
 			if (f == null)
 				f = getLatest(null,factoid,false);
 			if (f == null)
 				break;
+			if (cache != null && !cache.containsKey(key))
+				cache.put(key, f);
 			String raw = f.rawtext;
 			if (raw.startsWith("<alias>")) {
 				raw = raw.substring(7);
@@ -439,13 +461,13 @@ public class ModuleFactoid extends Module implements IFactoid {
 				checkRecursive.add(message);
 				continue;
 			} else {
-				return parse(bot, channel, sender, message, raw);
+				return parse(cache, bot, channel, sender, message, raw);
 			}
 		}
 		return null;
 	}
 	
-	public String parse(PircBotX bot, Channel channel, User sender, String message, String raw) {
+	public String parse(Map<Integer,Object> cache, PircBotX bot, Channel channel, User sender, String message, String raw) {
 		if (raw.startsWith("<noreply>"))
 			return "";
 		String type = null;
@@ -459,8 +481,8 @@ public class ModuleFactoid extends Module implements IFactoid {
 		ScriptModule sModule = Module.getScriptingModule(type);
 		if (sModule != null) {
 			raw = parseVariables(bot, channel, sender, message, raw);
-			String parsed = sModule.parse(bot, channel == null ? EType.Notice : EType.Channel, channel, sender, raw, message);
-			return parse(bot, channel, sender, message, parsed);
+			String parsed = sModule.parse(cache, bot, channel == null ? EType.Notice : EType.Channel, channel, sender, raw, message);
+			return parse(cache, bot, channel, sender, message, parsed);
 		} else if (type != null && type.contentEquals("cmd")) {
 			CommandCallback callback = new CommandCallback();
 			Command cmd = Command.getCommand(bot,sender,channel.getName(),EType.Channel,callback,raw);
@@ -691,7 +713,7 @@ public class ModuleFactoid extends Module implements IFactoid {
 		}
 		
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-			String[] args = message.trim().split(" ");
+			String[] args = StringTools.trimWhitespace(message).split(" ");
 			callback.type = EType.Notice;
 			if (args.length < 3 || (args.length == 3 && args[1].equals("."))) {
 				callback.append(help(bot,type,channel,sender));

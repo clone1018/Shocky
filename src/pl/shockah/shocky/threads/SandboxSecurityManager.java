@@ -7,41 +7,46 @@ import java.security.PermissionCollection;
 import java.security.Permissions;
 import java.util.PropertyPermission;
 
+import sun.security.util.SecurityConstants;
+
 public class SandboxSecurityManager extends SecurityManager 
 {
 	public final SandboxThreadGroup group;
-	public final File readonlyDirectory;
-	public boolean enabled = false;
+	public final File[] readonlyFiles;
 	private final PermissionCollection allowed = new Permissions();
 	private final PermissionCollection disallowed = new Permissions();
-	private String[] libs = new String[] {
-			"/libs/commons-lang3-3.1.jar",
-			"/libs/LOLCODE-0.11.jar",
-			"/libs/luaj-jse-2.0.2.jar",
-			"/libs/pircbotx-1.8.jar",
+	private final String[] libs = new String[] {
+			"./libs/commons-lang3-3.1.jar",
+			"./libs/LOLCODE-0.11.jar",
+			"./libs/luaj-jse-2.0.2.jar",
+			"./libs/pircbotx-1.8.jar",
 	};
 	
+	public boolean enabled = false;
+	
 	public SandboxSecurityManager(SandboxThreadGroup group) {
-		this(group,null);
+		this(group, new File[0]);
 	}
 	
-	public SandboxSecurityManager(SandboxThreadGroup group, File readonlyDirectory) {
+	public SandboxSecurityManager(SandboxThreadGroup group, File... readonlyFiles) {
 		super();
 		this.group = group;
-		this.readonlyDirectory = readonlyDirectory;
+		this.readonlyFiles = readonlyFiles;
 		
-		allowed.add(new FilePermission(System.getProperty("java.home")+"/-","read"));
+		allowed.add(new FilePermission(System.getProperty("java.home").replace('\\','/')+"/lib/-","read"));
 		
-		String cd = '/'+System.getProperty("user.dir").replace('\\','/');
+		//String cd = '/'+System.getProperty("user.dir").replace('\\','/');
 		for (int i = 0; i <libs.length; i++) {
-			String lib = cd+libs[i];
+			String lib = libs[i];
 			allowed.add(new FilePermission(lib,"read"));
 			allowed.add(new FilePermission(lib+"/-","read"));
 		}
 		
-		if (this.readonlyDirectory != null) {
-			allowed.add(new FilePermission(this.readonlyDirectory.getPath(),"read"));
-			allowed.add(new FilePermission(this.readonlyDirectory.getPath()+"/-","read"));
+		if (this.readonlyFiles != null) {
+			for (int i = 0; i < this.readonlyFiles.length; i++) {
+				allowed.add(new FilePermission(this.readonlyFiles[i].getPath(),"read"));
+				allowed.add(new FilePermission(this.readonlyFiles[i].getPath()+"/-","read"));
+			}
 		}
 		allowed.setReadOnly();
 		
@@ -51,6 +56,11 @@ public class SandboxSecurityManager extends SecurityManager
 		
 		disallowed.add(new RuntimePermission("setSecurityManager"));
 		disallowed.add(new RuntimePermission("shutdownHooks"));
+		disallowed.add(new RuntimePermission("accessClassInPackage.sun.reflect"));
+		
+		disallowed.add(SecurityConstants.GET_CLASSLOADER_PERMISSION);
+		disallowed.add(SecurityConstants.STOP_THREAD_PERMISSION);
+		disallowed.add(SecurityConstants.DO_AS_PRIVILEGED_PERMISSION);
 		
 		disallowed.setReadOnly();
 	}
@@ -60,10 +70,10 @@ public class SandboxSecurityManager extends SecurityManager
 	{
 		if (!enabled || getThreadGroup() != group)
 			return;
-		boolean allow = allowed.implies(perm);
+		
 		boolean disallow = disallowed.implies(perm);
-		System.out.format("%s: A:%s D:%s", perm, allow, disallow);
-		System.out.println();
+		boolean allow = allowed.implies(perm);
+		
 		if (disallow) {
 			if (!allow)
 				throw new SecurityException("Not allowed: "+perm.toString());

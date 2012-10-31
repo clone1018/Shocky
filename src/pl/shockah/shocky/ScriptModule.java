@@ -1,5 +1,7 @@
 package pl.shockah.shocky;
 
+import java.util.Map;
+
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
@@ -10,5 +12,5 @@ public abstract class ScriptModule extends Module {
 	
 	public abstract String identifier();
 	
-	public abstract String parse(PircBotX bot, EType type, Channel channel, User sender, String code, String message);
+	public abstract String parse(Map<Integer,Object> cache, PircBotX bot, EType type, Channel channel, User sender, String code, String message);
 }

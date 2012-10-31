@@ -27,4 +27,9 @@ public final class Factoid {
 		this.locked = locked;
 		this.forgotten = forgotten;
 	}
+
+	@Override
+	public String toString() {
+		return rawtext;
+	}
 }

@@ -12,14 +12,14 @@ import pl.shockah.shocky.prototypes.IFactoid;
 public class ModuleOP extends Module {
 	protected CmdKick cmdKick;
 	protected CmdBan cmdBan;
-	protected Command cmdKickban, cmdQuiet;
+	protected Command cmdKickban, cmdQuiet, cmdOp, cmdDeop;
 	
 	public String name() {return "op";}
 	public void onEnable() {
-		Command.addCommands(this,cmdKick = new CmdKick(),cmdBan = new CmdBan(),cmdKickban = new CmdKickban(),cmdQuiet = new CmdQuiet());
+		Command.addCommands(this,cmdKick = new CmdKick(),cmdBan = new CmdBan(),cmdKickban = new CmdKickban(),cmdQuiet = new CmdQuiet(),cmdOp = new CmdOp(),cmdDeop = new CmdDeop());
 	}
 	public void onDisable() {
-		Command.removeCommands(cmdKick,cmdBan,cmdKickban,cmdQuiet);
+		Command.removeCommands(cmdKick,cmdBan,cmdKickban,cmdQuiet,cmdOp,cmdDeop);
 	}
 	
 	public class CmdKick extends Command {
@@ -50,7 +50,7 @@ public class ModuleOP extends Module {
 						for (int i = 0; i < chars.length(); i++) if (chars.charAt(i) == spl[2].charAt(0)) {
 							String factoid = StringTools.implode(spl,2," ").substring(1);
 							IFactoid module = (IFactoid)Module.getModule("factoid");
-							factoid = module.runFactoid(bot,channel,sender,factoid);
+							factoid = module.runFactoid(null,bot,channel,sender,factoid);
 							bot.kick(channel,bot.getUser(kick),factoid == null || factoid.isEmpty() ? kick : factoid);
 							return;
 						}
@@ -117,6 +117,42 @@ public class ModuleOP extends Module {
 				callback.append(help(bot,type,channel,sender));
 				return;
 			} else bot.sendRawLine("MODE "+channel.getName()+" +q "+bot.getUser(spl[1]).getHostmask());
+		}
+	}
+	public class CmdOp extends Command {
+		public String command() {return "op";}
+		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+			return "op {user} - ops the user";
+		}
+
+		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
+			if (type != EType.Channel) return;
+			if (!canUseOp(bot,type,channel,sender)) return;
+			
+			String[] spl = message.split(" ");
+			if (spl.length != 2) {
+				callback.type = EType.Notice;
+				callback.append(help(bot,type,channel,sender));
+				return;
+			} else bot.sendRawLine("MODE "+channel.getName()+" +o "+spl[1]);
+		}
+	}
+	public class CmdDeop extends Command {
+		public String command() {return "deop";}
+		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+			return "deop {user} - deops the user";
+		}
+
+		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
+			if (type != EType.Channel) return;
+			if (!canUseOp(bot,type,channel,sender)) return;
+			
+			String[] spl = message.split(" ");
+			if (spl.length != 2) {
+				callback.type = EType.Notice;
+				callback.append(help(bot,type,channel,sender));
+				return;
+			} else bot.sendRawLine("MODE "+channel.getName()+" -o "+spl[1]);
 		}
 	}
 }

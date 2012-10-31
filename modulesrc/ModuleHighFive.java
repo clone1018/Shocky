@@ -40,6 +40,7 @@ public class ModuleHighFive extends Module implements ActionListener {
 	public void onEnable() {
 		Data.config.setNotExists("hf-announce",true);
 		Data.config.setNotExists("hf-maxtime",1000*60*5);
+		Data.config.setNotExists("hf-kickat",5);
 		config.load(new File("data","highfive.cfg"));
 	}
 	public void onDisable() {
@@ -70,11 +71,23 @@ public class ModuleHighFive extends Module implements ActionListener {
 			
 			int stat = changeStat(s,event.getUser().getNick(),1);
 			if (stat != 0) {
-				String msg = s+" o/ * \\o "+event.getUser().getNick()+" - "+getOrderNumber(stat)+" time";
-				if (Data.forChannel(event.getChannel()).getBoolean("hf-announce")) Shocky.sendChannel(event.getBot(),event.getChannel(),msg);
-				else {
-					Shocky.sendNotice(event.getBot(),event.getUser(),msg);
-					Shocky.sendNotice(event.getBot(),event.getBot().getUser(s),msg);
+				if (event.getChannel().isOp(event.getBot().getUserBot()) && stat >= Data.forChannel(event.getChannel()).getInt("hf-kickat")) {
+					stat = changeStat(s,event.getUser().getNick(),-stat);
+					String msg = s+" o/ * \\o "+event.getUser().getNick()+" - have been kicked!";
+					event.getBot().kick(event.getChannel(), Shocky.getUser(s));
+					event.getBot().kick(event.getChannel(), event.getUser());
+					if (Data.forChannel(event.getChannel()).getBoolean("hf-announce")) Shocky.sendChannel(event.getBot(),event.getChannel(),msg);
+					else {
+						Shocky.sendNotice(event.getBot(),event.getUser(),msg);
+						Shocky.sendNotice(event.getBot(),event.getBot().getUser(s),msg);
+					}
+				} else {
+					String msg = s+" o/ * \\o "+event.getUser().getNick()+" - "+getOrderNumber(stat)+" time";
+					if (Data.forChannel(event.getChannel()).getBoolean("hf-announce")) Shocky.sendChannel(event.getBot(),event.getChannel(),msg);
+					else {
+						Shocky.sendNotice(event.getBot(),event.getUser(),msg);
+						Shocky.sendNotice(event.getBot(),event.getBot().getUser(s),msg);
+					}
 				}
 			}
 			

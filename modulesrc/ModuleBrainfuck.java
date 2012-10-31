@@ -1,7 +1,7 @@
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
-import java.io.OutputStream;
+import java.util.Map;
 
 import org.faabtech.brainfuck.BrainfuckEngine;
 import org.pircbotx.Channel;
@@ -28,11 +28,11 @@ public class ModuleBrainfuck extends ScriptModule {
 		Command.removeCommands(cmd);
 	}
 	
-	public String parse(PircBotX bot, EType type, Channel channel, User sender, String code, String message) {
+	public String parse(Map<Integer,Object> cache, PircBotX bot, EType type, Channel channel, User sender, String code, String message) {
 		if (code == null) return "";
 		
 		try {
-			OutputStream os = new ByteArrayOutputStream();
+			ByteArrayOutputStream os = new ByteArrayOutputStream();
 			InputStream is;
 			if (message == null)
 				is = new ZeroInputStream();
@@ -43,7 +43,7 @@ public class ModuleBrainfuck extends ScriptModule {
 			}
 			BrainfuckEngine bfe = new BrainfuckEngine(code.length(),os,is);
 			bfe.interpret(code);
-			return os.toString();
+			return os.toString("UTF-8");
 		} catch (Exception e) {e.printStackTrace();}
 		return "";
 	}
@@ -62,7 +62,7 @@ public class ModuleBrainfuck extends ScriptModule {
 				return;
 			}
 			
-			String output = parse(bot,type,channel,sender,StringTools.implode(args,1," "),null);
+			String output = parse(null,bot,type,channel,sender,StringTools.implode(args,1," "),null);
 			if (output != null && !output.isEmpty())
 				callback.append(StringTools.limitLength(StringTools.formatLines(output)));
 		}

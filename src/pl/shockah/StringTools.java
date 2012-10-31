@@ -88,6 +88,19 @@ public class StringTools {
 		return output;
 	}
 	
+    public static String trimWhitespace(CharSequence str) {
+    	int len = str.length();
+    	int st = 0;
+
+    	while ((st < len) && Character.isWhitespace(str.charAt(st))) {
+    	    st++;
+    	}
+    	while ((st < len) && Character.isWhitespace(str.charAt(len - 1))) {
+    	    len--;
+    	}
+    	return (((st > 0) || (len < str.length())) ? str.subSequence(st, len) : str).toString();
+    }
+	
     public static String deleteWhitespace(CharSequence str) {
         StringBuilder sb = new StringBuilder(str.length());
         for (int i = 0; i < str.length(); i++) {

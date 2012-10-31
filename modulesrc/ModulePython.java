@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.Random;
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
@@ -25,7 +26,7 @@ public class ModulePython extends ScriptModule {
 		Command.removeCommands(cmd);
 	}
 	
-	public String parse(PircBotX bot, EType type, Channel channel, User sender, String code, String message) {
+	public String parse(Map<Integer,Object> cache, PircBotX bot, EType type, Channel channel, User sender, String code, String message) {
 		if (code == null) return "";
 		
 		StringBuilder sb = new StringBuilder("channel = \""+channel.getName()+"\";bot = \""+bot.getNick().replace("\"","\\\"")+"\";sender = \""+sender.getNick().replace("\"","\\\"")+"\";");
@@ -79,7 +80,7 @@ public class ModulePython extends ScriptModule {
 			}
 			
 			System.out.println(message);
-			String output = parse(bot,type,channel,sender,StringTools.implode(args,1," "),null);
+			String output = parse(null,bot,type,channel,sender,StringTools.implode(args,1," "),null);
 			if (output != null && !output.isEmpty()) {
 				callback.append(StringTools.limitLength(StringTools.formatLines(output)));
 			}
