@@ -96,10 +96,14 @@ public class CmdModule extends Command {
 				if (!canUseController(bot,type,sender)) return;
 				channelName = null;
 				config = Data.config;
-			} else if (args.length == 4 && ) {
+			} else if (args.length == 4) {
 				if ((!canUseOp(bot,type,channel,sender)) ||
-				    (!canUseController(bot,type,channel,sender) && args[3].equalsIgnoreCase("local")))
+				    (!canUseController(bot,type,sender) && args[3].equalsIgnoreCase("local")))
 				   return;
+				channelName = channel.getName();
+				config = Data.forChannel(channel);
+			} else {
+				if (!canUseOp(bot,type,channel,sender)) return;
 				channelName = channel.getName();
 				config = Data.forChannel(channel);
 			}
