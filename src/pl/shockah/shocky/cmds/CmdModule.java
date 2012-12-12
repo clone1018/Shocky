@@ -21,7 +21,9 @@ public class CmdModule extends Command {
 		sb.append("module on/off - list enabled/disabled modules\n");
 		sb.append("[r:controller] module loadnew - loads new modules\n");
 		sb.append("[r:controller] module loadhttp {url} - loads a module from URL\n");
-		sb.append("[r:controller] module on/off {module} - enables/disables module\n");
+		sb.append("[r:controller] module on/off {module} global - enables/disables module\n");
+		sb.append("[r:op,controller] module on/off {module} local - enables/disables module locally\n");
+		sb.append("[r:op] module on/off {module} - enables/disables module locally\n");
 		sb.append("[r:controller] module unload {module} - unloads module\n");
 		sb.append("[r:controller] module reload {module} - reloads module\n");
 		sb.append("[r:controller] module reloadall - reloads all modules");
@@ -94,8 +96,10 @@ public class CmdModule extends Command {
 				if (!canUseController(bot,type,sender)) return;
 				channelName = null;
 				config = Data.config;
-			} else {
-				if (!canUseOp(bot,type,channel,sender)) return;
+			} else if (args.length == 4 && ) {
+				if ((!canUseOp(bot,type,channel,sender)) ||
+				    (!canUseController(bot,type,channel,sender) && args[3].equalsIgnoreCase("local")))
+				   return;
 				channelName = channel.getName();
 				config = Data.forChannel(channel);
 			}
