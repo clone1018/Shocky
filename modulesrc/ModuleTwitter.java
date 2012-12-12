@@ -41,10 +41,18 @@ public class ModuleTwitter extends Module {
 			if (!statusUrl.matcher(url).find()) continue;
 			String id = url.substring(url.length()-new StringBuilder(url).reverse().indexOf("/"),url.length());
 			
-			HTTPQuery q = HTTPQuery.create("http://api.twitter.com/1/statuses/show.xml?trim_user=false&id="+id);
-			q.connect(true,false);
-			XMLObject xBase = XMLObject.deserialize(q.readWhole());
-			q.close();
+			HTTPQuery q = null;
+			XMLObject xBase = null;
+			try {
+				q = HTTPQuery.create("http://api.twitter.com/1/statuses/show.xml?trim_user=false&id="+id);
+				q.connect(true,false);
+				xBase = XMLObject.deserialize(q.readWhole());
+			} catch (Exception e) {
+				e.printStackTrace();
+				return;
+			} finally {
+				q.close();
+			}
 			XMLObject status = xBase.getElement("status").get(0);
 			XMLObject user = status.getElement("user").get(0);
 			
@@ -94,7 +102,7 @@ public class ModuleTwitter extends Module {
 				author += " (@"+user.getElement("screen_name").get(0).getValue()+")";
 				String tweet = status.getElement("text").get(0).getValue();
 				Date date = sdf.parse(status.getElement("created_at").get(0).getValue());
-				Shocky.sendChannel(bot,channel,Utils.mungeAllNicks(channel,0,sender.getNick()+": "+author+", "+Utils.timeAgo(date)+": "+tweet,sender.getNick()));
+				callback.append(Utils.mungeAllNicks(channel,0,author+", "+Utils.timeAgo(date)+": "+tweet,sender.getNick()));
 			} catch (Exception e) {e.printStackTrace();}
 		}
 	}

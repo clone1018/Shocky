@@ -10,6 +10,7 @@ public abstract class Query {
 		StringBuilder sb = new StringBuilder();
 		
 		for (String s : list) {
+			if (s == null) break;
 			if (sb.length() != 0) sb.append(',');
 			sb.append(s);
 		}
@@ -24,7 +25,9 @@ public abstract class Query {
 			sb.append(pair.getKey());
 			sb.append('=');
 			Object value = pair.getValue();
-			if (value instanceof String)
+			if (value instanceof Wildcard)
+				sb.append('?');
+			else if (value instanceof String)
 				sb.append('\'').append(value.toString().replace("\\","\\\\").replace("'","\\'")).append('\'');
 			else
 				sb.append(value);
@@ -36,8 +39,11 @@ public abstract class Query {
 		StringBuilder sb = new StringBuilder();
 		
 		for (Object o : list) {
+			if (o == null) break;
 			if (sb.length() != 0) sb.append(',');
-			if (o instanceof String)
+			if (o instanceof Wildcard)
+				sb.append('?');
+			else if (o instanceof String)
 				sb.append('\'').append(o.toString().replace("\\","\\\\").replace("'","\\'")).append('\'');
 			else
 				sb.append(o);

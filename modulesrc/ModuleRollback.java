@@ -1,9 +1,10 @@
 import java.net.URLEncoder;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.*;
-import org.json.JSONArray;
-import org.json.JSONObject;
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
@@ -31,6 +32,7 @@ public class ModuleRollback extends Module implements IRollback {
 		TYPE_ACTION = 2,
 		TYPE_ENTERLEAVE = 3,
 		TYPE_KICK = 4,
+		TYPE_MODE = 5,
 		TYPE_OTHER = 0;
 	
 	public static void appendLines(StringBuilder sb, ArrayList<Line> lines) {
@@ -55,8 +57,7 @@ public class ModuleRollback extends Module implements IRollback {
 		Command.addCommands(this, cmd = new CmdPastebin());
 		Command.addCommand(this, "pb", cmd);
 		
-		SQL.raw("CREATE TABLE IF NOT EXISTS "+SQL.getTable("rollback")+" (channel TEXT NOT NULL,user TEXT NOT NULL,user2 TEXT NOT NULL,type INT(1) UNSIGNED NOT NULL,stamp BIGINT UNSIGNED NOT NULL,txt TEXT NOT NULL)");
-		SQL.raw("ALTER TABLE "+SQL.getTable("rollback")+" ADD INDEX (channel(5),stamp)");
+		SQL.raw("CREATE TABLE IF NOT EXISTS rollback (channel varchar(50) NOT NULL,users text,type int(1) unsigned NOT NULL,stamp bigint(20) unsigned NOT NULL,text text NOT NULL) ENGINE=ARCHIVE DEFAULT CHARSET=utf8;");
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd);
@@ -94,9 +95,7 @@ public class ModuleRollback extends Module implements IRollback {
 		for (Channel channel : event.getBot().getChannels(event.getUser())) addRollbackLine(channel.getName(),new LineOther(channel.getName(),"* "+event.getOldNick()+" is now known as "+event.getNewNick()));
 	}
 	public void onMode(ModeEvent<PircBotX> event) {
-		String mode = event.getMode();
-		if (mode.charAt(0) == ' ') mode = "+"+mode.substring(1);
-		addRollbackLine(event.getChannel().getName(),new LineOther(event.getChannel().getName(),"* "+event.getUser().getNick()+" sets mode "+mode));
+		addRollbackLine(event.getChannel().getName(),new LineMode(event));
 	}
 	public void onUserMode(UserModeEvent<PircBotX> event) {
 		String mode = event.getMode();
@@ -108,11 +107,29 @@ public class ModuleRollback extends Module implements IRollback {
 		if (channel == null || !channel.startsWith("#")) return;
 		channel = channel.toLowerCase();
 		
-		QueryInsert q = new QueryInsert(SQL.getTable("rollback"));
-		q.add("channel",channel);
-		q.add("stamp",new Date().getTime());
-		line.fillQuery(q);
-		SQL.insert(q);
+		PreparedStatement p;
+		String key = line.getClass().getName();
+		try {
+			if (SQL.statements.containsKey(key) && !SQL.statements.get(key).isClosed()) {
+				p = SQL.statements.get(key);
+			} else {
+				QueryInsert q = new QueryInsert(SQL.getTable("rollback"));
+				q.add("channel",Wildcard.blank);
+				q.add("stamp",Wildcard.blank);
+				line.fillQuery(q, true);
+				p = SQL.getSQLConnection().prepareStatement(q.getSQLQuery());
+				SQL.statements.put(key,p);
+			}
+			synchronized (p) {
+				p.setString(1, channel);
+				p.setLong(2, System.currentTimeMillis());
+				line.fillQuery(p, 3);
+				p.execute();
+				p.clearParameters();
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	public ArrayList<Line> getRollbackLines(String channel, String user, String regex, String cull, boolean newest, int lines, int seconds) {
@@ -126,31 +143,44 @@ public class ModuleRollback extends Module implements IRollback {
 		if (type == LineAction.class) intType = TYPE_ACTION;
 		if (type == LineEnterLeave.class) intType = TYPE_ENTERLEAVE;
 		if (type == LineKick.class) intType = TYPE_KICK;
+		if (type == LineMode.class) intType = TYPE_MODE;
 		
 		try {
 			QuerySelect q = new QuerySelect(SQL.getTable("rollback"));
-			if (channel != null) q.addCriterions(new CriterionStringEquals("channel",channel.toLowerCase()));
-			if (user != null) q.addCriterions(new CriterionStringEquals("user",user.toLowerCase()));
+			if (channel != null) q.addCriterions(new CriterionString("channel",channel.toLowerCase()));
+			if (user != null) q.addCriterions(new CriterionString("users",Operation.REGEXP,"(^|;)"+user.toLowerCase()+"($|;)"));
 			if (lines != 0) q.setLimitCount(lines);
 			if (seconds != 0) {
 				if (!newest) {
 					QuerySelect q2 = new QuerySelect(SQL.getTable("rollback"));
-					if (channel != null) q2.addCriterions(new CriterionStringEquals("channel",channel.toLowerCase()));
+					if (channel != null) q2.addCriterions(new CriterionString("channel",channel.toLowerCase()));
 					q2.setLimitCount(1);
-					JSONObject j = SQL.select(q2);
-					if (j == null || j.length() == 0) return ret;
+					ResultSet j = SQL.select(q2);
+					if (j == null || j.getFetchSize() == 0) return ret;
 					q.addCriterions(new CriterionNumber("stamp",Operation.LesserOrEqual,j.getLong("stamp")+seconds));
 				} else q.addCriterions(new CriterionNumber("stamp",Operation.GreaterOrEqual,new Date().getTime()-(seconds*1000)));
 			}
-			if (regex != null && !regex.isEmpty()) q.addCriterions(new Criterion("txt REGEXP '"+regex.replace("\\","\\\\").replace("'","\\'")+'\''));
-			if (cull != null && !cull.isEmpty()) q.addCriterions(new CriterionStringEquals("txt",cull,false));
+			if (regex != null && !regex.isEmpty()) q.addCriterions(new CriterionString("text",Operation.REGEXP,regex));
+			if (cull != null && !cull.isEmpty()) q.addCriterions(new CriterionString("text",cull,false));
 			if (type != Line.class) q.addCriterions(new CriterionNumber("type",Operation.Equals,intType));
 			q.addOrder("stamp",!newest);
 			
-			JSONObject j = SQL.select(q);
-			if (j == null || j.length() == 0) return ret;
+			ResultSet result = SQL.select(q);
+			if (result == null)
+				return ret;
+			while(result.next()) {
+				switch (result.getInt("type")) {
+					case TYPE_MESSAGE: ret.add((T)new LineMessage(result.getLong("stamp"),result.getString("channel"),result.getString("users"),result.getString("text"))); break;
+					case TYPE_ACTION: ret.add((T)new LineAction(result.getLong("stamp"),result.getString("channel"),result.getString("users"),result.getString("text"))); break;
+					case TYPE_ENTERLEAVE: ret.add((T)new LineEnterLeave(result.getLong("stamp"),result.getString("channel"),result.getString("users"),result.getString("text"))); break;
+					case TYPE_KICK: ret.add((T)new LineKick(result.getLong("stamp"),result.getString("channel"),result.getString("users"),result.getString("text"))); break;
+					case TYPE_MODE: ret.add((T)new LineMode(result.getLong("stamp"),result.getString("channel"),result.getString("users"),result.getString("text"))); break;
+					default: ret.add((T)new LineOther(result.getLong("stamp"),result.getString("channel"),result.getString("text"))); break;
+				}
+			}
+			/*if (j == null || j.length() == 0) return ret;
 			ArrayList<JSONObject> results = new ArrayList<JSONObject>();
-			if (j.length() == 1 && j.has("___")) {
+			if (j.getFetchSize() == 1 && j.has("___")) {
 				JSONArray ja = j.getJSONArray("___");
 				for (int i = 0; i < ja.length(); i++) results.add(ja.getJSONObject(i));
 			} else results.add(j);
@@ -163,7 +193,7 @@ public class ModuleRollback extends Module implements IRollback {
 					case TYPE_KICK: ret.add((T)new LineKick(result.getLong("stamp"),result.getString("channel"),result.getString("user"),result.getString("user2"),result.getString("txt"))); break;
 					default: ret.add((T)new LineOther(result.getLong("stamp"),result.getString("channel"),result.getString("txt"))); break;
 				}
-			}
+			}*/
 		} catch (Exception e) {e.printStackTrace();}
 		
 		Collections.reverse(ret);

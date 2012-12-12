@@ -1,5 +1,7 @@
 package pl.shockah.shocky.lines;
 
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -7,6 +9,7 @@ import java.util.TimeZone;
 
 import pl.shockah.BinBuffer;
 import pl.shockah.shocky.sql.QueryInsert;
+import pl.shockah.shocky.sql.Wildcard;
 
 public abstract class Line {
 	private static final HashMap<Byte,Class<? extends Line>> lineIDMap = new HashMap<Byte,Class<? extends Line>>();
@@ -52,8 +55,13 @@ public abstract class Line {
 	
 	public abstract boolean containsUser(String user);
 	
-	public void fillQuery(QueryInsert q) {
-		q.add("type",getLineID(this));
+	public void fillQuery(QueryInsert q, boolean prepare) {
+		q.add("type",prepare?Wildcard.blank:getLineID(this));
+	}
+	
+	public int fillQuery(PreparedStatement p, int arg) throws SQLException {
+		p.setInt(arg++, getLineID(this));
+		return arg;
 	}
 	
 	public static void registerLineType(Byte id, Class<? extends Line> type) {

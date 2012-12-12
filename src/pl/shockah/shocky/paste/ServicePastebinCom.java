@@ -16,7 +16,7 @@ public class ServicePastebinCom implements PasteService {
 		
 		StringBuilder sb = new StringBuilder(data.length()+150);
 		sb.append("api_option=paste");
-		sb.append("&api_dev_key="+apiKey);
+		sb.append("&api_dev_key=").append(apiKey);
 		sb.append("&api_paste_private=1");
 		sb.append("&api_paste_format=text");
 		sb.append("&api_paste_code=");

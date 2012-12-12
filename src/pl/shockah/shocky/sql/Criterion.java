@@ -13,7 +13,7 @@ public class Criterion {
 	}
 	
 	public static enum Operation {
-		Equals("="), NotEquals("<>"), Lesser("<"), Greater(">"), LesserOrEqual("<="), GreaterOrEqual(">=");
+		Equals("="), NotEquals("<>"), Lesser("<"), Greater(">"), LesserOrEqual("<="), GreaterOrEqual(">="), LIKE(" LIKE "), REGEXP(" REGEXP ");
 		
 		private final String operation;
 		

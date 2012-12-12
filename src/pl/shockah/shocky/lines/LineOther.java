@@ -1,9 +1,12 @@
 package pl.shockah.shocky.lines;
 
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.util.Date;
 
 import pl.shockah.BinBuffer;
 import pl.shockah.shocky.sql.QueryInsert;
+import pl.shockah.shocky.sql.Wildcard;
 
 public class LineOther extends Line {
 	public final String text;
@@ -34,10 +37,14 @@ public class LineOther extends Line {
 	}
 	
 	@Override
-	public void fillQuery(QueryInsert q) {
-		super.fillQuery(q);
-		q.add("user","");
-		q.add("user2","");
-		q.add("txt",text);
+	public void fillQuery(QueryInsert q, boolean prepare) {
+		super.fillQuery(q, prepare);
+		q.add("text",prepare?Wildcard.blank:text);
+	}
+	
+	public int fillQuery(PreparedStatement p, int arg) throws SQLException {
+		arg = super.fillQuery(p,arg);
+		p.setString(arg++, text);
+		return arg;
 	}
 }

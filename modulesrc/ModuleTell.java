@@ -46,8 +46,8 @@ public class ModuleTell extends Module {
 			Entry<String,ArrayList<LineMessage>> pair = it.next();
 			for (LineMessage l : pair.getValue()) {
 				lines.add(pair.getKey());
-				lines.add(l.sender);
-				lines.add(""+l.time.getTime());
+				lines.add(StringTools.implode(l.users, ";"));
+				lines.add(Long.toString(l.time.getTime()));
 				lines.add(l.text);
 			}
 		}
@@ -72,7 +72,7 @@ public class ModuleTell extends Module {
 		ArrayList<LineMessage> lines = tells.get(unick);
 		tells.remove(unick);
 		
-		for (LineMessage line : lines) Shocky.sendNotice(bot,user,line.sender+" said "+Utils.timeAgo(line.time)+": "+line.text);
+		for (LineMessage line : lines) Shocky.sendNotice(bot,user,line.users[0]+" said "+Utils.timeAgo(line.time)+": "+line.text);
 	}
 	
 	public synchronized void addTell(String user, LineMessage line) {

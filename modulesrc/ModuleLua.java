@@ -20,6 +20,7 @@ import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Command.EType;
 import pl.shockah.shocky.prototypes.IFactoid;
+import pl.shockah.shocky.sql.Factoid;
 import pl.shockah.shocky.threads.*;
 
 public class ModuleLua extends ScriptModule implements ResourceFinder {
@@ -98,6 +99,7 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 		env.load(new TableLib());
 		env.load(new StringLib());
 		env.load(new JseMathLib());
+		env.load(new JseOsLib());
 
 		env.load(new BotLib());
 		env.load(new JSONLib());
@@ -530,7 +532,8 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 
 	private static class FactoidFunction extends OneArgFunction {
 		private static final Map<String, FactoidFunction> internMap = new HashMap<String, FactoidFunction>();
-
+		private static final int factoidHash = "factoid".hashCode();
+		
 		final String factoid;
 
 		private FactoidFunction(String factoid) {
@@ -548,18 +551,27 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			internMap.put(factoid, function);
 			return function;
 		}
-
-		@Override
-		public LuaValue call(LuaValue arg) {
+		
+		private LuaState getState() {
+			if (env == null)
+				return null;
 			LuaValue obj = env.get("state");
 			if (!(obj instanceof LuaState))
-				return NIL;
+				return null;
 			LuaState state = (LuaState) obj;
 			if (state.chan != null && state.factoidmod instanceof Module) {
 				Module factmod = (Module) state.factoidmod;
 				if (!factmod.isEnabled(state.chan.getName()))
-					return NIL;
+					return null;
 			}
+			return state;
+		}
+
+		@Override
+		public LuaValue call(LuaValue arg) {
+			LuaState state = getState();
+			if (state == null)
+				return NIL;
 			String args = arg.optjstring(null);
 			StringBuilder message = new StringBuilder(factoid);
 			if (args != null)
@@ -569,6 +581,48 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			} catch (Exception e) {
 				throw new LuaError(e);
 			}
+		}
+
+		@Override
+		public LuaValue get(LuaValue key) {
+			String name = key.checkjstring();
+			boolean src = name.equals("src");
+			boolean author = false;
+			boolean time = false;
+			if (!src)
+				author = name.equals("author");
+			if (!src && !author)
+				time = name.equals("time");
+			if (src||author||time) {
+				LuaState state = getState();
+				if (state == null)
+					return NIL;
+				Factoid f = null;
+				int hash = factoidHash+factoid.hashCode();
+				if (state.cache != null) {
+					if (state.cache.containsKey(hash))
+					{
+						Object obj = state.cache.get(hash);
+						if (obj instanceof Factoid)
+							f = (Factoid)obj;
+					}
+				}
+				if (f == null && state.chan != null)
+					f = state.factoidmod.getFactoid(state.chan.getName(), factoid);
+				if (f == null)
+					f = state.factoidmod.getFactoid(null, factoid);
+				if (f == null)
+					return NIL;
+				if (state.cache != null && !state.cache.containsKey(hash))
+					state.cache.put(hash, f);
+				if (src)
+					return valueOf(f.rawtext);
+				if (author)
+					return valueOf(f.author);
+				if (time)
+					return valueOf(f.stamp);
+			}
+			return super.get(key);
 		}
 	}
 
@@ -675,19 +729,19 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 		@Override
 		public LuaValue get(LuaValue key) {
 			String name = key.checkjstring();
-			if (name.equalsIgnoreCase("topic"))
+			if (name.equals("topic"))
 				return valueOf(channel.getTopic());
-			else if (name.equalsIgnoreCase("name"))
+			else if (name.equals("name"))
 				return valueOf(channel.getName());
-			else if (name.equalsIgnoreCase("isop"))
+			else if (name.equals("isop"))
 				return isOp;
-			else if (name.equalsIgnoreCase("isvoiced"))
+			else if (name.equals("isvoiced"))
 				return isVoiced;
-			else if (name.equalsIgnoreCase("users"))
+			else if (name.equals("users"))
 				return listOfUsers(channel.getUsers());
-			else if (name.equalsIgnoreCase("ops"))
+			else if (name.equals("ops"))
 				return listOfUsers(channel.getOps());
-			else if (name.equalsIgnoreCase("voiced"))
+			else if (name.equals("voiced"))
 				return listOfUsers(channel.getVoices());
 			return super.get(key);
 		}

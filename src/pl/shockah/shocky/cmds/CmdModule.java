@@ -39,7 +39,7 @@ public class CmdModule extends Command {
 				if (sb.length() != 0) sb.append(", ");
 				sb.append(module.isEnabled(channel.getName()) ? Colors.DARK_GREEN : Colors.RED);
 				sb.append(module.name());
-				sb.append(Colors.BLACK);
+				sb.append(Colors.NORMAL);
 			}
 			callback.append(sb);
 			return;
@@ -109,9 +109,11 @@ public class CmdModule extends Command {
 				config.set("module-"+module.name(),false);
 				return;
 			} else if (args[1].equalsIgnoreCase("reload")) {
+				if (!canUseController(bot,type,sender)) return;
 				callback.append(Module.reload(module) ? "Reloaded" : "Failed");
 				return;
 			} else if (args[1].equalsIgnoreCase("unload")) {
+				if (!canUseController(bot,type,sender)) return;
 				callback.append(Module.unload(module) ? "Unloaded" : "Failed");
 				return;
 			}

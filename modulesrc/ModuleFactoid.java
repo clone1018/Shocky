@@ -1,8 +1,10 @@
 import java.io.File;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.regex.*;
-import org.json.JSONObject;
 import org.pircbotx.*;
 import org.pircbotx.hooks.events.MessageEvent;
 import org.pircbotx.hooks.events.NoticeEvent;
@@ -18,10 +20,9 @@ import pl.shockah.shocky.lines.LineMessage;
 import pl.shockah.shocky.prototypes.IFactoid;
 import pl.shockah.shocky.prototypes.IRollback;
 import pl.shockah.shocky.sql.CriterionNumber;
-import pl.shockah.shocky.sql.CriterionStringEquals;
+import pl.shockah.shocky.sql.CriterionString;
 import pl.shockah.shocky.sql.Factoid;
 import pl.shockah.shocky.sql.QueryInsert;
-import pl.shockah.shocky.sql.QuerySelect;
 import pl.shockah.shocky.sql.QueryUpdate;
 import pl.shockah.shocky.sql.SQL;
 
@@ -30,7 +31,7 @@ public class ModuleFactoid extends Module implements IFactoid {
 	protected Command cmdR, cmdF, cmdU, cmdFCMD, cmdManage;
 	private final Map<CmdFactoid,String> fcmds = new HashMap<CmdFactoid,String>();
 	private final HashMap<String,Function> functions = new HashMap<String,Function>();
-	private static final Pattern functionPattern = Pattern.compile("\\$([a-zA-Z_][a-zA-Z0-9_]*)\\(.*?\\)");
+	private static final Pattern functionPattern = Pattern.compile("(?<!\\\\)\\$([a-zA-Z_][a-zA-Z0-9_]*)\\(.*?\\)");
 	private static final int factoidHash = "factoid".hashCode();
 	
 	public String name() {return "factoid";}
@@ -46,8 +47,7 @@ public class ModuleFactoid extends Module implements IFactoid {
 		Data.protectedKeys.add("php-url");
 		Data.protectedKeys.add("python-url");
 		
-		SQL.raw("CREATE TABLE IF NOT EXISTS "+SQL.getTable("factoid")+" (channel TEXT NOT NULL,factoid TEXT,author TEXT,rawtext TEXT,stamp INT(10) UNSIGNED NOT NULL,locked INT(1) UNSIGNED NOT NULL DEFAULT 0,forgotten INT(1) UNSIGNED NOT NULL DEFAULT 0)");
-		
+		SQL.raw("CREATE TABLE IF NOT EXISTS "+SQL.getTable("factoid")+" (channel varchar(50) DEFAULT NULL,factoid text NOT NULL,author text NOT NULL,rawtext text NOT NULL,stamp int(10) unsigned NOT NULL,locked int(1) unsigned NOT NULL DEFAULT '0',forgotten int(1) unsigned NOT NULL DEFAULT '0',KEY channel (channel)) ENGINE=InnoDB DEFAULT CHARSET=utf8;");
 		/* old code for importing factoids in old format
 		 * if (new File("data","factoid.cfg").exists()) {
 			Config config = new Config();
@@ -342,11 +342,7 @@ public class ModuleFactoid extends Module implements IFactoid {
 			
 			for (i = 0; i < charsraw.length(); i++) if (msg.charAt(0) == charsraw.charAt(i)) {
 				msg = new StringBuilder(msg).deleteCharAt(0).toString().split(" ")[0].toLowerCase();
-				Factoid f = null;
-				if (channel != null)
-					f = getLatest(channel.getName(),msg,false);
-				if (f == null)
-					f = getLatest(null,msg,false);
+				Factoid f = getFactoid(channel != null ? channel.getName() : null,msg,false);
 				if (f == null)
 					return;
 				StringBuilder sb = new StringBuilder();
@@ -362,11 +358,7 @@ public class ModuleFactoid extends Module implements IFactoid {
 			}
 			for (i = 0; i < charsby.length(); i++) if (msg.charAt(0) == charsby.charAt(i)) {
 				msg = new StringBuilder(msg).deleteCharAt(0).toString().split(" ")[0].toLowerCase();
-				Factoid f = null;
-				if (channel != null)
-					f = getLatest(channel.getName(),msg,false);
-				if (f == null)
-					f = getLatest(null,msg,false);
+				Factoid f = getFactoid(channel != null ? channel.getName() : null,msg,false);
 				if (f == null)
 					return;
 				StringBuilder sb = new StringBuilder();
@@ -396,10 +388,8 @@ public class ModuleFactoid extends Module implements IFactoid {
 							f = (Factoid)obj;
 					}
 				}
-				if (f == null && channel != null)
-					f = getLatest(channel.getName(),chain[i],false);
 				if (f == null)
-					f = getLatest(null,chain[i],false);
+					f = getFactoid(channel != null ? channel.getName() : null,chain[i],false);
 				if (f == null)
 					return;
 				if (cache != null && !cache.containsKey(key))
@@ -441,10 +431,7 @@ public class ModuleFactoid extends Module implements IFactoid {
 						f = (Factoid)obj;
 				}
 			}
-			if (f == null && channel != null)
-				f = getLatest(channel.getName(),factoid,false);
-			if (f == null)
-				f = getLatest(null,factoid,false);
+			f = getFactoid(channel != null ? channel.getName() : null,factoid,false);
 			if (f == null)
 				break;
 			if (cache != null && !cache.containsKey(key))
@@ -657,28 +644,53 @@ public class ModuleFactoid extends Module implements IFactoid {
 		output.append(input.substring(pos));
 	}
 	
-	private Factoid getLatest(String channel, String factoid) {
-		QuerySelect q = new QuerySelect(SQL.getTable("factoid"));
-		q.addCriterions(new CriterionStringEquals("channel",channel == null? "" : channel.toLowerCase()));
-		q.addCriterions(new CriterionStringEquals("factoid",factoid.toLowerCase()));
-		q.addOrder("stamp",false);
-		q.setLimitCount(1);
-		JSONObject j = SQL.select(q);
-		if (j == null || j.length() == 0)
-			return null;
-		return Factoid.fromJSONObject(j);
+	public Factoid getFactoid(String channel, String factoid) {
+		return getFactoid(channel, factoid, false);
 	}
-	private Factoid getLatest(String channel, String factoid, boolean forgotten) {
-		QuerySelect q = new QuerySelect(SQL.getTable("factoid"));
-		q.addCriterions(new CriterionStringEquals("channel",channel == null? "" : channel.toLowerCase()));
-		q.addCriterions(new CriterionStringEquals("factoid",factoid.toLowerCase()));
-		q.addCriterions(new CriterionNumber("forgotten",CriterionNumber.Operation.Equals,forgotten?1:0));
-		q.addOrder("stamp",false);
-		q.setLimitCount(1);
-		JSONObject j = SQL.select(q);
-		if (j == null || j.length() == 0)
+	
+	public Factoid getFactoid(String channel, String factoid, boolean forgotten) {
+		ResultSet j;
+		PreparedStatement p;
+		boolean hasChannel = (channel != null);
+		String key;
+		if (hasChannel)
+			key = "factoid-getChannelFactoid";
+		else
+			key = "factoid-getFactoid";
+		try {
+			if (SQL.statements.containsKey(key) && !SQL.statements.get(key).isClosed()) {
+				p = SQL.statements.get(key);
+			} else {
+				/*QuerySelect q = new QuerySelect(SQL.getTable("factoid"));
+				q.addCriterions(new Wildcard("channel",Operation.Equals));
+				q.addCriterions(new Wildcard("factoid",Operation.Equals));
+				q.addCriterions(new Wildcard("forgotten",Operation.Equals));
+				q.addOrder("stamp",false);
+				q.setLimitCount(1);
+				p = SQL.getSQLConnection().prepareStatement(q.getSQLQuery());*/
+				if (hasChannel)
+					p = SQL.getSQLConnection().prepareStatement("SELECT * FROM factoid WHERE ((channel IS NULL OR channel=?) AND factoid=? AND forgotten=?) ORDER BY channel DESC, stamp DESC LIMIT 1");
+				else
+					p = SQL.getSQLConnection().prepareStatement("SELECT * FROM factoid WHERE (channel IS NULL AND factoid=? AND forgotten=?) ORDER BY channel DESC, stamp DESC LIMIT 1");
+				SQL.statements.put(key,p);
+			}
+			synchronized (p) {
+				int i = 1;
+				if (hasChannel)
+					p.setString(i++, channel.toLowerCase());
+				p.setString(i++, factoid.toLowerCase());
+				p.setInt(i++, forgotten?1:0);
+				j = p.executeQuery();
+				p.clearParameters();
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
 			return null;
-		return Factoid.fromJSONObject(j);
+		}
+			
+		if (j == null)
+			return null;
+		return Factoid.fromResultSet(j);
 	}
 	
 	public abstract class Function {
@@ -720,18 +732,18 @@ public class ModuleFactoid extends Module implements IFactoid {
 				return;
 			}
 			
-			String prefix = args[1].equals(".") ? channel.getName() : "";
+			String prefix = args[1].equals(".") ? channel.getName() : null;
 			String name = args[args[1].equals(".") ? 2 : 1].toLowerCase();
 			String rem = StringTools.implode(args,args[1].equals(".") ? 3 : 2," ");
 			
-			Factoid f = getLatest(prefix,name,false);
+			Factoid f = getFactoid(prefix,name,false);
 			if (f != null && f.locked) callback.append("Factoid is locked"); else {
 				QueryInsert q = new QueryInsert(SQL.getTable("factoid"));
 				q.add("channel",prefix);
 				q.add("factoid",name);
 				q.add("author",sender.getNick());
 				q.add("rawtext",rem);
-				q.add("stamp",new Date().getTime()/1000);
+				q.add("stamp",System.currentTimeMillis()/1000);
 				SQL.insert(q);
 				callback.append("Done.");
 			}
@@ -754,17 +766,17 @@ public class ModuleFactoid extends Module implements IFactoid {
 				return;
 			}
 			
-			String prefix = args[1].equals(".") ? channel.getName() : "";
+			String prefix = args[1].equals(".") ? channel.getName() : null;
 			String name = args[args[1].equals(".") ? 2 : 1].toLowerCase();
 			
-			Factoid f = getLatest(prefix,name,false);
+			Factoid f = getFactoid(prefix,name,false);
 			if (f == null) callback.append("No such factoid"); else {
 				if (f.locked) callback.append("Factoid is locked");
 				else {
 					QueryUpdate q = new QueryUpdate(SQL.getTable("factoid"));
-					q.addCriterions(new CriterionStringEquals("channel",prefix));
-					q.addCriterions(new CriterionStringEquals("factoid",name));
-					q.addCriterions(new CriterionStringEquals("rawtext",f.rawtext));
+					q.addCriterions(new CriterionString("channel",prefix));
+					q.addCriterions(new CriterionString("factoid",name));
+					q.addCriterions(new CriterionString("rawtext",f.rawtext));
 					q.addCriterions(new CriterionNumber("stamp",CriterionNumber.Operation.Equals,f.stamp/1000));
 					q.set("forgotten",1);
 					SQL.update(q);
@@ -791,17 +803,17 @@ public class ModuleFactoid extends Module implements IFactoid {
 				return;
 			}
 			
-			String prefix = args[1].equals(".") ? channel.getName() : "";
+			String prefix = args[1].equals(".") ? channel.getName() : null;
 			String name = args[args[1].equals(".") ? 2 : 1].toLowerCase();
 			
-			Factoid f = getLatest(prefix,name,true);
+			Factoid f = getFactoid(prefix,name,true);
 			if (f == null) callback.append("No such factoid"); else {
 				if (f.locked) callback.append("Factoid is locked");
 				else {
 					QueryUpdate q = new QueryUpdate(SQL.getTable("factoid"));
-					q.addCriterions(new CriterionStringEquals("channel",prefix));
-					q.addCriterions(new CriterionStringEquals("factoid",name));
-					q.addCriterions(new CriterionStringEquals("rawtext",f.rawtext));
+					q.addCriterions(new CriterionString("channel",prefix));
+					q.addCriterions(new CriterionString("factoid",name));
+					q.addCriterions(new CriterionString("rawtext",f.rawtext));
 					q.addCriterions(new CriterionNumber("stamp",CriterionNumber.Operation.Equals,f.stamp/1000));
 					q.set("forgotten",0);
 					SQL.update(q);
@@ -908,7 +920,7 @@ public class ModuleFactoid extends Module implements IFactoid {
 					String factoid = (local ? args[3] : args[2]).toLowerCase();
 					if (args[1].equals("lock")) {
 						if ((local && canUseOp(bot,type,channel,sender)) || (!local && canUseController(bot,type,sender))) {
-							Factoid f = getLatest(local ? channel.getName() : null,factoid,false);
+							Factoid f = getFactoid(local ? channel.getName() : null,factoid,false);
 							if (f == null) {
 								callback.append("No such factoid");
 								return;
@@ -920,7 +932,7 @@ public class ModuleFactoid extends Module implements IFactoid {
 							
 							QueryUpdate q = new QueryUpdate(SQL.getTable("factoid"));
 							q.set("locked",1);
-							q.addCriterions(new CriterionStringEquals("channel",local ? channel.getName() : ""),new CriterionStringEquals("factoid",factoid));
+							q.addCriterions(new CriterionString("channel",local ? channel.getName() : null),new CriterionString("factoid",factoid));
 							q.addOrder("stamp",false);
 							q.setLimitCount(1);
 							SQL.update(q);
@@ -929,7 +941,7 @@ public class ModuleFactoid extends Module implements IFactoid {
 						}
 					} else if (args[1].equals("unlock")) {
 						if ((local && canUseOp(bot,type,channel,sender)) || (!local && canUseController(bot,type,sender))) {
-							Factoid f = getLatest(local ? channel.getName() : null,factoid);
+							Factoid f = getFactoid(local ? channel.getName() : null,factoid);
 							if (f == null) {
 								callback.append("No such factoid");
 								return;
@@ -941,7 +953,7 @@ public class ModuleFactoid extends Module implements IFactoid {
 							
 							QueryUpdate q = new QueryUpdate(SQL.getTable("factoid"));
 							q.set("locked",0);
-							q.addCriterions(new CriterionStringEquals("channel",local ? channel.getName() : ""),new CriterionStringEquals("factoid",factoid));
+							q.addCriterions(new CriterionString("channel",local ? channel.getName() : null),new CriterionString("factoid",factoid));
 							q.addOrder("stamp",false);
 							q.setLimitCount(1);
 							SQL.update(q);

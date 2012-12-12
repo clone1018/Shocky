@@ -8,6 +8,7 @@ import org.pircbotx.hooks.events.*;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.Command.EType;
 import pl.shockah.shocky.cmds.CommandCallback;
+import pl.shockah.shocky.sql.SQL;
 
 public class Shocky extends ListenerAdapter {
 	private static final ScheduledExecutorService timer = Executors.newScheduledThreadPool(1);
@@ -18,6 +19,7 @@ public class Shocky extends ListenerAdapter {
 	
 	public static void main(String[] args) {
 		Data.load();
+		SQL.init();
 				
 		multiBot = new MultiBotManager(Data.config.getString("main-botname"));
 		try {

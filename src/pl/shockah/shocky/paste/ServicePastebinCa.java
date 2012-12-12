@@ -17,7 +17,7 @@ public class ServicePastebinCa implements PasteService {
 		
 		StringBuilder sb = new StringBuilder(data.length()+50);
 		try {
-			sb.append("api="+URLEncoder.encode(apiKey,"UTF8"));
+			sb.append("api=").append(URLEncoder.encode(apiKey,"UTF8"));
 			sb.append("&content=");
 			sb.append(data);
 		} catch (Exception e) {e.printStackTrace();}

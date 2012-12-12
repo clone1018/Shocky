@@ -17,6 +17,7 @@ import pl.shockah.shocky.lines.LineAction;
 import pl.shockah.shocky.lines.LineEnterLeave;
 import pl.shockah.shocky.lines.LineKick;
 import pl.shockah.shocky.lines.LineMessage;
+import pl.shockah.shocky.lines.LineMode;
 import pl.shockah.shocky.lines.LineOther;
 
 public class Data {
@@ -134,6 +135,7 @@ public class Data {
 		Line.registerLineType((byte) 2, LineAction.class);
 		Line.registerLineType((byte) 3, LineEnterLeave.class);
 		Line.registerLineType((byte) 4, LineKick.class);
+		Line.registerLineType((byte) 5, LineMode.class);
 	}
 	public static boolean isBlacklisted(User user) {
 		start: for (int i = 0; i < blacklistNicks.size(); i++) {
