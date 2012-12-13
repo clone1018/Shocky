@@ -25,7 +25,9 @@ switch ($_POST["type"]) {
 		die(mysql_insert_id());
 	} break;
 	case "json": {
+ 
 		echo sql2json(sqlQuery($_POST["q"]));
+//		file_put_contents('logs/'.time().'.log', sql2json(sqlQuery($_POST["q"])));
 	} break;
 }
 
@@ -56,7 +58,11 @@ function sqlRows($result) {
 function sqlArray($result) {
 	return mysql_fetch_assoc($result);
 }
-
+/*
+function sql2json($data_sql) {
+	return json_encode($data_sql);
+}
+*/
 function sql2json($data_sql) {
 	$json_str = "";
 	if ($total = sqlRows($data_sql)) {
@@ -84,6 +90,7 @@ function sql2json($data_sql) {
 	} else $json_str = "{}";
 	return $json_str;
 }
+
 function escapeJsonString($value) {
     $escapers = array("\\", "\"");
     $replacements = array("\\\\", "\\\"");

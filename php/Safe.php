@@ -241,12 +241,18 @@ class Safe {
 		'T_NAMESPACE',
 		'T_NS_SEPARATOR',
 		'T_NS_C',
-		'T_CLONE'
+		'T_CLONE',
+		'T_EXIT',
+		'T_INCLUDE',
+		'T_INCLUDE_ONCE',
+		'T_REQUIRE',
+		'T_TRY',
+		'T_CATCH'
 	);
 
 	private static $disallowedExpressions = array(
 		'/`/',				// Shell execution operator: "`"
-		'/\$\W/',			// Variable variables: any "$" which is not "$_" or "$alphanumeric"
+	//	'/\$\W/',			// Variable variables: any "$" which is not "$_" or "$alphanumeric"
 		'/(\]|\})\s*\(/',		// Variable functions: "] (" or "} ("
 		'/\$\w\w*\s*\(/',		// Variable functions: "$_ (" or "$alphanumeric"
 	);
@@ -280,7 +286,7 @@ class Safe {
 			if ($token == '{') $this->braces = $this->braces + 1;
 			else if ($token == '}') $this->braces = $this->braces - 1;
 			if ($this->braces < 0) { // Closing brace before one is open
-				$this->errors[0]['name'] = 'Syntax error.';
+				$this->errors[0]['name'] = 'Unbalanced braces.';
 				break;
 			}
 		}
@@ -299,7 +305,8 @@ class Safe {
 			unset($matches);
 			preg_match($disallowedExpression, $this->code, $matches);
 			if($matches) {
-				$this->errors[0]['name'] = 'Execution operator / variable function name / variable variable name detected.';
+				//$this->errors[0]['name'] = 'Execution operator / variable function name / variable variable name detected.';
+				$this->errors[0]['name'] = 'Execution operator / variable function name';
 				break;
 			}	
 		}
@@ -365,7 +372,7 @@ class Safe {
 
 			eval($this->code);
 			
-			$output = htmlentities(ob_get_contents());
+			$output = ob_get_contents();
 			ob_end_clean();
 
 			//$output = str_replace(array("\\r\\n", "\\n"), "\r\n", $output);
@@ -389,6 +396,15 @@ class Safe {
 			}
 			$this->errorsHTML .= '</dl>';
 			return($this->errorsHTML);
+		}
+	}
+
+	public function textErrors($errors = null) {
+		if($errors) {
+			foreach($errors as $error) {
+				$this->errorsText .= $error['name'];
+			}
+			return($this->errorsText);
 		}
 	}
 

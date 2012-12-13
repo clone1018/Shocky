@@ -1,9 +1,8 @@
 <?php
 
-require_once 'Requests/library/Requests.php';
-require_once 'Safe.php';
+require_once 'SafePHP.php';
 Requests::register_autoloader();
-$safe = new Safe();
+$safe = new SafePHP();
 
 mb_internal_encoding("UTF-8");
 mb_regex_encoding("UTF-8");
@@ -17,6 +16,25 @@ function mb_ord($char) {
     $k2 = ord(substr($k,1,1));
     return $k2*256+$k1;
 }
+function prep_url($str = '') {
+	if ($str == 'http://' OR $str == '') {
+		return '';
+	}
 
-$output = $safe->checkScript($_POST["code"], 1);
-exit($output);
+	$url = parse_url($str);
+
+	if ( ! $url OR ! isset($url['scheme'])) {
+		$str = 'http://'.$str;
+	}
+
+	return $str;
+}
+
+$output = $safe->evaluate($_POST["code"]);
+
+if(isset($output['safe_errors'])) {
+	$errors = $safe->text_errors($output['safe_errors']);
+	echo $errors;
+} else {
+	echo $output['output'];
+}
