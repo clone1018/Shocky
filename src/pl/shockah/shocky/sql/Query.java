@@ -73,7 +73,12 @@ public abstract class Query {
 		
 		int i = 0;
 		for (Criterion c : list) {
-			if (i > 0) sb.append(" AND ");
+			if (i > 0) {
+				if (c.useOR)
+					sb.append(" OR ");
+				else
+					sb.append(" AND ");
+			}
 			sb.append(c);
 			i++;
 		}

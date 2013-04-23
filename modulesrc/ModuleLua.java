@@ -9,6 +9,7 @@ import org.luaj.vm2.lib.jse.*;
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
+import org.pircbotx.hooks.events.KickEvent;
 
 import pl.shockah.Helper;
 import pl.shockah.StringTools;
@@ -25,18 +26,13 @@ import pl.shockah.shocky.threads.*;
 
 public class ModuleLua extends ScriptModule implements ResourceFinder {
 
-	public static final File binary = new File("data", "luastate.bin")
-			.getAbsoluteFile();
-	public static final File scripts = new File("data", "lua")
-			.getAbsoluteFile();
+	public static final File binary = new File("data", "luastate.bin").getAbsoluteFile();
+	public static final File scripts = new File("data", "lua").getAbsoluteFile();
 
 	protected Command cmd, reset;
-	private final SandboxThreadGroup sandboxGroup = new SandboxThreadGroup(
-			"lua");
-	private final SandboxSecurityManager secure = new SandboxSecurityManager(
-			sandboxGroup, scripts, binary);
-	private final ThreadFactory sandboxFactory = new SandboxThreadFactory(
-			sandboxGroup);
+	private final SandboxThreadGroup sandboxGroup = new SandboxThreadGroup("lua");
+	private final SandboxSecurityManager secure = new SandboxSecurityManager(sandboxGroup, scripts, binary);
+	private final ThreadFactory sandboxFactory = new SandboxThreadFactory(sandboxGroup);
 	private static final int luaHash = "lua".hashCode();
 
 	LuaTable env = null;
@@ -71,6 +67,12 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 	public void onDisable() {
 		Command.removeCommands(cmd, reset);
 	}
+	
+	public boolean isListener() {return true;}
+	public void onKick(KickEvent<PircBotX> event) {
+		if (event.getRecipient()==event.getBot().getUserBot() && ChannelData.intern.containsKey(event.getChannel()))
+				ChannelData.intern.remove(event.getChannel());
+	}
 
 	@Override
 	public void onDataSave() {
@@ -95,6 +97,7 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 		BaseLib.FINDER = this;
 		env = new LuaTable();
 		env.load(new JseBaseLib());
+		env.load(new PCall());
 		env.load(new PackageLib());
 		env.load(new TableLib());
 		env.load(new StringLib());
@@ -307,8 +310,7 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			}
 		}
 
-		final ExecutorService service = Executors
-				.newSingleThreadExecutor(sandboxFactory);
+		final ExecutorService service = Executors.newSingleThreadExecutor(sandboxFactory);
 		try {
 			if (func == null) {
 				func = LuaC.instance.load(new ByteArrayInputStream(code.getBytes(Helper.utf8)), "script", subTable).checkclosure();
@@ -318,6 +320,8 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			LuaRunner r = new LuaRunner(func);
 			Future<String> f = service.submit(r);
 			output = f.get(30, TimeUnit.SECONDS);
+		} catch (LuaError e) {
+			output = e.getMessage();
 		} catch (TimeoutException e) {
 			output = "Script timed out";
 		} catch (Exception e) {
@@ -352,8 +356,7 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			HashMap<Integer, Object> cache = new HashMap<Integer, Object>();
 			String output = parse(cache, bot, type, channel, sender, StringTools.implode(args, 1, " "), null);
 			if (output != null && !output.isEmpty())
-				callback.append(StringTools.limitLength(StringTools
-						.formatLines(output)));
+				callback.append(StringTools.limitLength(StringTools.formatLines(output)));
 		}
 	}
 
@@ -442,8 +445,20 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 		@Override
 		public LuaValue get(LuaValue key) {
 			LuaFunction parent = LuaThread.getCallstackFunction(LuaThread.getCallstackDepth());
-			LuaValue func = FactoidFunction.create(key.checkjstring());
-			func.setfenv(parent.getfenv());
+			LuaValue env = parent.getfenv();
+			if (env == null)
+				return NIL;
+			LuaValue obj = env.get("state");
+			if (!(obj instanceof LuaState))
+				return NIL;
+			LuaState state = (LuaState) obj;
+			if (state.chan != null && state.factoidmod instanceof Module) {
+				Module factmod = (Module) state.factoidmod;
+				if (!factmod.isEnabled(state.chan.getName()))
+					return NIL;
+			}
+			LuaValue func = FactoidFunction.create(state, key.checkjstring());
+			func.setfenv(env);
 			return func;
 		}
 	}
@@ -531,8 +546,9 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 	}
 
 	private static class FactoidFunction extends OneArgFunction {
-		private static final Map<String, FactoidFunction> internMap = new HashMap<String, FactoidFunction>();
+		//private static final Map<String, FactoidFunction> internMap = new HashMap<String, FactoidFunction>();
 		private static final int factoidHash = "factoid".hashCode();
+		private static final int factoidFuncHash = "factoidfunc".hashCode();
 		
 		final String factoid;
 
@@ -540,15 +556,26 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			this.factoid = factoid;
 		}
 
-		public synchronized static LuaValue create(String factoid) {
+		public synchronized static LuaValue create(LuaState state, String factoid) {
 			if (factoid == null || factoid.isEmpty())
 				return NIL;
+			
+			int hash = factoidFuncHash+factoid.hashCode();
+			if (state.cache != null) {
+				if (state.cache.containsKey(hash))
+				{
+					Object obj = state.cache.get(hash);
+					if (obj instanceof FactoidFunction)
+						return (FactoidFunction)obj;
+				}
+			}
 
-			if (internMap.containsKey(factoid))
-				return internMap.get(factoid);
+			//if (internMap.containsKey(factoid))
+			//	return internMap.get(factoid);
 
 			FactoidFunction function = new FactoidFunction(factoid);
-			internMap.put(factoid, function);
+			//internMap.put(factoid, function);
+			state.cache.put(hash, function);
 			return function;
 		}
 		
@@ -635,7 +662,7 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			this.cmd = factoid;
 		}
 
-		public synchronized static LuaValue create(LuaFunction parent, String cmd) {
+		public synchronized static LuaValue create(LuaValue parent, String cmd) {
 			if (cmd == null || cmd.isEmpty())
 				return NIL;
 
@@ -752,6 +779,73 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			for (User user : users)
 				values[i++] = valueOf(user.getNick());
 			return listOf(values);
+		}
+	}
+	
+	public static class PCall extends VarArgFunction {
+		
+		private static final String[] LIBV_KEYS = {
+			"pcall", // (f, arg1, ...) -> status, result1, ...
+			"xpcall", // (f, err) -> result1, ...
+		};
+		
+		public LuaValue init() {
+			bind( env, PCall.class, LIBV_KEYS, 1 );
+			return env;
+		}
+		
+		public Varargs invoke(Varargs args) {
+			switch ( opcode ) {
+			case 0:
+			{
+				init(); break;
+			}
+			case 1: // "pcall", // (f, arg1, ...) -> status, result1, ...
+			{
+				LuaValue func = args.checkvalue(1);
+				LuaThread.onCall(this);
+				try {
+					return pcall(func,args.subargs(2),null);
+				} finally {
+					LuaThread.onReturn();
+				}
+			}
+			case 2: // "xpcall", // (f, err) -> result1, ...				
+			{
+				LuaThread.onCall(this);
+				try {
+					return pcall(args.arg1(),NONE,args.checkvalue(2));
+				} finally {
+					LuaThread.onReturn();
+				}
+			}
+			}
+			return NONE;
+		}
+		
+		public static Varargs pcall(LuaValue func, Varargs args, LuaValue errfunc) {
+			try {
+				for (int i = LuaThread.getCallstackDepth(); i > 0; i--) {
+					LuaFunction func2 = LuaThread.getCallstackFunction(i);
+					if (func == func2)
+						return NONE;
+				}
+				System.out.println(func);
+				LuaThread thread = LuaThread.getRunning();
+				LuaValue olderr = thread.err;
+				try {
+					thread.err = errfunc;
+					return varargsOf(LuaValue.TRUE, func.invoke(args));
+				} finally {
+					thread.err = olderr;
+				}
+			} catch ( LuaError le ) {
+				String m = le.getMessage();
+				return varargsOf(FALSE, m!=null? valueOf(m): NIL);
+			} catch ( Exception e ) {
+				String m = e.getMessage();
+				return varargsOf(FALSE, valueOf(m!=null? m: e.toString()));
+			}
 		}
 	}
 }

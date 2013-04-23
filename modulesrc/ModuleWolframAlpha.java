@@ -32,16 +32,16 @@ public class ModuleWolframAlpha extends Module {
 			ArrayList<String> parts = new ArrayList<String>();
 			parts.add(Utils.shortenUrl("http://www.wolframalpha.com/input/?i="+URLEncoder.encode(query,"UTF8")));
 			
-			ArrayList<XMLObject> xPods = xBase.getElement("queryresult").get(0).getElement("pod");
+			ArrayList<XMLObject> xPods = xBase.getElements("queryresult").get(0).getElements("pod");
 			for (XMLObject xPod : xPods) {
 				if (!"true".equals(xPod.getAttribute("primary")) && !xPod.getAttribute("title").equals("Alternate form")) continue;
 				
 				StringBuilder sb = new StringBuilder();
-				ArrayList<XMLObject> xSubpods = xPod.getElement("subpod");
+				ArrayList<XMLObject> xSubpods = xPod.getElements("subpod");
 				for (XMLObject xSubpod : xSubpods) {
-					if (xSubpod.getElement("plaintext").isEmpty()) continue;
+					if (xSubpod.getElements("plaintext").isEmpty()) continue;
 					if (sb.length() != 0) sb.append("  ");
-					sb.append(xSubpod.getElement("plaintext").get(0).getValue());
+					sb.append(xSubpod.getElements("plaintext").get(0).getValue());
 				}
 				if (sb.length() != 0) parts.add(Colors.BOLD+xPod.getAttribute("title")+Colors.NORMAL+": "+sb.toString().replace("\n"," "));
 			}

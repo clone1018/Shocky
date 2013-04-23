@@ -29,8 +29,9 @@ public class ModuleDFWords extends Module {
 	public static final Pattern split = Pattern.compile(":");
 	public static final Pattern space = Pattern.compile("\\s");
 
-	public HashMap<String, List<Word>> symbols;
-	public HashMap<String, Word> words;
+	public Map<String, List<Word>> symbols;
+	public Map<String, Word> words;
+	public Map<String, Map<Word,String>> translations;
 
 	protected Command cmd;
 
@@ -45,11 +46,15 @@ public class ModuleDFWords extends Module {
 
 			words = new HashMap<String, Word>();
 			symbols = new HashMap<String, List<Word>>();
+			translations = new HashMap<String, Map<Word,String>>();
 
-			File words = new File("modules/df/language_words.txt");
-			File symbols = new File("modules/df/language_SYM.txt");
-			processFile(words);
-			processFile(symbols);
+			processFile(new File("modules/df/language_words.txt"));
+			processFile(new File("modules/df/language_SYM.txt"));
+			
+			processFile(new File("modules/df/language_DWARF.txt"));
+			processFile(new File("modules/df/language_ELF.txt"));
+			processFile(new File("modules/df/language_GOBLIN.txt"));
+			processFile(new File("modules/df/language_HUMAN.txt"));
 
 			Command.addCommands(this, cmd = new CmdDFWords());
 		} catch (IOException e) {
@@ -83,7 +88,8 @@ public class ModuleDFWords extends Module {
 
 		Matcher matcher = tag.matcher(content);
 
-		String symbol = null;
+		String[] symbol = null;
+		String translation = null;
 		Word word = null;
 		Noun noun = null;
 		Adj adj = null;
@@ -104,13 +110,20 @@ public class ModuleDFWords extends Module {
 			if (type.contentEquals("WORD")) {
 				word = new Word(parts[1]);
 				words.put(parts[1], word);
+				translation = null;
 				symbol = null;
 			} else if (type.contentEquals("SYMBOL")) {
-				symbol = parts[1];
+				symbol = parts[1].split("_");
+				translation = null;
+				word = null;
+			} else if (type.contentEquals("TRANSLATION")) {
+				translation = parts[1];
+				translations.put(translation, new HashMap<Word,String>());
+				symbol = null;
 				word = null;
 			}
 
-			if (word == null && symbol == null)
+			if (word == null && symbol == null && translation == null)
 				continue;
 
 			if (noun != null) {
@@ -207,9 +220,15 @@ public class ModuleDFWords extends Module {
 				word.prefixes.add(prefix);
 				word.all.add(prefix);
 			} else if (symbol != null && type.contentEquals("S_WORD")) {
-				if (!symbols.containsKey(symbol))
-					symbols.put(symbol, new ArrayList<Word>());
-				symbols.get(symbol).add(words.get(parts[1]));
+				for (int i = 0; i < symbol.length; i++) {
+					if (!symbols.containsKey(symbol[i]))
+						symbols.put(symbol[i], new ArrayList<Word>());
+					symbols.get(symbol[i]).add(words.get(parts[1]));
+				}
+			} else if (translation != null && type.contentEquals("T_WORD")) {
+				Word keyword = words.get(parts[1]);
+				if (keyword != null)
+					translations.get(translation).put(keyword, parts[2]);
 			}
 		}
 	}
@@ -252,7 +271,9 @@ public class ModuleDFWords extends Module {
 			return parts[rnd.nextInt(parts.length)];
 		}
 
-		public String getString(Random rnd, short flags) {
+		public String getString(Random rnd, short flags, Map<Word,String> tranmap) {
+			if (tranmap != null && tranmap.containsKey(this))
+				return tranmap.get(this);
 			Part part = getPart(rnd, flags);
 			if (part == null)
 				return null;
@@ -295,6 +316,7 @@ public class ModuleDFWords extends Module {
 
 	public String parse(CharSequence cs) {
 		Random rnd = new Random();
+		Map<Word,String> tranmap = null;
 		String[] args = space.split(cs);
 		int the = -1;
 		int of = -1;
@@ -314,11 +336,20 @@ public class ModuleDFWords extends Module {
 				flags |= OF;
 			Matcher m = tag.matcher(arg);
 			StringBuffer sb = new StringBuffer();
-			match: while (m.find()) {
+			while (m.find()) {
 				String[] parts = split.split(m.group(1));
+				if (parts.length==2 && parts[0].contentEquals("TR")) {
+					String trans = parts[1];
+					if (translations.containsKey(trans))
+						tranmap = translations.get(trans);
+					m.appendReplacement(sb,"");
+					continue;
+				}
 				char[] chars = parts[0].toCharArray();
 				byte verbmode = 0;
-				for (char c : chars) {
+				boolean matched = false;
+				for (int o = 0; !matched && o < chars.length; o++) {
+					char c = chars[o];
 					switch (c) {
 					case 's':
 						flags |= SING;
@@ -345,10 +376,11 @@ public class ModuleDFWords extends Module {
 						else
 							w = get(rnd, flags);
 						if (w != null)
-							m.appendReplacement(sb,w.getString(rnd, flags));
+							m.appendReplacement(sb,w.getString(rnd, flags,tranmap));
 						else
 							m.appendReplacement(sb,"");
-						break match;
+						matched = true;
+						break;
 					case 'c':
 						flags |= COMPOUND;
 						short flags1 = (short) ((flags | FRONT) & ~PLUR);
@@ -373,10 +405,11 @@ public class ModuleDFWords extends Module {
 						else
 							w2 = get(rnd, flags2);
 						if (w1 != null && w2 != null)
-							m.appendReplacement(sb,w1.getString(rnd, flags1)+ '-'+ w2.getString(rnd,flags2));
+							m.appendReplacement(sb,w1.getString(rnd, flags1,tranmap)+ '-'+ w2.getString(rnd,flags2,tranmap));
 						else
 							m.appendReplacement(sb,"");
-						break match;
+						matched = true;
+						break;
 					case 'v':
 						flags = VERB;
 						symbol = null;
@@ -387,18 +420,23 @@ public class ModuleDFWords extends Module {
 						else
 							w = get(rnd, flags);
 						if (w != null) {
-							Verb v = ((Verb) w.getPart(rnd, flags));
-							switch (verbmode) {
-							case 0: m.appendReplacement(sb, v.base); break;
-							case 1: m.appendReplacement(sb, v.presentSimple); break;
-							case 2: m.appendReplacement(sb, v.pastTense); break;
-							case 3: m.appendReplacement(sb, v.presentParticiple); break;
-							case 4: m.appendReplacement(sb, v.pastParticiple); break;
+							if (tranmap != null && tranmap.containsKey(w)) {
+								m.appendReplacement(sb, tranmap.get(w));
+							} else {
+								Verb v = ((Verb) w.getPart(rnd, flags));
+								switch (verbmode) {
+								case 0: m.appendReplacement(sb, v.base); break;
+								case 1: m.appendReplacement(sb, v.presentSimple); break;
+								case 2: m.appendReplacement(sb, v.pastTense); break;
+								case 3: m.appendReplacement(sb, v.presentParticiple); break;
+								case 4: m.appendReplacement(sb, v.pastParticiple); break;
+								}
 							}
 						} else {
 							m.appendReplacement(sb,"");
 						}
-						break match;
+						matched = true;
+						break;
 					case 'a':
 						flags |= ADJ;
 						w = null;
@@ -410,10 +448,11 @@ public class ModuleDFWords extends Module {
 						else
 							w = get(rnd, flags);
 						if (w != null)
-							m.appendReplacement(sb,w.getString(rnd, flags));
+							m.appendReplacement(sb,w.getString(rnd, flags,tranmap));
 						else
 							m.appendReplacement(sb,"");
-						break match;
+						matched = true;
+						break;
 					}
 				}
 			}

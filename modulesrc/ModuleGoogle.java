@@ -38,16 +38,9 @@ public class ModuleGoogle extends Module {
 			return;
 		}
 		
-		StringBuilder sb = new StringBuilder();
-		for (int i = 1; i < args.length; i++) {
-			if (i != 1) sb.append(" ");
-			sb.append(args[i]);
-		}
-		
 		HTTPQuery q;
-		StringBuilder result = new StringBuilder();
 		try {
-			q = HTTPQuery.create("http://ajax.googleapis.com/ajax/services/search/"+(cmd instanceof CmdGoogleImg?"images":"web")+"?v=1.0&safe=off&q=" + URLEncoder.encode(sb.toString(), "UTF8"));
+			q = HTTPQuery.create("http://ajax.googleapis.com/ajax/services/search/"+(cmd instanceof CmdGoogleImg?"images":"web")+"?v=1.0&safe=off&q=" + URLEncoder.encode(message, "UTF8"));
 		} catch (Exception e) {
 			e.printStackTrace();
 			return;
@@ -67,14 +60,14 @@ public class ModuleGoogle extends Module {
 			String title = StringTools.ircFormatted(r.getString("titleNoFormatting"),true);
 			String url = StringTools.ircFormatted(r.getString("unescapedUrl"),false);
 			String content = StringTools.ircFormatted(r.getString("content"),true);
-			result.append(url);
-			result.append(" -- ");result.append(title);
-			result.append(": ");
+			callback.append(url);
+			callback.append(" -- ");
+			callback.append(title);
+			callback.append(": ");
 			if (!content.isEmpty())
-				result.append(content);
+				callback.append(content);
 			else
-				result.append("No description available.");
-			callback.append(result);
+				callback.append("No description available.");
 		} catch (Exception e) {e.printStackTrace();}
 	}
 	

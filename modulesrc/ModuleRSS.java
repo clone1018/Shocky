@@ -114,21 +114,21 @@ public class ModuleRSS extends Module {
 					XMLObject xBase = XMLObject.deserialize(q.readWhole());
 					q.close();
 					if (xBase.getAllElements().get(0).getName().equals("feed")) {
-						ArrayList<XMLObject> xEntries = xBase.getElement("feed").get(0).getElement("entry");
+						ArrayList<XMLObject> xEntries = xBase.getElements("feed").get(0).getElements("entry");
 						for (XMLObject xEntry : xEntries) {
 							Date entryDate;
 							
-							String entryTitle = xEntry.getElement("title").get(0).getValue();
-							String entryLink = xEntry.getElement("link").get(0).getAttribute("href");
-							if (xEntry.getElement("updated").size() > 0) {
-								String s = xEntry.getElement("updated").get(0).getValue();
+							String entryTitle = xEntry.getElements("title").get(0).getValue();
+							String entryLink = xEntry.getElements("link").get(0).getAttribute("href");
+							if (xEntry.getElements("updated").size() > 0) {
+								String s = xEntry.getElements("updated").get(0).getValue();
 								try {
 									entryDate = sdf4.parse(s);
 								} catch (ParseException ex) {
 									entryDate = parseAtomDate(s);
 								}
-							} else if (xEntry.getElement("published").size() > 0) {
-								String s = xEntry.getElement("published").get(0).getValue();
+							} else if (xEntry.getElements("published").size() > 0) {
+								String s = xEntry.getElements("published").get(0).getValue();
 								try {
 									entryDate = sdf4.parse(s);
 								} catch (ParseException ex) {
@@ -141,18 +141,18 @@ public class ModuleRSS extends Module {
 							if (entryDate.after(lastDate)) ret.add(new FeedEntry(entryTitle,entryLink,entryDate));
 						}
 					} else if (xBase.getAllElements().get(0).getName().equals("rss")) {
-						ArrayList<XMLObject> xEntries = xBase.getElement("rss").get(0).getElement("channel").get(0).getElement("item");
+						ArrayList<XMLObject> xEntries = xBase.getElements("rss").get(0).getElements("channel").get(0).getElements("item");
 						for (XMLObject xEntry : xEntries) {
 							Date entryDate = null;
 							
-							String entryTitle = xEntry.getElement("title").get(0).getValue();
-							String entryLink = xEntry.getElement("link").get(0).getValue();
+							String entryTitle = xEntry.getElements("title").get(0).getValue();
+							String entryLink = xEntry.getElements("link").get(0).getValue();
 							try {
-								if (xEntry.getElement("pubDate").size() > 0) {
-									entryDate = sdf.parse(xEntry.getElement("pubDate").get(0).getValue());
-									if (entryDate == null) entryDate = sdf2.parse(xEntry.getElement("pubDate").get(0).getValue());
-								} else if (xEntry.getElement("dc:date").size() > 0) {
-									entryDate = sdf3.parse(xEntry.getElement("dc:date").get(0).getValue());
+								if (xEntry.getElements("pubDate").size() > 0) {
+									entryDate = sdf.parse(xEntry.getElements("pubDate").get(0).getValue());
+									if (entryDate == null) entryDate = sdf2.parse(xEntry.getElements("pubDate").get(0).getValue());
+								} else if (xEntry.getElements("dc:date").size() > 0) {
+									entryDate = sdf3.parse(xEntry.getElements("dc:date").get(0).getValue());
 								} else continue;
 							} catch (Exception e) {e.printStackTrace();}
 							

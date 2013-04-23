@@ -127,7 +127,15 @@ public class XMLObject {
 	
 	public int countElements() {return elements.size();}
 	public XMLObject getBaseElement() {return getAllElements().get(0);}
-	public ArrayList<XMLObject> getElement(String name) {
+	
+	public XMLObject getElement(String name) {
+		for (XMLObject e : elements)
+			if (e.name.equals(name))
+				return e;
+		return null;
+	}
+	
+	public ArrayList<XMLObject> getElements(String name) {
 		ArrayList<XMLObject> list = new ArrayList<XMLObject>();
 		for (XMLObject e : elements) if (e.name.equals(name)) list.add(e);
 		return list;
@@ -165,6 +173,10 @@ public class XMLObject {
 				}
 			}
 		}
+	}
+	@Override
+	public String toString() {
+		return getName()+'='+getValue();
 	}
 	
 	/*public String serialize() {

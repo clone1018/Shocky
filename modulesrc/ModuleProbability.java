@@ -1,4 +1,3 @@
-import java.util.Date;
 import java.util.Random;
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
@@ -45,13 +44,17 @@ public class ModuleProbability extends Module {
 			}
 			
 			Random rnd = getRandom(u);
-			String msg = "I am detecting a "+getRandomProbability(rnd)+"% probability that "+u.getNick()+" is "+getRandomAdjective(rnd);
-			callback.append(msg);
+			callback.append("I am detecting a ");
+			callback.append(getRandomProbability(rnd));
+			callback.append("% probability that ");
+			callback.append(u.getNick());
+			callback.append(" is ");
+			callback.append(getRandomAdjective(rnd));
 		}
 		
 		public Random getRandom(User user) {
 			boolean loggedIn = user.getLogin() != null && !user.getLogin().isEmpty();
-			return new Random((new Date().getTime()/(1000*60*60))+(loggedIn ? user.getLogin() : user.getHostmask()).hashCode());
+			return new Random((System.currentTimeMillis()/(1000*60*60))+(loggedIn ? user.getLogin() : user.getHostmask()).hashCode());
 		}
 		
 		public String getRandomAdjective(Random rnd) {

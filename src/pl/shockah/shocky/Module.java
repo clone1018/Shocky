@@ -10,6 +10,9 @@ import java.util.List;
 import java.util.Map;
 
 import org.pircbotx.PircBotX;
+import org.pircbotx.User;
+
+import pl.shockah.shocky.cmds.CommandCallback;
 
 public abstract class Module extends ListenerAdapter implements Comparable<Module> {
 	private static final List<Module> modules = Collections.synchronizedList(new ArrayList<Module>());
@@ -171,6 +174,7 @@ public abstract class Module extends ListenerAdapter implements Comparable<Modul
 	public void onDisable() {}
 	public void onDie(PircBotX bot) {}
 	public void onDataSave() {}
+	public void onCleanup(PircBotX bot, CommandCallback callback, User sender) {}
 	public boolean isListener() {return false;}
 	
 	public final boolean isEnabled(String channel) {

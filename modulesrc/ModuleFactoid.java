@@ -352,7 +352,7 @@ public class ModuleFactoid extends Module implements IFactoid {
 				}
 				sb.append(msg);
 				sb.append(": ");
-				sb.append(f.rawtext);
+				sb.append(StringTools.formatLines(f.rawtext));
 				Shocky.send(bot,target != null?Command.EType.Notice:(channel == null ? Command.EType.Notice : Command.EType.Channel),channel,channel == null ? sender : Shocky.getUser(target),StringTools.limitLength(sb.toString()));
 				return;
 			}
@@ -597,11 +597,11 @@ public class ModuleFactoid extends Module implements IFactoid {
 		return message.substring(1);
 	}
 	
-	public void parseFunctions(String input, StringBuilder output) {
+	public void parseFunctions(CharSequence input, StringBuilder output) {
 		Matcher m = functionPattern.matcher(input);
 		int pos = 0;
 		while (m.find(pos)) {
-			output.append(input.substring(pos,m.start()));
+			output.append(input.subSequence(pos,m.start()));
 			String fName = m.group(1);
 			Function func = null;
 			if (functions.containsKey(fName))
@@ -627,7 +627,7 @@ public class ModuleFactoid extends Module implements IFactoid {
 					return;
 				}
 				else {
-					String inside = input.substring(start, end);
+					CharSequence inside = input.subSequence(start, end);
 					StringBuilder funcOutput = new StringBuilder();
 					parseFunctions(inside,funcOutput);
 					try {
@@ -641,7 +641,7 @@ public class ModuleFactoid extends Module implements IFactoid {
 				pos = m.end();
 			}
 		}
-		output.append(input.substring(pos));
+		output.append(input.subSequence(pos, input.length()));
 	}
 	
 	public Factoid getFactoid(String channel, String factoid) {
@@ -780,7 +780,7 @@ public class ModuleFactoid extends Module implements IFactoid {
 					q.addCriterions(new CriterionNumber("stamp",CriterionNumber.Operation.Equals,f.stamp/1000));
 					q.set("forgotten",1);
 					SQL.update(q);
-					Shocky.sendNotice(bot,sender,"Done. Forgot: " + f.rawtext);
+					Shocky.sendNotice(bot,sender,"Done. Forgot: " + StringTools.limitLength(StringTools.formatLines(f.rawtext)));
 				}
 			}
 		}
@@ -817,7 +817,7 @@ public class ModuleFactoid extends Module implements IFactoid {
 					q.addCriterions(new CriterionNumber("stamp",CriterionNumber.Operation.Equals,f.stamp/1000));
 					q.set("forgotten",0);
 					SQL.update(q);
-					Shocky.sendNotice(bot,sender,"Done. Unforgot: " + f.rawtext);
+					Shocky.sendNotice(bot,sender,"Done. Unforgot: " + StringTools.limitLength(StringTools.formatLines(f.rawtext)));
 				}
 			}
 		}

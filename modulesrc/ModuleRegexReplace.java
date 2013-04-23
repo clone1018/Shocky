@@ -18,7 +18,9 @@ import pl.shockah.StringTools;
 import pl.shockah.shocky.Data;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Shocky;
+import pl.shockah.shocky.lines.LineAction;
 import pl.shockah.shocky.lines.LineMessage;
+import pl.shockah.shocky.lines.LineWithUsers;
 import pl.shockah.shocky.prototypes.IRollback;
 
 public class ModuleRegexReplace extends Module {
@@ -77,7 +79,7 @@ public class ModuleRegexReplace extends Module {
 		}
 		Pattern pattern = Pattern.compile(args[1],flags);
 		Matcher matcher = pattern.matcher("");
-		ArrayList<LineMessage> lines = module.getRollbackLines(LineMessage.class, event.getChannel().getName(), user, null, s, true, 10, 0);
+		ArrayList<LineWithUsers> lines = module.getRollbackLines(LineWithUsers.class, event.getChannel().getName(), user, null, s, true, 10, 0);
 		
 		final ExecutorService service = Executors.newFixedThreadPool(1);
 		try {
@@ -93,12 +95,12 @@ public class ModuleRegexReplace extends Module {
 	}
 	
 	private static class Run implements Callable<String> {
-		private final List<LineMessage> lines;
+		private final List<LineWithUsers> lines;
 		private final Matcher matcher;
 		private final boolean single;
 		private final String replacement;
 		
-		public Run(List<LineMessage> lines, Matcher matcher, boolean single, String replacement) {
+		public Run(List<LineWithUsers> lines, Matcher matcher, boolean single, String replacement) {
 			this.lines = lines;
 			this.matcher = matcher;
 			this.single = single;
@@ -110,8 +112,14 @@ public class ModuleRegexReplace extends Module {
 			boolean found = false;
 			StringBuffer sb = new StringBuffer();
 			for (int i = lines.size()-1; i>=0 && !found; i--) {
-				LineMessage line = lines.get(i);
-				String text = line.text;
+				LineWithUsers line = lines.get(i);
+				String text;
+				if (line instanceof LineMessage)
+					text = ((LineMessage)line).text;
+				else if (line instanceof LineAction)
+					text = ((LineAction)line).text;
+				else
+					continue;
 				if (replacement == null)
 					text = Colors.removeFormattingAndColors(text);
 				matcher.reset(text);
@@ -152,6 +160,11 @@ public class ModuleRegexReplace extends Module {
 				}
 				if (found) {
 					matcher.appendTail(sb);
+					if (line instanceof LineAction) {
+						sb.insert(0,"ACTION ");
+						sb.insert(0,'\001');
+						sb.append('\001');
+					}
 					return StringTools.limitLength(sb);
 				}
 			}

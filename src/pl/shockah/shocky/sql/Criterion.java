@@ -3,13 +3,19 @@ package pl.shockah.shocky.sql;
 public class Criterion {
 	
 	private final String raw;
+	public boolean useOR = false;
 	
 	public Criterion(String raw) {
 		this.raw = raw;
 	}
 	
+	public Criterion setOR() {
+		useOR = true;
+		return this;
+	}
+	
 	public String toString() {
-		return raw;
+		return '('+raw+')';
 	}
 	
 	public static enum Operation {

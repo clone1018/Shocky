@@ -4,6 +4,7 @@ import java.io.Console;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.StringTokenizer;
 
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
@@ -87,6 +88,9 @@ public class Data {
 			channels.addAll(FileLine.read(new File(dir,"channels.cfg")));
 			blacklistNicks.addAll(FileLine.read(new File(dir,"blacklistNicks.cfg")));
 		} else blank();
+		
+		protectedKeys.add("main-bitlyuser");
+		protectedKeys.add("main-bitlyapikey");
 	}
 	protected static synchronized void save() {
 		File dir = new File("data"); dir.mkdir();

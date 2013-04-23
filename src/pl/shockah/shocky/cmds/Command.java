@@ -23,13 +23,13 @@ public abstract class Command implements Comparable<Command> {
 	private static final List<String> aliases = Collections.synchronizedList(new ArrayList<String>());
 	
 	public static enum EType {
-		Channel, Private, Notice, Console;
+		Channel, Action, Private, Notice, Console;
 	}
 	
 	static {
 		Command cmdCtrl = new CmdController();
 		addCommands(null,cmdCtrl,new CmdBlacklist(),new CmdRaw(),new CmdDie(),new CmdSave(),new CmdGet(),new CmdSet(),new CmdModule());
-		addCommands(null,new CmdHelp(),new CmdJoin(),new CmdPart());
+		addCommands(null,new CmdHelp(),new CmdJoin(),new CmdPart(),new CmdClean());
 		
 		addCommand(null,"ctrl",cmdCtrl);
 	}

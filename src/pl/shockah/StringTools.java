@@ -139,12 +139,12 @@ public class StringTools {
     	return str.toString();
     }
 	
-	public static <T> String implode(T[] spl, String separator) {return implode(spl,0,spl.length-1,separator);}
-	public static <T> String implode(T[] spl, int a, String separator) {return implode(spl,a,spl.length-1,separator);}
-	public static <T> String implode(T[] spl, int a, int b, String separator) {
+	public static String implode(Object[] spl, String separator) {return implode(spl,0,spl.length-1,separator);}
+	public static String implode(Object[] spl, int a, String separator) {return implode(spl,a,spl.length-1,separator);}
+	public static String implode(Object[] spl, int a, int b, String separator) {
 		StringBuffer sb = new StringBuffer();
 		while (a <= b) {
-			T s = spl[a++];
+			Object s = spl[a++];
 			if (s == null) continue;
 			if (sb.length() != 0) sb.append(separator);
 			sb.append(s);

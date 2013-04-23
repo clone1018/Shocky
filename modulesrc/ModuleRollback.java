@@ -33,7 +33,13 @@ public class ModuleRollback extends Module implements IRollback {
 		TYPE_ENTERLEAVE = 3,
 		TYPE_KICK = 4,
 		TYPE_MODE = 5,
+		TYPE_MESSAGEACTION = 6,
 		TYPE_OTHER = 0;
+	
+	private static final Criterion msgAndActCriterion  = new Criterion(
+			new CriterionNumber("type",Operation.Equals,TYPE_MESSAGE)
+			+ " OR " +
+			new CriterionNumber("type",Operation.Equals,TYPE_ACTION));
 	
 	public static void appendLines(StringBuilder sb, ArrayList<Line> lines) {
 		try {
@@ -140,16 +146,20 @@ public class ModuleRollback extends Module implements IRollback {
 		ArrayList<T> ret = new ArrayList<T>();
 		int intType = TYPE_OTHER;
 		if (type == LineMessage.class) intType = TYPE_MESSAGE;
-		if (type == LineAction.class) intType = TYPE_ACTION;
-		if (type == LineEnterLeave.class) intType = TYPE_ENTERLEAVE;
-		if (type == LineKick.class) intType = TYPE_KICK;
-		if (type == LineMode.class) intType = TYPE_MODE;
+		else if (type == LineAction.class) intType = TYPE_ACTION;
+		else if (type == LineEnterLeave.class) intType = TYPE_ENTERLEAVE;
+		else if (type == LineKick.class) intType = TYPE_KICK;
+		else if (type == LineMode.class) intType = TYPE_MODE;
+		else if (type == LineWithUsers.class) intType = TYPE_MESSAGEACTION;
 		
 		try {
 			QuerySelect q = new QuerySelect(SQL.getTable("rollback"));
 			if (channel != null) q.addCriterions(new CriterionString("channel",channel.toLowerCase()));
 			if (user != null) q.addCriterions(new CriterionString("users",Operation.REGEXP,"(^|;)"+user.toLowerCase()+"($|;)"));
-			if (lines != 0) q.setLimitCount(lines);
+			if (lines != 0)
+				q.setLimitCount(Math.min(lines,3000));
+			else
+				q.setLimitCount(3000);
 			if (seconds != 0) {
 				if (!newest) {
 					QuerySelect q2 = new QuerySelect(SQL.getTable("rollback"));
@@ -162,7 +172,15 @@ public class ModuleRollback extends Module implements IRollback {
 			}
 			if (regex != null && !regex.isEmpty()) q.addCriterions(new CriterionString("text",Operation.REGEXP,regex));
 			if (cull != null && !cull.isEmpty()) q.addCriterions(new CriterionString("text",cull,false));
-			if (type != Line.class) q.addCriterions(new CriterionNumber("type",Operation.Equals,intType));
+			if (type != Line.class) {
+				if (intType != TYPE_MESSAGEACTION)
+					q.addCriterions(new CriterionNumber("type",Operation.Equals,intType));
+				else {
+					//q.addCriterions(new CriterionNumber("type",Operation.Equals,TYPE_MESSAGE));
+					//q.addCriterions(new CriterionNumber("type",Operation.Equals,TYPE_ACTION).setOR());
+					q.addCriterions(msgAndActCriterion);
+				}
+			}
 			q.addOrder("stamp",!newest);
 			
 			ResultSet result = SQL.select(q);

@@ -65,6 +65,7 @@ public class MultiChannel {
 		if (joinList.size() == 0)
 			return;
 		
+		int i = 0;
 		for (String channel : joinList) {
 			channel = channel.toLowerCase();
 			if (!Data.channels.contains(channel))
@@ -91,6 +92,11 @@ public class MultiChannel {
 				
 				bot.joinChannel(channel);
 				channelMap.get(bot).add(channel);
+				i++;
+				if (i >= 10) {
+					Thread.sleep(3000);
+					i=0;
+				}
 			}
 		}
 	}

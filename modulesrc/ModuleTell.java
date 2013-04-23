@@ -16,6 +16,7 @@ import org.pircbotx.hooks.events.TopicEvent;
 import org.pircbotx.hooks.events.UserModeEvent;
 import pl.shockah.FileLine;
 import pl.shockah.StringTools;
+import pl.shockah.shocky.Data;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.Utils;
@@ -23,6 +24,7 @@ import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Command.EType;
 import pl.shockah.shocky.lines.LineMessage;
+import pl.shockah.shocky.prototypes.ISeen;
 
 public class ModuleTell extends Module {
 	public final HashMap<String,ArrayList<LineMessage>> tells = new HashMap<String,ArrayList<LineMessage>>();
@@ -91,12 +93,55 @@ public class ModuleTell extends Module {
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			String[] args = message.split(" ");
 			callback.type = EType.Notice;
-			if (args.length >= 3) {
-				addTell(args[1],new LineMessage("",sender.getNick(),StringTools.implode(args,2," ")));
-				callback.append("I'll pass that along");
+			if (args.length < 3) {
+				callback.append(help(bot,type,channel,sender));
 				return;
 			}
-			callback.append(help(bot,type,channel,sender));
+			
+			String target = args[1];
+			
+			Module seenModule = Module.getModule("seen");
+			if (seenModule != null && seenModule instanceof ISeen && seenModule.isEnabled(channel.getName())) {
+				ISeen seen = (ISeen)seenModule;
+				if (!seen.hasSeen(target)) {
+					callback.append("I do not know ").append(target);
+					return;
+				}
+			}
+			
+			String tell = StringTools.implode(args,2," ");
+			if (tell.length() > Data.config.getInt("main-messagelength"))
+			{
+				callback.append("I dare not send such a lengthy message");
+				return;
+			}
+			
+			addTell(target,new LineMessage("",sender.getNick(),tell));
+			callback.append("I'll pass that along");
+		}
+	}
+
+	@Override
+	public void onCleanup(PircBotX bot, CommandCallback callback, User sender) {
+		Module seenModule = Module.getModule("seen");
+		if (!(seenModule != null && seenModule instanceof ISeen)) {
+			callback.append("[tell]: Cannot find Seen module");
+			return;
+		}
+		try {
+			ISeen seen = (ISeen)seenModule;
+			int total = 0;
+			Iterator<String> iter = tells.keySet().iterator();
+			while (iter.hasNext()) {
+				String target = iter.next();
+				if (!seen.hasSeen(target)) {
+					iter.remove();
+					total++;
+				}
+			}
+			callback.append("[tell]: Purged a total of ").append(total).append(" unknown tells.");
+		} catch(Throwable t) {
+			callback.append("[tell]: ").append(t.getMessage());
 		}
 	}
 }

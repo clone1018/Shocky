@@ -81,7 +81,7 @@ public class Utils {
 			String nick = user.getNick();
 			for (String dont : dontMunge)
 				if (nick.equalsIgnoreCase(dont)) continue getUsers;
-			Pattern pattern = Pattern.compile(String.format("\\b\\Q%s\\E\\b", nick),Pattern.CASE_INSENSITIVE);
+			Pattern pattern = Pattern.compile(String.format("\\b%s\\b", Pattern.quote(nick)),Pattern.CASE_INSENSITIVE);
 			Matcher matcher = pattern.matcher(message);
 			if (matcher.find()) {
 				message = matcher.replaceAll(mungeNick(nick));

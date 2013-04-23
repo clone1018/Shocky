@@ -2,6 +2,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 import java.util.TimeZone;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
@@ -25,7 +26,7 @@ public class ModuleTwitter extends Module {
 		sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
 	}
 	
-	private final Pattern statusUrl = Pattern.compile("https?://(?:www.)?(?:[a-z]+?\\.)?twitter\\.com/(#!/)?[^/]+/status(es)?/[0-9]+");
+	private final Pattern statusUrl = Pattern.compile("https?://(?:www.)?(?:[a-z]+?\\.)?twitter\\.com/(#!/)?[^/]+/status(es)?/([0-9]+)");
 	
 	public String name() {return "twitter";}
 	public boolean isListener() {return true;}
@@ -38,8 +39,11 @@ public class ModuleTwitter extends Module {
 		if (Data.isBlacklisted(event.getUser())) return;
 		
 		for (String url : Utils.getAllUrls(event.getMessage())) {
-			if (!statusUrl.matcher(url).find()) continue;
-			String id = url.substring(url.length()-new StringBuilder(url).reverse().indexOf("/"),url.length());
+			Matcher m = statusUrl.matcher(url);
+			if (!m.find()) continue;
+			//String id = url.substring(url.length()-new StringBuilder(url).reverse().indexOf("/"),url.length());
+			//String id = url.substring(url.lastIndexOf('/'));
+			String id = m.group(3);
 			
 			HTTPQuery q = null;
 			XMLObject xBase = null;
@@ -53,14 +57,14 @@ public class ModuleTwitter extends Module {
 			} finally {
 				q.close();
 			}
-			XMLObject status = xBase.getElement("status").get(0);
-			XMLObject user = status.getElement("user").get(0);
+			XMLObject status = xBase.getElement("status");
+			XMLObject user = status.getElement("user");
 			
 			try {
-				String author = user.getElement("name").get(0).getValue();
-				author += " (@"+user.getElement("screen_name").get(0).getValue()+")";
-				String tweet = StringTools.unescapeHTML(status.getElement("text").get(0).getValue());
-				Date date = sdf.parse(status.getElement("created_at").get(0).getValue());
+				String author = user.getElement("name").getValue();
+				author += " (@"+user.getElement("screen_name").getValue()+")";
+				String tweet = StringTools.unescapeHTML(status.getElement("text").getValue());
+				Date date = sdf.parse(status.getElement("created_at").getValue());
 				Shocky.sendChannel(event.getBot(),event.getChannel(),Utils.mungeAllNicks(event.getChannel(),0,event.getUser().getNick()+": "+author+", "+Utils.timeAgo(date)+": "+tweet,event.getUser().getNick()));
 			} catch (Exception e) {e.printStackTrace();}
 		}
@@ -91,17 +95,17 @@ public class ModuleTwitter extends Module {
 			
 			HTTPQuery q = HTTPQuery.create("http://api.twitter.com/1/statuses/user_timeline.xml?"+HTTPQuery.parseArgs("trim_user","false","screen_name",nick));
 			q.connect(true,false);
-			XMLObject xBase = XMLObject.deserialize(q.readWhole()).getElement("statuses").get(0);
+			XMLObject xBase = XMLObject.deserialize(q.readWhole()).getElement("statuses");
 			q.close();
 			
-			XMLObject status = xBase.getElement("status").get(index-1);
-			XMLObject user = status.getElement("user").get(0);
+			XMLObject status = xBase.getElements("status").get(index-1);
+			XMLObject user = status.getElement("user");
 			
 			try {
-				String author = user.getElement("name").get(0).getValue();
-				author += " (@"+user.getElement("screen_name").get(0).getValue()+")";
-				String tweet = status.getElement("text").get(0).getValue();
-				Date date = sdf.parse(status.getElement("created_at").get(0).getValue());
+				String author = user.getElement("name").getValue();
+				author += " (@"+user.getElement("screen_name").getValue()+")";
+				String tweet = status.getElement("text").getValue();
+				Date date = sdf.parse(status.getElement("created_at").getValue());
 				callback.append(Utils.mungeAllNicks(channel,0,author+", "+Utils.timeAgo(date)+": "+tweet,sender.getNick()));
 			} catch (Exception e) {e.printStackTrace();}
 		}

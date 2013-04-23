@@ -9,8 +9,9 @@ import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
+import pl.shockah.shocky.prototypes.ISeen;
 
-public class ModuleSeen extends Module {
+public class ModuleSeen extends Module implements ISeen {
 	private Config config;
 	protected Command cmd;
 	
@@ -28,9 +29,10 @@ public class ModuleSeen extends Module {
 	}
 	
 	public void onMessage(MessageEvent<PircBotX> event) {
-		config.set("t_"+event.getUser().getNick().toLowerCase(),new Date().getTime());
-		config.set("c_"+event.getUser().getNick().toLowerCase(),event.getChannel().getName());
-		config.set("m_"+event.getUser().getNick().toLowerCase(),event.getMessage());
+		String key = event.getUser().getNick().toLowerCase();
+		config.set("t_"+key,System.currentTimeMillis());
+		config.set("c_"+key,event.getChannel().getName());
+		config.set("m_"+key,event.getMessage());
 	}
 	
 	public class CmdSeen extends Command {
@@ -47,14 +49,26 @@ public class ModuleSeen extends Module {
 				return;
 			}
 			
-			String low = args[1].toLowerCase();
+			String low = args[1].trim().toLowerCase();
 			if (low.equals(bot.getNick().toLowerCase())) callback.append("Are your glasses not strong enough?");
 			else if (low.equals(sender.getNick().toLowerCase())) callback.append("Schizophrenia, eh?");
 			else {
 				if (config.exists("t_"+low)) {
-					callback.append(args[1]+" was last active "+Utils.timeAgo(new Date(config.getLong("t_"+low)))+" in "+config.getString("c_"+low)+" and said: "+config.getString("m_"+low));
-				} else callback.append("I've never seen "+args[1]);
+					callback.append(args[1]).
+					append(" was last active ").
+					append(Utils.timeAgo(new Date(config.getLong("t_"+low)))).
+					append(" in ").
+					append(config.getString("c_"+low)).
+					append(" and said: ").
+					append(config.getString("m_"+low));
+				} else callback.append("I've never seen ").append(args[1]);
 			}
 		}
+	}
+
+	@Override
+	public boolean hasSeen(String nick) {
+		String low = nick.trim().toLowerCase();
+		return config.exists("t_"+low);
 	}
 }
