@@ -64,7 +64,7 @@ public class ModulePHP extends ScriptModule {
 			}
 			
 			System.out.println(message);
-			String output = parse(null,bot,type,channel,sender,StringTools.implode(args,1," "),null);
+			String output = parse(null,bot,type,channel,sender,StringTools.implode(message,1," "),null);
 			if (output != null && !output.isEmpty()) {
 				callback.append(StringTools.limitLength(StringTools.formatLines(output)));
 			}

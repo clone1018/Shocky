@@ -62,7 +62,7 @@ public class ModuleBrainfuck extends ScriptModule {
 				return;
 			}
 			
-			String output = parse(null,bot,type,channel,sender,StringTools.implode(args,1," "),null);
+			String output = parse(null,bot,type,channel,sender,StringTools.implode(message,1," "),null);
 			if (output != null && !output.isEmpty())
 				callback.append(StringTools.limitLength(StringTools.formatLines(output)));
 		}

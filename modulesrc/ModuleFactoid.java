@@ -896,7 +896,7 @@ public class ModuleFactoid extends Module implements IFactoid {
 		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 			if (type != EType.Channel) return;
 			String[] args = message.split(" ");
-			onMessage(bot,channel,sender,""+Data.forChannel(channel).getString("factoid-char").charAt(0)+factoid+(args.length > 1 ? " "+StringTools.implode(args,1," ") : ""));
+			onMessage(bot,channel,sender,""+Data.forChannel(channel).getString("factoid-char").charAt(0)+factoid+(args.length > 1 ? " "+StringTools.implode(message,1," ") : ""));
 		}
 	}
 	public class CmdManage extends Command {

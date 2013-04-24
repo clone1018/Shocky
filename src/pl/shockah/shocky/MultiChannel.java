@@ -47,6 +47,10 @@ public class MultiChannel {
 		return null;
 	}
 	
+	public static List<String> getBotChannels(PircBotX bot) throws Exception {
+		return Collections.unmodifiableList(channelMap.get(bot));
+	}
+	
 	public static void lostChannel(PircBotX bot, String channel) throws Exception {
 		channelMap.get(bot).remove(channel);
 		Data.channels.remove(channel);

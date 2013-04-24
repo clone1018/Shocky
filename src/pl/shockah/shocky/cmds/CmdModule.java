@@ -123,7 +123,7 @@ public class CmdModule extends Command {
 			if (args[1].equalsIgnoreCase("loadhttp")) {
 				if (!canUseController(bot,type,sender)) return;
 				try {
-					URL url = new URL(StringTools.implode(args,2," "));
+					URL url = new URL(StringTools.implode(message,2," "));
 					callback.append(Module.load(new ModuleSource<URL>(url)) != null ? "Loaded" : "Failed");
 				} catch (Exception e) {e.printStackTrace();}
 				return;

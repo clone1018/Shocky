@@ -244,7 +244,7 @@ public class ModuleRollback extends Module implements IRollback {
 			
 			for (int i = args.length-1; i > 0; i--) {
 				if (args[i].equals("|")) {
-					regex = StringTools.implode(args,i+1," ");
+					regex = StringTools.implode(message,i+1," ");
 					args = StringTools.implode(args,0,i-1," ").split(" ");
 					break;
 				}

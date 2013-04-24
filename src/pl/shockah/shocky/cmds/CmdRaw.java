@@ -15,7 +15,7 @@ public class CmdRaw extends Command {
 	public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
 		if (!canUseController(bot,type,sender)) return;
 		
-		message = StringTools.implode(message.split(" "),1," ");
+		message = StringTools.implode(message,1," ");
 		if (bot == null) {
 			if (message.toUpperCase().startsWith("PRIVMSG #")) bot = Shocky.getBotForChannel(message.split(" ")[1]);
 			else bot = Shocky.getBots().iterator().next();

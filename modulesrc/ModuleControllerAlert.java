@@ -199,7 +199,7 @@ public class ModuleControllerAlert extends Module {
 				callback.append("No such index");
 				return;
 			} else if (args.length >= 3 && args[1].equals("add")) {
-				Alert alert = Alert.newAlert(StringTools.implode(args,2," "));
+				Alert alert = Alert.newAlert(StringTools.implode(message,2," "));
 				if (alert.isProper()) {
 					alerts.add(new ImmutablePair<String,Alert>(sender.getNick(),alert));
 					callback.append("Added");

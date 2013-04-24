@@ -109,7 +109,7 @@ public class ModuleTell extends Module {
 				}
 			}
 			
-			String tell = StringTools.implode(args,2," ");
+			String tell = StringTools.implode(message,2," ");
 			if (tell.length() > Data.config.getInt("main-messagelength"))
 			{
 				callback.append("I dare not send such a lengthy message");

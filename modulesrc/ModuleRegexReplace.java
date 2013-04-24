@@ -9,6 +9,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 import org.pircbotx.Colors;
 import org.pircbotx.PircBotX;
@@ -77,8 +78,14 @@ public class ModuleRegexReplace extends Module {
 			if (params.length > 1)
 				user = params[1];
 		}
-		Pattern pattern = Pattern.compile(args[1],flags);
-		Matcher matcher = pattern.matcher("");
+		Matcher matcher;
+		try {
+			Pattern pattern = Pattern.compile(args[1],flags);
+			matcher = pattern.matcher("");
+		} catch (PatternSyntaxException e) {
+			Shocky.sendChannel(event.getBot(), event.getChannel(), StringTools.deleteWhitespace(e.getMessage()));
+			return;
+		}
 		ArrayList<LineWithUsers> lines = module.getRollbackLines(LineWithUsers.class, event.getChannel().getName(), user, null, s, true, 10, 0);
 		
 		final ExecutorService service = Executors.newFixedThreadPool(1);

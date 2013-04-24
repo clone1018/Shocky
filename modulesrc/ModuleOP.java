@@ -48,7 +48,7 @@ public class ModuleOP extends Module {
 					if (cfg.exists("factoid-char")) {
 						String chars = cfg.getString("factoid-char");
 						for (int i = 0; i < chars.length(); i++) if (chars.charAt(i) == spl[2].charAt(0)) {
-							String factoid = StringTools.implode(spl,2," ").substring(1);
+							String factoid = StringTools.implode(message,2," ").substring(1);
 							IFactoid module = (IFactoid)Module.getModule("factoid");
 							factoid = module.runFactoid(null,bot,channel,sender,factoid);
 							bot.kick(channel,bot.getUser(kick),factoid == null || factoid.isEmpty() ? kick : factoid);

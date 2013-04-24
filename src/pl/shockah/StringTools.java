@@ -151,4 +151,25 @@ public class StringTools {
 		}
 		return sb.toString();
 	}
+	
+	public static String implode(String spl, String separator) {return implode(spl,0,separator);}
+	public static String implode(String spl, int a, String separator) {
+		if (separator == null)
+			throw new IllegalArgumentException("separator cannot be null");
+		if (a < 0)
+			throw new IndexOutOfBoundsException("a must be positive");
+		if (a == 0)
+			return spl;
+		int ap = 0,i = 0;
+		while (i < a) {
+			ap = spl.indexOf(separator, ap);
+			if (ap == -1)
+				return null;
+			ap += separator.length();
+			if (++i != a)
+				continue;
+			return spl.substring(ap);
+		}
+		return null;
+	}
 }

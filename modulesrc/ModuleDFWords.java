@@ -621,7 +621,7 @@ public class ModuleDFWords extends Module {
 				return;
 			}
 
-			callback.append(parse(StringTools.implode(args, 1, " ")));
+			callback.append(parse(StringTools.implode(message, 1, " ")));
 		}
 	}
 }

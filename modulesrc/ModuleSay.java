@@ -28,7 +28,7 @@ public class ModuleSay extends Module {
 			
 			String[] args = message.split(" ");
 			if (args.length >= 2) {
-				callback.append(StringTools.implode(args,1," "));
+				callback.append(StringTools.implode(message,1," "));
 			} else {
 				callback.type = EType.Notice;
 				callback.append(help(bot,type,channel,sender));
@@ -49,7 +49,7 @@ public class ModuleSay extends Module {
 			callback.type = EType.Notice;
 			
 			if (args.length >= 2) {
-				bot.sendAction(channel,StringTools.implode(args,1," "));
+				bot.sendAction(channel,StringTools.implode(message,1," "));
 			} else callback.append(help(bot,type,channel,sender));
 		}
 	}

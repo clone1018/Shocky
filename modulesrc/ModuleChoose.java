@@ -1,4 +1,6 @@
 import java.util.Random;
+import java.util.StringTokenizer;
+
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
@@ -32,15 +34,27 @@ public class ModuleChoose extends Module {
 				return;
 			}
 			
-			String txt = StringTools.implode(args,1," ");
-			String[] choices = txt.split(";");
-			if (choices.length == 1) choices = txt.split(",");
-			if (choices.length == 1) choices = txt.split(" ");
+			String txt = StringTools.implode(message,1," ");
+			String[] choices = tokenSplit(txt,";");
+			if (choices.length == 1) choices = tokenSplit(txt,",");
+			if (choices.length == 1) choices = tokenSplit(txt," ");
 			if (choices.length == 1) {
 				callback.append("Definitely not "+choices[0]);
 				return;
 			}
 			callback.append(choices[new Random().nextInt(choices.length)].trim());
+		}
+		
+		private String[] tokenSplit(String str, String delim) {
+			StringTokenizer strtok = new StringTokenizer(str,delim);
+			int count = strtok.countTokens();
+			if (count == 1)
+				return new String[] {str};
+			String[] result = new String[count];
+			int i = 0;
+			while (strtok.hasMoreTokens())
+				result[i++] = strtok.nextToken();
+			return result;
 		}
 	}
 }

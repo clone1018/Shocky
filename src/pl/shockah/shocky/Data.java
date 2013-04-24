@@ -4,7 +4,6 @@ import java.io.Console;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.StringTokenizer;
 
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;

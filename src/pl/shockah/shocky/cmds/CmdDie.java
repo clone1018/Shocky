@@ -16,6 +16,6 @@ public class CmdDie extends Command {
 		if (!canUseController(bot,type,sender)) return;
 		
 		String[] args = message.split(" ");
-		if (args.length == 1) Shocky.die(); else Shocky.die(StringTools.implode(args,1," "));
+		if (args.length == 1) Shocky.die(); else Shocky.die(StringTools.implode(message,1," "));
 	}
 }

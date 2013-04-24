@@ -37,6 +37,7 @@ public class ModuleGoogle extends Module {
 			callback.append(cmd.help(bot,type,channel,sender));
 			return;
 		}
+		message = message.substring(message.indexOf(" ")+1);
 		
 		HTTPQuery q;
 		try {

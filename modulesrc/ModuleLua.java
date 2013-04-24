@@ -354,7 +354,7 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 
 			System.out.println(message);
 			HashMap<Integer, Object> cache = new HashMap<Integer, Object>();
-			String output = parse(cache, bot, type, channel, sender, StringTools.implode(args, 1, " "), null);
+			String output = parse(cache, bot, type, channel, sender, StringTools.implode(message, 1, " "), null);
 			if (output != null && !output.isEmpty())
 				callback.append(StringTools.limitLength(StringTools.formatLines(output)));
 		}

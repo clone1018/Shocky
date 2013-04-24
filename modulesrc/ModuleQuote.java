@@ -57,7 +57,7 @@ public class ModuleQuote extends Module {
 			
 			ArrayList<Quote> quotes = pair.getValue();
 			for (Quote quote : quotes) {
-				binb.writeUString(StringTools.implode(quote.nicks.toArray(new String[quote.nicks.size()])," "));
+				binb.writeUString(StringTools.implode(quote.nicks," "));
 				binb.writeUString(quote.quote);
 			}
 			
@@ -112,7 +112,9 @@ public class ModuleQuote extends Module {
 			
 			if (aNick != null) aNick = aNick.toLowerCase();
 			ArrayList<Quote> list = new ArrayList<Quote>();
-			for (Quote quote : quotes.get(aChannel)) if (aNick == null || quote.nicks.contains(aNick)) list.add(quote);
+			for (Quote quote : quotes.get(aChannel))
+				if (aNick == null || Arrays.binarySearch(quote.nicks,aNick) >= 0)
+					list.add(quote);
 			if (list.isEmpty()) {
 				callback.append("No quotes found");
 				return;
@@ -123,7 +125,14 @@ public class ModuleQuote extends Module {
 			aId = Math.min(Math.max(aId,1),list.size()+1);
 			
 			String quote = Utils.mungeAllNicks(channel, 0, list.get(aId-1).quote);
-			callback.append("["+aChannel+": "+(aId)+"/"+(list.size())+"] "+quote);
+			callback.append("[")
+			.append(aChannel)
+			.append(": ")
+			.append(aId)
+			.append("/")
+			.append(list.size())
+			.append("] ")
+			.append(quote);
 		}
 	}
 	public class CmdQuoteAdd extends Command {
@@ -144,7 +153,7 @@ public class ModuleQuote extends Module {
 			}
 			
 			String[] nicks = args[1].toLowerCase().split(Pattern.quote(";"));
-			String quote = StringTools.implode(args,2," ");
+			String quote = StringTools.implode(message,2," ");
 			if (!quotes.containsKey(channel.getName())) quotes.put(channel.getName(),new ArrayList<Quote>());
 			quotes.get(channel.getName()).add(new Quote(nicks,quote));
 			callback.append("Done.");
@@ -202,7 +211,7 @@ public class ModuleQuote extends Module {
 			
 			if (aNick != null) aNick = aNick.toLowerCase();
 			ArrayList<Quote> list = new ArrayList<Quote>();
-			for (Quote quote : quotes.get(aChannel)) if (aNick == null || quote.nicks.contains(aNick)) list.add(quote);
+			for (Quote quote : quotes.get(aChannel)) if (aNick == null || Arrays.binarySearch(quote.nicks,aNick) >= 0) list.add(quote);
 			if (list.isEmpty()) {
 				callback.append("No quotes found");
 				return;
@@ -217,16 +226,17 @@ public class ModuleQuote extends Module {
 				if (quote2.equals(quote))
 					quoteIter.remove();
 			}
-			callback.append("Removed quote: "+quote.quote);
+			callback.append("Removed quote: ").append(quote.quote);
 		}
 	}
 	
 	public class Quote {
-		public final ArrayList<String> nicks = new ArrayList<String>();
+		public final String[] nicks;
 		public final String quote;
 		
 		public Quote(String[] nicks, String quote) {
-			this.nicks.addAll(Arrays.asList(nicks));
+			Arrays.sort(nicks);
+			this.nicks = nicks;
 			this.quote = quote;
 		}
 	}
