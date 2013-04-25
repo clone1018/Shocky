@@ -1,27 +1,26 @@
 package pl.shockah.shocky.cmds;
 
-import org.pircbotx.Channel;
-import org.pircbotx.PircBotX;
-import org.pircbotx.User;
 import pl.shockah.shocky.MultiChannel;
 
 public class CmdJoin extends Command {
 	public String command() {return "join";}
-	public String help(PircBotX bot, EType type, Channel channel, User sender) {
+	public String help(Parameters params) {
 		return "join {channel} - makes the bot join channel";
 	}
 	
-	public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-		if (!canUseController(bot,type,sender)) return;
-		String[] args = message.split(" ");
+	public void doCommand(Parameters params, CommandCallback callback) {
+		params.checkController();
 		callback.type = EType.Notice;
-		if (args.length == 2) {
+		if (params.tokenCount == 1) {
+			String channel = params.tokens.nextToken();
 			try {
-				MultiChannel.join(args[1]);
-			} catch (Exception e) {callback.append("Already in channel "+args[1]);}
+				MultiChannel.join(channel);
+			} catch (Exception e) {
+				callback.append("Already in channel ").append(channel);
+			}
 			return;
 		}
 		
-		callback.append(help(bot,type,channel,sender));
+		callback.append(help(params));
 	}
 }

@@ -1,25 +1,23 @@
 package pl.shockah.shocky.cmds;
 
-import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
-import org.pircbotx.User;
-import pl.shockah.StringTools;
 import pl.shockah.shocky.Shocky;
 
 public class CmdRaw extends Command {
 	public String command() {return "raw";}
-	public String help(PircBotX bot, EType type, Channel channel, User sender) {
+	public String help(Parameters params) {
 		return "[r:controller] raw {query} - raw IRC query";
 	}
 	
-	public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-		if (!canUseController(bot,type,sender)) return;
-		
-		message = StringTools.implode(message,1," ");
+	public void doCommand(Parameters params, CommandCallback callback) {
+		params.checkController();
+		PircBotX bot = params.bot;
 		if (bot == null) {
-			if (message.toUpperCase().startsWith("PRIVMSG #")) bot = Shocky.getBotForChannel(message.split(" ")[1]);
-			else bot = Shocky.getBots().iterator().next();
+			if (params.input.toUpperCase().startsWith("PRIVMSG #"))
+				bot = Shocky.getBotForChannel(params.input.split(" ")[1]);
+			else
+				bot = Shocky.getBots().iterator().next();
 		}
-		bot.sendRawLine(message);
+		bot.sendRawLine(params.input);
 	}
 }

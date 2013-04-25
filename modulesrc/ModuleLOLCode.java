@@ -10,6 +10,7 @@ import pl.shockah.StringTools;
 import pl.shockah.shocky.*;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
+import pl.shockah.shocky.cmds.Parameters;
 import pl.shockah.shocky.cmds.Command.EType;
 
 public class ModuleLOLCode extends ScriptModule {
@@ -46,22 +47,20 @@ public class ModuleLOLCode extends ScriptModule {
 	
 	public class CmdLOLCode extends Command {
 		public String command() {return "lolcode";}
-		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+		public String help(Parameters params) {
 			return "lolcode\nlolcode {code} - runs LOLCode code";
 		}
 		
-		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-			String[] args = message.split(" ");
-			if (args.length < 2) {
-				Shocky.send(bot,type,EType.Notice,EType.Notice,EType.Notice,EType.Console,channel,sender,help(bot,type,channel,sender));
+		public void doCommand(Parameters params, CommandCallback callback) {
+			if (params.tokenCount < 1) {
+				callback.type = EType.Notice;
+				callback.append(help(params));
 				return;
 			}
 			
-			System.out.println(message);
-			String output = parse(null,bot,type,channel,sender,StringTools.implode(message,1," "),null);
-			if (output != null && !output.isEmpty()) {
+			String output = parse(null,params.bot,params.type,params.channel,params.sender,params.input,null);
+			if (output != null && !output.isEmpty())
 				callback.append(StringTools.limitLength(StringTools.formatLines(output)));
-			}
 		}
 	}
 	

@@ -1,10 +1,7 @@
-import org.pircbotx.Channel;
-import org.pircbotx.PircBotX;
-import org.pircbotx.User;
-import pl.shockah.StringTools;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
+import pl.shockah.shocky.cmds.Parameters;
 
 public class ModuleSay extends Module {
 	protected Command cmdSay, cmdAction;
@@ -19,38 +16,36 @@ public class ModuleSay extends Module {
 	
 	public class CmdSay extends Command {
 		public String command() {return "say";}
-		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+		public String help(Parameters params) {
 			return "[r:controller] say {phrase} - makes the bot say {phrase}";
 		}
 		
-		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-			if (!canUseController(bot,type,sender)) return;
+		public void doCommand(Parameters params, CommandCallback callback) {
+			params.checkController();
 			
-			String[] args = message.split(" ");
-			if (args.length >= 2) {
-				callback.append(StringTools.implode(message,1," "));
-			} else {
+			if (!params.input.isEmpty())
+				callback.append(params.input);
+			else {
 				callback.type = EType.Notice;
-				callback.append(help(bot,type,channel,sender));
+				callback.append(help(params));
 			}
 		}
 	}
 	public class CmdAction extends Command {
 		public String command() {return "action";}
-		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+		public String help(Parameters params) {
 			return "[r:controller] action {action} - /me {action}";
 		}
 		
-		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-			if (!canUseController(bot,type,sender)) return;
-			if (type != EType.Channel) return;
-			
-			String[] args = message.split(" ");
+		public void doCommand(Parameters params, CommandCallback callback) {
+			if (params.type != EType.Channel) return;
+			params.checkController();
 			callback.type = EType.Notice;
 			
-			if (args.length >= 2) {
-				bot.sendAction(channel,StringTools.implode(message,1," "));
-			} else callback.append(help(bot,type,channel,sender));
+			if (!params.input.isEmpty())
+				params.bot.sendAction(params.channel,params.input);
+			else
+				callback.append(help(params));
 		}
 	}
 }

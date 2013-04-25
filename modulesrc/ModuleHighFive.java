@@ -1,5 +1,6 @@
 import java.io.File;
 import java.util.HashMap;
+import java.util.regex.Pattern;
 
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
@@ -13,6 +14,7 @@ public class ModuleHighFive extends Module/* implements ActionListener*/ {
 	private Config config = new Config();
 	private HashMap<String,User> started = new HashMap<String,User>();
 	private HashMap<String,Long> timers = new HashMap<String,Long>();
+	private static final Pattern pattern = Pattern.compile("(\\s|^)(o/|\\\\o)(\\s|$)", Pattern.CASE_INSENSITIVE);
 	
 	public int changeStat(String nick1, String nick2, int change) {
 		nick1 = nick1.toLowerCase();
@@ -53,7 +55,7 @@ public class ModuleHighFive extends Module/* implements ActionListener*/ {
 	public void onMessage(MessageEvent<PircBotX> event) {
 		if (Data.isBlacklisted(event.getUser())) return;
 		String msg = event.getMessage();
-		if (!(msg.contains("\\o") || msg.contains("o/")))
+		if (!pattern.matcher(msg).find())
 			return;
 		
 		String chan = event.getChannel().getName();

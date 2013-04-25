@@ -5,6 +5,9 @@ import java.util.concurrent.*;
 
 import org.pircbotx.*;
 import org.pircbotx.hooks.events.*;
+
+import pl.shockah.shocky.cmds.AuthorizationException;
+import pl.shockah.shocky.cmds.Parameters;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.Command.EType;
 import pl.shockah.shocky.cmds.CommandCallback;
@@ -182,8 +185,15 @@ public class Shocky extends ListenerAdapter {
 		callback.targetUser = event.getUser();
 		callback.targetChannel = event.getChannel();
 		Command cmd = Command.getCommand(event.getBot(),event.getUser(),event.getChannel().getName(),Command.EType.Channel,callback,event.getMessage().substring(1));
-		if (cmd != null)
-			cmd.doCommand(event.getBot(),Command.EType.Channel,callback,event.getChannel(),event.getUser(),event.getMessage());
+		if (cmd != null) {
+			Parameters params = new Parameters(event.getBot(),Command.EType.Channel,event.getChannel(),event.getUser(),event.getMessage());
+			try {
+				cmd.doCommand(params,callback);
+			} catch (AuthorizationException e) {
+				sendNotice(event.getBot(),event.getUser(),e.getMessage());
+				return;
+			}
+		}
 		if (callback.length()>0) {
 			if (callback.type == EType.Channel) {
 				callback.insert(0,": ");
@@ -196,8 +206,15 @@ public class Shocky extends ListenerAdapter {
 		if (Data.isBlacklisted(event.getUser())) return;
 		CommandCallback callback = new CommandCallback();
 		Command cmd = Command.getCommand(event.getBot(),event.getUser(),null,Command.EType.Private,callback,event.getMessage());
-		if (cmd != null)
-			cmd.doCommand(event.getBot(),Command.EType.Private,callback,null,event.getUser(),event.getMessage());
+		if (cmd != null) {
+			Parameters params = new Parameters(event.getBot(),Command.EType.Private,null,event.getUser(),event.getMessage());
+			try {
+				cmd.doCommand(params,callback);
+			} catch (AuthorizationException e) {
+				sendPrivate(event.getBot(),event.getUser(),e.getMessage());
+				return;
+			}
+		}
 		if (callback.length()>0)
 			send(event.getBot(),Command.EType.Private,null,event.getUser(),callback.toString());
 	}
@@ -206,8 +223,15 @@ public class Shocky extends ListenerAdapter {
 		if (Data.isBlacklisted(event.getUser())) return;
 		CommandCallback callback = new CommandCallback();
 		Command cmd = Command.getCommand(event.getBot(),event.getUser(),null,Command.EType.Notice,callback,event.getMessage());
-		if (cmd != null)
-			cmd.doCommand(event.getBot(),Command.EType.Notice,callback,null,event.getUser(),event.getMessage());
+		if (cmd != null) {
+			Parameters params = new Parameters(event.getBot(),Command.EType.Notice,null,event.getUser(),event.getMessage());
+			try {
+				cmd.doCommand(params,callback);
+			} catch (AuthorizationException e) {
+				sendNotice(event.getBot(),event.getUser(),e.getMessage());
+				return;
+			}
+		}
 		if (callback.length()>0)
 			send(event.getBot(),Command.EType.Notice,event.getChannel(),event.getUser(),callback.toString());
 	}

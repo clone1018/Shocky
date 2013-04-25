@@ -2,8 +2,6 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 import org.pircbotx.Channel;
 import org.pircbotx.Colors;
-import org.pircbotx.PircBotX;
-import org.pircbotx.User;
 import pl.shockah.HTTPQuery;
 import pl.shockah.StringTools;
 import pl.shockah.XMLObject;
@@ -12,6 +10,7 @@ import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
+import pl.shockah.shocky.cmds.Parameters;
 
 public class ModuleWolframAlpha extends Module {
 	protected Command cmd;
@@ -71,24 +70,17 @@ public class ModuleWolframAlpha extends Module {
 	
 	public class CmdWolframAlpha extends Command {
 		public String command() {return "wolframalpha";}
-		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+		public String help(Parameters params) {
 			StringBuilder sb = new StringBuilder();
 			sb.append("wolframalpha/wa");
 			sb.append("\nwolframalpha {query} - shows WolframAlpha's result");
 			return sb.toString();
 		}
 		
-		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-			String[] args = message.split(" ");
-			StringBuilder sb = new StringBuilder();
-			for (int i = 1; i < args.length; i++) {
-				if (i != 1) sb.append(" ");
-				sb.append(args[i]);
-			}
-			
-			String result = getResult(channel, sb.toString());
+		public void doCommand(Parameters params, CommandCallback callback) {
+			String result = getResult(params.channel, params.input);
 			if (result == null) return;
-			result = Utils.mungeAllNicks(channel,0,result,sender.getNick());
+			result = Utils.mungeAllNicks(params.channel,0,result,params.sender.getNick());
 			callback.append(result);
 		}
 	}

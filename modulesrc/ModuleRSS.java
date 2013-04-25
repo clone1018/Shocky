@@ -24,6 +24,7 @@ import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
+import pl.shockah.shocky.cmds.Parameters;
 
 public class ModuleRSS extends Module {
 	private static final SimpleDateFormat sdf = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z",Locale.US);
@@ -209,9 +210,9 @@ public class ModuleRSS extends Module {
 	
 	public class CmdRSS extends Command {
 		public String command() {return "rss";}
-		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+		public String help(Parameters params) {
 			StringBuilder sb = new StringBuilder();
-			if (type == EType.Channel) {
+			if (params.type == EType.Channel) {
 				sb.append("rss [channel] - list feeds\n");
 				sb.append("[r:op] rss add [channel] {url} - add a new feed\n");
 				sb.append("[r:op] rss remove [channel] {url} - remove a feed");
@@ -223,44 +224,44 @@ public class ModuleRSS extends Module {
 			return sb.toString();
 		}
 		
-		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-			String[] args = message.split(" ");
+		public void doCommand(Parameters params, CommandCallback callback) {
+			String[] args = params.input.split(" ");
 			String action = null, url = null;
 			Channel c = null;
 			callback.type = EType.Notice;
 			
-			if (type == EType.Channel) {
-				if (args.length == 1) {
-					c = channel;
+			if (params.type == EType.Channel) {
+				if (args.length == 0) {
+					c = params.channel;
+				} else if (args.length == 1) {
+					c = Shocky.getChannel(args[0]);
 				} else if (args.length == 2) {
-					c = Shocky.getChannel(args[1]);
+					action = args[0];
+					c = params.channel;
+					url = args[1];
 				} else if (args.length == 3) {
-					action = args[1];
-					c = channel;
+					action = args[0];
+					c = Shocky.getChannel(args[1]);
 					url = args[2];
-				} else if (args.length == 4) {
-					action = args[1];
-					c = Shocky.getChannel(args[2]);
-					url = args[3];
 				}
 				if (c == null) {
 					callback.append("No such channel");
 					return;
 				}
 			} else {
-				if (args.length == 2) {
+				if (args.length == 1) {
+					c = Shocky.getChannel(args[0]);
+				} else if (args.length == 3) {
+					action = args[0];
 					c = Shocky.getChannel(args[1]);
-				} else if (args.length == 4) {
-					action = args[1];
-					c = Shocky.getChannel(args[2]);
-					url = args[3];
+					url = args[2];
 				}
 				if (c == null) {
 					callback.append("No such channel");
 					return;
 				}
 			}
-			if (action != null && !canUseOp(bot,type,c,sender)) return;
+			if (action != null) params.checkOp();
 			
 			if (action == null) {
 				StringBuffer sb = new StringBuffer();

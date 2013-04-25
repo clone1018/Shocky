@@ -12,7 +12,9 @@ import org.pircbotx.hooks.events.PrivateMessageEvent;
 import pl.shockah.*;
 import pl.shockah.shocky.*;
 import pl.shockah.shocky.Utils;
+import pl.shockah.shocky.cmds.AuthorizationException;
 import pl.shockah.shocky.cmds.Command;
+import pl.shockah.shocky.cmds.Parameters;
 import pl.shockah.shocky.cmds.Command.EType;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.lines.Line;
@@ -475,9 +477,13 @@ public class ModuleFactoid extends Module implements IFactoid {
 			Command cmd = Command.getCommand(bot,sender,channel.getName(),EType.Channel,callback,raw);
 			if (cmd != null && !(cmd instanceof CmdFactoid)) {
 				raw = parseVariables(bot, channel, sender, message, raw);
-				cmd.doCommand(bot,channel == null ? EType.Notice : EType.Channel,callback,channel,sender,raw);
-				if (callback.type == EType.Channel)
-					return callback.toString();
+				Parameters params = new Parameters(bot,channel == null ? EType.Notice : EType.Channel,channel,sender,raw);
+				try {
+					cmd.doCommand(params,callback);
+					if (callback.type == EType.Channel)
+						return callback.toString();
+				} catch (AuthorizationException e) {
+				}
 			}
 			return "";
 		} else {
@@ -717,31 +723,37 @@ public class ModuleFactoid extends Module implements IFactoid {
 	
 	public class CmdRemember extends Command {
 		public String command() {return "remember";}
-		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+		public String help(Parameters params) {
 			StringBuilder sb = new StringBuilder();
 			sb.append("remember/r");
 			sb.append("\nremember [.] {name} {raw} - remembers a factoid (use \".\" for local factoids)");
 			return sb.toString();
 		}
 		
-		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-			String[] args = StringTools.trimWhitespace(message).split(" ");
+		public void doCommand(Parameters params, CommandCallback callback) {
 			callback.type = EType.Notice;
-			if (args.length < 3 || (args.length == 3 && args[1].equals("."))) {
-				callback.append(help(bot,type,channel,sender));
+			if (params.tokenCount <= 2) {
+				callback.append(help(params));
 				return;
 			}
 			
-			String prefix = args[1].equals(".") ? channel.getName() : null;
-			String name = args[args[1].equals(".") ? 2 : 1].toLowerCase();
-			String rem = StringTools.implode(args,args[1].equals(".") ? 3 : 2," ");
+			String name = params.tokens.nextToken();
+			String prefix = null;
+			if (name.equals(".")) {
+				prefix = params.channel.getName();
+				name = params.tokens.nextToken();
+			}
+			
+			String rem = params.getParams(0);
+			if (rem.isEmpty())
+				return;
 			
 			Factoid f = getFactoid(prefix,name,false);
 			if (f != null && f.locked) callback.append("Factoid is locked"); else {
 				QueryInsert q = new QueryInsert(SQL.getTable("factoid"));
 				q.add("channel",prefix);
 				q.add("factoid",name);
-				q.add("author",sender.getNick());
+				q.add("author",params.sender.getNick());
 				q.add("rawtext",rem);
 				q.add("stamp",System.currentTimeMillis()/1000);
 				SQL.insert(q);
@@ -751,23 +763,28 @@ public class ModuleFactoid extends Module implements IFactoid {
 	}
 	public class CmdForget extends Command {
 		public String command() {return "forget";}
-		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+		public String help(Parameters params) {
 			StringBuilder sb = new StringBuilder();
 			sb.append("forget/f");
 			sb.append("\nforget [.] {name} - forgets a factoid (use \".\" for local factoids)");
 			return sb.toString();
 		}
 		
-		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-			String[] args = message.split(" ");
+		public void doCommand(Parameters params, CommandCallback callback) {
 			callback.type = EType.Notice;
-			if (args.length < 2 || (args.length == 2 && args[1].equals("."))) {
-				callback.append(help(bot,type,channel,sender));
+			if (params.tokenCount < 1) {
+				callback.append(help(params));
 				return;
 			}
 			
-			String prefix = args[1].equals(".") ? channel.getName() : null;
-			String name = args[args[1].equals(".") ? 2 : 1].toLowerCase();
+			String name = params.tokens.nextToken();
+			String prefix = null;
+			if (name.equals(".")) {
+				if (params.tokenCount < 2)
+					return;
+				prefix = params.channel.getName();
+				name = params.tokens.nextToken();
+			}
 			
 			Factoid f = getFactoid(prefix,name,false);
 			if (f == null) callback.append("No such factoid"); else {
@@ -780,7 +797,7 @@ public class ModuleFactoid extends Module implements IFactoid {
 					q.addCriterions(new CriterionNumber("stamp",CriterionNumber.Operation.Equals,f.stamp/1000));
 					q.set("forgotten",1);
 					SQL.update(q);
-					Shocky.sendNotice(bot,sender,"Done. Forgot: " + StringTools.limitLength(StringTools.formatLines(f.rawtext)));
+					Shocky.sendNotice(params.bot,params.sender,"Done. Forgot: " + StringTools.limitLength(StringTools.formatLines(f.rawtext)));
 				}
 			}
 		}
@@ -788,23 +805,28 @@ public class ModuleFactoid extends Module implements IFactoid {
 	
 	public class CmdUnforget extends Command {
 		public String command() {return "unforget";}
-		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+		public String help(Parameters params) {
 			StringBuilder sb = new StringBuilder();
 			sb.append("unforget/f");
 			sb.append("\nunforget [.] {name} - unforgets a factoid (use \".\" for local factoids)");
 			return sb.toString();
 		}
 		
-		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-			String[] args = message.split(" ");
+		public void doCommand(Parameters params, CommandCallback callback) {
 			callback.type = EType.Notice;
-			if (args.length < 2 || (args.length == 2 && args[1].equals("."))) {
-				callback.append(help(bot,type,channel,sender));
+			if (params.tokenCount < 1) {
+				callback.append(help(params));
 				return;
 			}
 			
-			String prefix = args[1].equals(".") ? channel.getName() : null;
-			String name = args[args[1].equals(".") ? 2 : 1].toLowerCase();
+			String name = params.tokens.nextToken();
+			String prefix = null;
+			if (name.equals(".")) {
+				if (params.tokenCount < 2)
+					return;
+				prefix = params.channel.getName();
+				name = params.tokens.nextToken();
+			}
 			
 			Factoid f = getFactoid(prefix,name,true);
 			if (f == null) callback.append("No such factoid"); else {
@@ -817,7 +839,7 @@ public class ModuleFactoid extends Module implements IFactoid {
 					q.addCriterions(new CriterionNumber("stamp",CriterionNumber.Operation.Equals,f.stamp/1000));
 					q.set("forgotten",0);
 					SQL.update(q);
-					Shocky.sendNotice(bot,sender,"Done. Unforgot: " + StringTools.limitLength(StringTools.formatLines(f.rawtext)));
+					Shocky.sendNotice(params.bot,params.sender,"Done. Unforgot: " + StringTools.limitLength(StringTools.formatLines(f.rawtext)));
 				}
 			}
 		}
@@ -825,7 +847,7 @@ public class ModuleFactoid extends Module implements IFactoid {
 	
 	public class CmdFactoidCmd extends Command {
 		public String command() {return "factoidcmd";}
-		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+		public String help(Parameters params) {
 			StringBuilder sb = new StringBuilder();
 			sb.append("factoidcmd/fcmd");
 			sb.append("\nfactoidcmd - lists commands being aliases for factoids");
@@ -834,12 +856,11 @@ public class ModuleFactoid extends Module implements IFactoid {
 			return sb.toString();
 		}
 		
-		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-			if (!canUseController(bot,type,sender)) return;
+		public void doCommand(Parameters params, CommandCallback callback) {
+			params.checkController();
 			callback.type = EType.Notice;
 			
-			String[] args = message.split(" ");
-			if (args.length == 1) {
+			if (params.tokenCount == 0) {
 				StringBuilder sb = new StringBuilder();
 				for (Entry<CmdFactoid, String> cmd : fcmds.entrySet()) {
 					if (sb.length() != 0) sb.append(", ");
@@ -847,38 +868,42 @@ public class ModuleFactoid extends Module implements IFactoid {
 				}
 				callback.append(sb);
 				return;
-			} else if (args.length == 3 && args[1].equals("remove")) {
-				for (Entry<CmdFactoid, String> c : fcmds.entrySet()) {
-					for (String s : c.getValue().split(";")) if (s.equals(args[2])) {
-						Command.removeCommands(c.getKey());
-						fcmds.remove(c.getKey());
-						callback.append("Removed.");
-						return;
+			} else if (params.tokenCount >= 2) {
+				String method = params.tokens.nextToken();
+				String name = params.tokens.nextToken();
+				if (method.equalsIgnoreCase("remove")) {
+					for (Entry<CmdFactoid, String> c : fcmds.entrySet()) {
+						for (String s : c.getValue().split(";")) if (s.equals(name)) {
+							Command.removeCommands(c.getKey());
+							fcmds.remove(c.getKey());
+							callback.append("Removed.");
+							return;
+						}
 					}
-				}
-				return;
-			} else if (args.length == 4 && args[1].equals("add")) {
-				for (Iterator<Entry<CmdFactoid, String>> iter = fcmds.entrySet().iterator(); iter.hasNext();) {
-					Entry<CmdFactoid, String> c = iter.next();
-					for (String s : c.getValue().split(";")) if (s.equals(args[2])) {
-						Command.removeCommands(c.getKey());
-						iter.remove();
-						break;
+					return;
+				} else if (params.tokenCount == 3 && method.equalsIgnoreCase("add")) {
+					String factoid = params.tokens.nextToken();
+					for (Iterator<Entry<CmdFactoid, String>> iter = fcmds.entrySet().iterator(); iter.hasNext();) {
+						Entry<CmdFactoid, String> c = iter.next();
+						for (String s : c.getValue().split(";")) if (s.equals(name)) {
+							Command.removeCommands(c.getKey());
+							iter.remove();
+							break;
+						}
 					}
+					String names[] = name.split(";");
+					CmdFactoid cmd = new CmdFactoid(names[0],factoid.toLowerCase());
+					fcmds.put(cmd, name);
+					Command.addCommand(this, cmd.command(), cmd);
+					for (int i = 1; i < names.length; i++) {
+						Command.addCommand(this, names[i], cmd);
+					}
+					callback.append("Added.");
+					return;
 				}
-				String name = args[2];
-				String names[] = name.split(";");
-				CmdFactoid cmd = new CmdFactoid(names[0],args[3].toLowerCase());
-				fcmds.put(cmd, name);
-				Command.addCommand(this, cmd.command(), cmd);
-				for (int i = 1; i < names.length; i++) {
-					Command.addCommand(this, names[i], cmd);
-				}
-				callback.append("Added.");
-				return;
 			}
 			
-			callback.append(help(bot,type,channel,sender));
+			callback.append(help(params));
 		}
 	}
 	public class CmdFactoid extends Command {
@@ -891,17 +916,24 @@ public class ModuleFactoid extends Module implements IFactoid {
 		}
 		
 		public String command() {return cmd;}
-		public String help(PircBotX bot, EType type, Channel channel, User sender) {return "";}
+		public String help(Parameters params) {return "";}
 		
-		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-			if (type != EType.Channel) return;
-			String[] args = message.split(" ");
-			onMessage(bot,channel,sender,""+Data.forChannel(channel).getString("factoid-char").charAt(0)+factoid+(args.length > 1 ? " "+StringTools.implode(message,1," ") : ""));
+		public void doCommand(Parameters params, CommandCallback callback) {
+			if (params.type != EType.Channel) return;
+			StringBuilder sb = new StringBuilder();
+			sb.append(Data.forChannel(params.channel).getString("factoid-char").charAt(0));
+			sb.append(factoid);
+			if (!params.input.isEmpty())
+			{
+				sb.append(' ');
+				sb.append(params.input);
+			}
+			onMessage(params.bot,params.channel,params.sender,sb.toString());
 		}
 	}
 	public class CmdManage extends Command {
 		public String command() {return "factoidmanage";}
-		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+		public String help(Parameters params) {
 			StringBuilder sb = new StringBuilder();
 			sb.append("factoidmanage/fmanage/fmng");
 			sb.append("\n[r:op/controller] factoidmanage lock [.] {factoid} - locks a factoid");
@@ -909,62 +941,65 @@ public class ModuleFactoid extends Module implements IFactoid {
 			return sb.toString();
 		}
 		
-		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-			if (!canUseAny(bot,type,channel,sender)) return;
+		public void doCommand(Parameters params, CommandCallback callback) {
+			params.checkAny();
 			callback.type = EType.Notice;
 			
-			String[] args = message.split(" ");
-			if (args.length == 3 || args.length == 4) {
-				boolean local = args[2].equals(".");
-				if (args.length == 3+(local ? 1 : 0)) {
-					String factoid = (local ? args[3] : args[2]).toLowerCase();
-					if (args[1].equals("lock")) {
-						if ((local && canUseOp(bot,type,channel,sender)) || (!local && canUseController(bot,type,sender))) {
-							Factoid f = getFactoid(local ? channel.getName() : null,factoid,false);
-							if (f == null) {
-								callback.append("No such factoid");
-								return;
-							}
-							if (f.locked) {
-								callback.append("Already locked");
-								return;
-							}
-							
-							QueryUpdate q = new QueryUpdate(SQL.getTable("factoid"));
-							q.set("locked",1);
-							q.addCriterions(new CriterionString("channel",local ? channel.getName() : null),new CriterionString("factoid",factoid));
-							q.addOrder("stamp",false);
-							q.setLimitCount(1);
-							SQL.update(q);
-							callback.append("Done");
-							return;
-						}
-					} else if (args[1].equals("unlock")) {
-						if ((local && canUseOp(bot,type,channel,sender)) || (!local && canUseController(bot,type,sender))) {
-							Factoid f = getFactoid(local ? channel.getName() : null,factoid);
-							if (f == null) {
-								callback.append("No such factoid");
-								return;
-							}
-							if (!f.locked) {
-								callback.append("Already unlocked");
-								return;
-							}
-							
-							QueryUpdate q = new QueryUpdate(SQL.getTable("factoid"));
-							q.set("locked",0);
-							q.addCriterions(new CriterionString("channel",local ? channel.getName() : null),new CriterionString("factoid",factoid));
-							q.addOrder("stamp",false);
-							q.setLimitCount(1);
-							SQL.update(q);
-							callback.append("Done");
-							return;
-						}
+			if (params.tokenCount >= 2) {
+				String method = params.tokens.nextToken();
+				String factoid = params.tokens.nextToken();
+				boolean local = false;
+				if (params.tokenCount >= 3 && factoid.equals(".")) {
+					local = true;
+					factoid = params.tokens.nextToken();
+				}
+				factoid = factoid.toLowerCase();
+				if (method.equalsIgnoreCase("lock")) {
+					if (local) params.checkOp();
+					else params.checkController();
+					Factoid f = getFactoid(local ? params.channel.getName() : null,factoid,false);
+					if (f == null) {
+						callback.append("No such factoid");
+						return;
 					}
+					if (f.locked) {
+						callback.append("Already locked");
+						return;
+					}
+							
+					QueryUpdate q = new QueryUpdate(SQL.getTable("factoid"));
+					q.set("locked",1);
+					q.addCriterions(new CriterionString("channel",local ? params.channel.getName() : null),new CriterionString("factoid",factoid));
+					q.addOrder("stamp",false);
+					q.setLimitCount(1);
+					SQL.update(q);
+					callback.append("Done");
+					return;
+				} else if (method.equalsIgnoreCase("unlock")) {
+					if (local) params.checkOp();
+					else params.checkController();
+					Factoid f = getFactoid(local ? params.channel.getName() : null,factoid);
+					if (f == null) {
+						callback.append("No such factoid");
+						return;
+					}
+					if (!f.locked) {
+						callback.append("Already unlocked");
+						return;
+					}
+							
+					QueryUpdate q = new QueryUpdate(SQL.getTable("factoid"));
+					q.set("locked",0);
+					q.addCriterions(new CriterionString("channel",local ? params.channel.getName() : null),new CriterionString("factoid",factoid));
+					q.addOrder("stamp",false);
+					q.setLimitCount(1);
+					SQL.update(q);
+					callback.append("Done");
+					return;
 				}
 			}
 			
-			callback.append(help(bot,type,channel,sender));
+			callback.append(help(params));
 		}
 	}
 }

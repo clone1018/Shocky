@@ -2,20 +2,16 @@ package pl.shockah.shocky.cmds;
 
 import java.net.URL;
 import java.util.ArrayList;
-import org.pircbotx.Channel;
 import org.pircbotx.Colors;
-import org.pircbotx.PircBotX;
-import org.pircbotx.User;
 
 import pl.shockah.Config;
-import pl.shockah.StringTools;
 import pl.shockah.shocky.Data;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.ModuleSource;
 
 public class CmdModule extends Command {
 	public String command() {return "module";}
-	public String help(PircBotX bot, EType type, Channel channel, User sender) {
+	public String help(Parameters params) {
 		StringBuilder sb = new StringBuilder();
 		sb.append("module - list modules\n");
 		sb.append("module on/off - list enabled/disabled modules\n");
@@ -28,36 +24,72 @@ public class CmdModule extends Command {
 		return sb.toString();
 	}
 	
-	public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-		String[] args = message.split(" ");
+	public void doCommand(Parameters params, CommandCallback callback) {
 		callback.type = EType.Notice;
 		
-		if (args.length == 1) {
+		if (params.tokenCount == 0) {
 			ArrayList<Module> modules = Module.getModules();
 			StringBuilder sb = new StringBuilder();
 			for (Module module : modules) {
 				if (sb.length() != 0) sb.append(", ");
-				sb.append(module.isEnabled(channel.getName()) ? Colors.DARK_GREEN : Colors.RED);
+				sb.append(module.isEnabled(params.channel.getName()) ? Colors.DARK_GREEN : Colors.RED);
 				sb.append(module.name());
 				sb.append(Colors.NORMAL);
 			}
 			callback.append(sb);
 			return;
-		}
-		
-		if (args.length == 2) {
-			if (args[1].equalsIgnoreCase("on") || args[1].equalsIgnoreCase("off")) {
-				boolean state = args[1].equalsIgnoreCase("on");
-				ArrayList<Module> modules = Module.getModules(state);
-				StringBuilder sb = new StringBuilder();
-				for (Module module : modules) {
-					if (sb.length() != 0) sb.append(", ");
-					sb.append(module.name());
+		} else if (params.tokenCount >= 1) {
+			String method = params.tokens.nextToken();
+			if (method.equalsIgnoreCase("on") || method.equalsIgnoreCase("off")) {
+				boolean state = method.equalsIgnoreCase("on");
+				if (params.tokenCount >= 2) {
+					String moduleName = params.tokens.nextToken();
+					Module module = Module.getModule(moduleName);
+					boolean global = false;
+					if (module == null) {
+						callback.append("No such module");
+						return;
+					}
+					String channelName;
+					Config config;
+					
+					if (params.tokenCount >= 3) {
+						String globalString = params.tokens.nextToken();
+						if (globalString.equalsIgnoreCase("global"))
+							global = true;
+					}
+						
+					if (global) {
+						params.checkController();
+						channelName = null;
+						config = Data.config;
+					} else {
+						params.checkOp();
+						channelName = params.channel.getName();
+						config = Data.forChannel(params.channel);
+					}
+					
+					if (state) {
+						callback.append(Module.enable(module,channelName) ? "Enabled" : "Failed");
+						config.set("module-"+module.name(),true);
+						return;
+					} else {
+						callback.append(Module.disable(module,channelName) ? "Disabled" : "Failed");
+						config.set("module-"+module.name(),false);
+						return;
+					}
+				} else {
+					ArrayList<Module> modules = Module.getModules(state);
+					StringBuilder sb = new StringBuilder();
+					for (Module module : modules) {
+						if (sb.length() != 0) sb.append(", ");
+						sb.append(module.name());
+					}
+					callback.append(sb);
+					return;
 				}
-				callback.append(sb);
-				return;
-			} else if (args[1].equalsIgnoreCase("loadnew")) {
-				if (!canUseController(bot,type,sender)) return;
+			} else if (method.equalsIgnoreCase("loadnew")) {
+				params.checkController();
 				ArrayList<Module> modules = Module.loadNewModules();
 				if (modules.isEmpty()) {
 					callback.append("No new modules found");
@@ -71,65 +103,38 @@ public class CmdModule extends Command {
 					callback.append(sb);
 				}
 				return;
-			} else if (args[1].equalsIgnoreCase("reloadall")) {
-				if (!canUseController(bot,type,sender)) return;
+			} else if (method.equalsIgnoreCase("reloadall")) {
+				params.checkController();
 				ArrayList<Module> modules = Module.getModules(true);
 				for (Module module : modules) Module.reload(module);
 				callback.append("Reloaded all modules");
 				return;
-			}
-		}
-		
-		if (args.length == 3 || args.length == 4) {
-			Module module = Module.getModule(args[2]);
-			if (module == null) {
-				callback.append("No such module");
+			} else if (params.tokenCount >= 2 && (method.equalsIgnoreCase("reload") || method.equalsIgnoreCase("unload"))) {
+				params.checkController();
+				boolean state = method.equalsIgnoreCase("reload");
+				String moduleName = params.tokens.nextToken();
+				Module module = Module.getModule(moduleName);
+				if (module == null) {
+					callback.append("No such module");
+					return;
+				}
+				if (state)
+					callback.append(Module.reload(module) ? "Reloaded" : "Failed");
+				else
+					callback.append(Module.unload(module) ? "Unloaded" : "Failed");
 				return;
-			}
-			
-			String channelName;
-			Config config;
-			
-			if (args.length == 4 && args[3].equalsIgnoreCase("global")) {
-				if (!canUseController(bot,type,sender)) return;
-				channelName = null;
-				config = Data.config;
-			} else {
-				if (!canUseOp(bot,type,channel,sender)) return;
-				channelName = channel.getName();
-				config = Data.forChannel(channel);
-			}
-			
-			if (args[1].equalsIgnoreCase("on")) {
-				callback.append(Module.enable(module,channelName) ? "Enabled" : "Failed");
-				config.set("module-"+module.name(),true);
-				return;
-			} else if (args[1].equalsIgnoreCase("off")) {
-				callback.append(Module.disable(module,channelName) ? "Disabled" : "Failed");
-				config.set("module-"+module.name(),false);
-				return;
-			} else if (args[1].equalsIgnoreCase("reload")) {
-				if (!canUseController(bot,type,sender)) return;
-				callback.append(Module.reload(module) ? "Reloaded" : "Failed");
-				return;
-			} else if (args[1].equalsIgnoreCase("unload")) {
-				if (!canUseController(bot,type,sender)) return;
-				callback.append(Module.unload(module) ? "Unloaded" : "Failed");
-				return;
-			}
-		}
-		
-		if (args.length >= 3) {
-			if (args[1].equalsIgnoreCase("loadhttp")) {
-				if (!canUseController(bot,type,sender)) return;
+			} else if (params.tokenCount >= 2 && method.equalsIgnoreCase("loadhttp")) {
+				params.checkController();
 				try {
-					URL url = new URL(StringTools.implode(message,2," "));
+					URL url = new URL(params.getParams(0));
 					callback.append(Module.load(new ModuleSource<URL>(url)) != null ? "Loaded" : "Failed");
-				} catch (Exception e) {e.printStackTrace();}
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
 				return;
 			}
 		}
 		
-		callback.append(help(bot,type,channel,sender));
+		callback.append(help(params));
 	}
 }

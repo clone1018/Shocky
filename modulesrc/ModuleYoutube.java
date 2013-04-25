@@ -3,10 +3,8 @@ import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.json.JSONObject;
-import org.pircbotx.Channel;
 import org.pircbotx.Colors;
 import org.pircbotx.PircBotX;
-import org.pircbotx.User;
 import org.pircbotx.hooks.events.ActionEvent;
 import org.pircbotx.hooks.events.MessageEvent;
 import pl.shockah.HTTPQuery;
@@ -17,6 +15,7 @@ import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
+import pl.shockah.shocky.cmds.Parameters;
 
 public class ModuleYoutube extends Module {
 	protected Command cmd;
@@ -140,30 +139,23 @@ public class ModuleYoutube extends Module {
 	
 	public class CmdYoutube extends Command {
 		public String command() {return "youtube";}
-		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+		public String help(Parameters params) {
 			StringBuilder sb = new StringBuilder();
 			sb.append("youtube/yt/y");
 			sb.append("\nyoutube {query} - returns the first YouTube search result");
 			return sb.toString();
 		}
 		
-		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-			String[] args = message.split(" ");
-			if (args.length == 1) {
+		public void doCommand(Parameters params, CommandCallback callback) {
+			if (params.tokenCount == 0) {
 				callback.type = EType.Notice;
-				callback.append(help(bot,type,channel,sender));
+				callback.append(help(params));
 				return;
 			}
 			
-			StringBuilder sb = new StringBuilder();
-			for (int i = 1; i < args.length; i++) {
-				if (i != 1) sb.append(" ");
-				sb.append(args[i]);
-			}
-			
-			String search = getVideoSearch(sb.toString(),!Data.forChannel(channel).getBoolean("yt-otherbot"),true);
+			String search = getVideoSearch(params.input,!Data.forChannel(params.channel).getBoolean("yt-otherbot"),true);
 			if (search != null && !search.isEmpty()) {
-				search = Utils.mungeAllNicks(channel,0,search,sender.getNick());
+				search = Utils.mungeAllNicks(params.channel,0,search,params.sender.getNick());
 				callback.append(search);
 			} else {
 				callback.type = EType.Notice;

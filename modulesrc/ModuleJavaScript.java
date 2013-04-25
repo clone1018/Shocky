@@ -26,6 +26,7 @@ import pl.shockah.shocky.ScriptModule;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
+import pl.shockah.shocky.cmds.Parameters;
 import pl.shockah.shocky.cmds.Command.EType;
 import pl.shockah.shocky.threads.SandboxSecurityManager;
 import pl.shockah.shocky.threads.SandboxThreadFactory;
@@ -102,23 +103,20 @@ public class ModuleJavaScript extends ScriptModule {
 
 	public class CmdJavascript extends Command {
 		public String command() {return "javascript";}
-		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+		public String help(Parameters params) {
 			return "javascript/js\njavascript {code} - runs JavaScript code";
 		}
 
-		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-			String[] args = message.split(" ");
-			if (args.length < 2) {
+		public void doCommand(Parameters params, CommandCallback callback) {
+			if (params.tokenCount < 1) {
 				callback.type = EType.Notice;
-				callback.append(help(bot,type,channel,sender));
+				callback.append(help(params));
 				return;
 			}
-
-			System.out.println(message);
-			String output = parse(null,bot,type,channel,sender,StringTools.implode(message,1," "),null);
-			if (output != null && !output.isEmpty()) {
+			
+			String output = parse(null,params.bot,params.type,params.channel,params.sender,params.input,null);
+			if (output != null && !output.isEmpty())
 				callback.append(StringTools.limitLength(StringTools.formatLines(output)));
-			}
 		}
 	}
 	

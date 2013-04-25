@@ -1,21 +1,17 @@
 package pl.shockah.shocky.cmds;
 
-import org.pircbotx.Channel;
-import org.pircbotx.PircBotX;
-import org.pircbotx.User;
-
 import pl.shockah.shocky.Module;
 
 public class CmdClean extends Command {
 	public String command() {return "clean";}
-	public String help(PircBotX bot, EType type, Channel channel, User sender) {
+	public String help(Parameters params) {
 		return "[r:controller] clean - cleans up certain modules";
 	}
 	
-	public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-		if (!canUseController(bot,type,sender)) return;
+	public void doCommand(Parameters params, CommandCallback callback) {
+		params.checkController();
 		callback.type = EType.Notice;
 		for (Module module : Module.getModules())
-			module.onCleanup(bot, callback, sender);
+			module.onCleanup(params.bot, callback, params.sender);
 	}
 }

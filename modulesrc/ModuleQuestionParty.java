@@ -4,13 +4,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringEscapeUtils;
-import org.pircbotx.Channel;
-import org.pircbotx.PircBotX;
-import org.pircbotx.User;
 import pl.shockah.HTTPQuery;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
+import pl.shockah.shocky.cmds.Parameters;
 
 public class ModuleQuestionParty extends Module {
 	protected Command cmd;
@@ -59,14 +57,14 @@ public class ModuleQuestionParty extends Module {
 	
 	public class CmdQuestionParty extends Command {
 		public String command() {return "questionparty";}
-		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+		public String help(Parameters params) {
 			StringBuilder sb = new StringBuilder();
 			sb.append("questionparty/qparty");
 			sb.append("\nquestionparty - random question with up to 5 random answers");
 			return sb.toString();
 		}
 		
-		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
+		public void doCommand(Parameters params, CommandCallback callback) {
 			callback.append(getQ());
 		}
 	}

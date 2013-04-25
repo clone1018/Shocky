@@ -1,21 +1,18 @@
 package pl.shockah.shocky.cmds;
 
-import org.pircbotx.Channel;
-import org.pircbotx.PircBotX;
-import org.pircbotx.User;
-import pl.shockah.StringTools;
 import pl.shockah.shocky.Shocky;
 
 public class CmdDie extends Command {
 	public String command() {return "die";}
-	public String help(PircBotX bot, EType type, Channel channel, User sender) {
+	public String help(Parameters params) {
 		return "[r:controller] die - shutdowns the bot";
 	}
 	
-	public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-		if (!canUseController(bot,type,sender)) return;
+	public void doCommand(Parameters params, CommandCallback callback) {
+		params.checkController();
 		
-		String[] args = message.split(" ");
-		if (args.length == 1) Shocky.die(); else Shocky.die(StringTools.implode(message,1," "));
+		if (params.tokenCount == 0)
+			Shocky.die();
+		else Shocky.die(params.getParams(1));
 	}
 }

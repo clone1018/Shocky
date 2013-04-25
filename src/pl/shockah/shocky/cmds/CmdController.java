@@ -1,14 +1,12 @@
 package pl.shockah.shocky.cmds;
 
-import org.pircbotx.Channel;
-import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 import pl.shockah.shocky.Data;
 import pl.shockah.shocky.Shocky;
 
 public class CmdController extends Command {
 	public String command() {return "controller";}
-	public String help(PircBotX bot, EType type, Channel channel, User sender) {
+	public String help(Parameters params) {
 		StringBuilder sb = new StringBuilder();
 		sb.append("[r:controller] controller - list controllers of the bot\n");
 		sb.append("[r:controller] controller add {nick/login} - adds a new controller\n");
@@ -16,12 +14,11 @@ public class CmdController extends Command {
 		return sb.toString();
 	}
 	
-	public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-		if (!canUseController(bot,type,sender)) return;
-		String[] args = message.split(" ");
+	public void doCommand(Parameters params, CommandCallback callback) {
+		params.checkController();
 		callback.type = EType.Notice;
 		
-		if (args.length == 1) {
+		if (params.tokenCount == 0) {
 			StringBuilder sb = new StringBuilder();
 			for (String controller : Data.controllers) {
 				if (sb.length() != 0) sb.append(", ");
@@ -31,36 +28,37 @@ public class CmdController extends Command {
 			return;
 		}
 		
-		if (args.length == 3) {
-			String s = args[2];
-			User u = Shocky.getUser(args[2]);
-			if (!Data.controllers.contains(s) && u != null) {
-				if (Shocky.getLogin(u) == null) {
-					callback.append(s+" isn't identified");
+		if (params.tokenCount == 2) {
+			String method = params.tokens.nextToken().toLowerCase();
+			String username = params.tokens.nextToken();
+			User user = Shocky.getUser(username);
+			if (!Data.controllers.contains(username) && user != null) {
+				if (Shocky.getLogin(user) == null) {
+					callback.append(username+" isn't identified");
 					return;
 				}
-				s = Shocky.getLogin(u);
+				username = Shocky.getLogin(user);
 			}
 			
-			if (args[1].toLowerCase().equals("add")) {
-				if (Data.controllers.contains(s)) {
-					callback.append(s+" is already a controller");
+			if (method.equals("add")) {
+				if (Data.controllers.contains(username)) {
+					callback.append(username+" is already a controller");
 				} else {
-					Data.controllers.add(s);
+					Data.controllers.add(username);
 					callback.append("Added");
 				}
 				return;
-			} else if (args[1].toLowerCase().equals("remove")) {
-				if (!Data.controllers.contains(s)) {
-					callback.append(s+" isn't a controller");
+			} else if (method.equals("remove")) {
+				if (!Data.controllers.contains(username)) {
+					callback.append(username+" isn't a controller");
 				} else {
-					Data.controllers.remove(s);
+					Data.controllers.remove(username);
 					callback.append("Removed");
 				}
 				return;
 			}
 		}
 		
-		callback.append(help(bot,type,channel,sender));
+		callback.append(help(params));
 	}
 }

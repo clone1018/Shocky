@@ -14,14 +14,11 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.pircbotx.Channel;
-import org.pircbotx.PircBotX;
-import org.pircbotx.User;
-
 import pl.shockah.StringTools;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
+import pl.shockah.shocky.cmds.Parameters;
 
 public class ModuleDFWords extends Module {
 
@@ -602,8 +599,7 @@ public class ModuleDFWords extends Module {
 			return "dfwords";
 		}
 
-		public String help(PircBotX bot, EType type, Channel channel,
-				User sender) {
+		public String help(Parameters params) {
 			StringBuilder sb = new StringBuilder();
 			sb.append("dfwords/g");
 			sb.append("\ndfwords {query} - returns a random line using given tags");
@@ -611,17 +607,14 @@ public class ModuleDFWords extends Module {
 		}
 
 		@Override
-		public void doCommand(PircBotX bot, EType type,
-				CommandCallback callback, Channel channel, User sender,
-				String message) {
-			String[] args = message.split(" ");
-			if (args.length == 1) {
+		public void doCommand(Parameters params, CommandCallback callback) {
+			if (params.tokenCount == 0) {
 				callback.type = EType.Notice;
-				callback.append(help(bot, type, channel, sender));
+				callback.append(help(params));
 				return;
 			}
 
-			callback.append(parse(StringTools.implode(message, 1, " ")));
+			callback.append(parse(params.input));
 		}
 	}
 }

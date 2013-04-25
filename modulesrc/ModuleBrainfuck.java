@@ -12,6 +12,7 @@ import pl.shockah.ZeroInputStream;
 import pl.shockah.shocky.ScriptModule;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
+import pl.shockah.shocky.cmds.Parameters;
 import pl.shockah.shocky.cmds.Command.EType;
 
 public class ModuleBrainfuck extends ScriptModule {
@@ -50,19 +51,18 @@ public class ModuleBrainfuck extends ScriptModule {
 	
 	public class CmdBrainfuck extends Command {
 		public String command() {return "brainfuck";}
-		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+		public String help(Parameters params) {
 			return "brainfuck/bf\nbrainfuck {code} - runs brainfuck code";
 		}
 		
-		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-			String[] args = message.split(" ");
-			if (args.length < 2) {
+		public void doCommand(Parameters params, CommandCallback callback) {
+			if (params.tokenCount < 1) {
 				callback.type = EType.Notice;
-				callback.append(help(bot,type,channel,sender));
+				callback.append(help(params));
 				return;
 			}
 			
-			String output = parse(null,bot,type,channel,sender,StringTools.implode(message,1," "),null);
+			String output = parse(null,params.bot,params.type,params.channel,params.sender,params.input,null);
 			if (output != null && !output.isEmpty())
 				callback.append(StringTools.limitLength(StringTools.formatLines(output)));
 		}

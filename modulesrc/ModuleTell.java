@@ -3,7 +3,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
-import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 import org.pircbotx.hooks.events.ActionEvent;
@@ -22,6 +21,7 @@ import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
+import pl.shockah.shocky.cmds.Parameters;
 import pl.shockah.shocky.cmds.Command.EType;
 import pl.shockah.shocky.lines.LineMessage;
 import pl.shockah.shocky.prototypes.ISeen;
@@ -86,22 +86,21 @@ public class ModuleTell extends Module {
 	
 	public class CmdTell extends Command {
 		public String command() {return "tell";}
-		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+		public String help(Parameters params) {
 			return "tell {user} {message} - relay the message to user";
 		}
 		
-		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-			String[] args = message.split(" ");
+		public void doCommand(Parameters params, CommandCallback callback) {
 			callback.type = EType.Notice;
-			if (args.length < 3) {
-				callback.append(help(bot,type,channel,sender));
+			if (params.tokenCount < 2) {
+				callback.append(help(params));
 				return;
 			}
 			
-			String target = args[1];
+			String target = params.tokens.nextToken();
 			
 			Module seenModule = Module.getModule("seen");
-			if (seenModule != null && seenModule instanceof ISeen && seenModule.isEnabled(channel.getName())) {
+			if (seenModule != null && seenModule instanceof ISeen && seenModule.isEnabled(params.channel.getName())) {
 				ISeen seen = (ISeen)seenModule;
 				if (!seen.hasSeen(target)) {
 					callback.append("I do not know ").append(target);
@@ -109,14 +108,14 @@ public class ModuleTell extends Module {
 				}
 			}
 			
-			String tell = StringTools.implode(message,2," ");
+			String tell = params.getParams(0);
 			if (tell.length() > Data.config.getInt("main-messagelength"))
 			{
 				callback.append("I dare not send such a lengthy message");
 				return;
 			}
 			
-			addTell(target,new LineMessage("",sender.getNick(),tell));
+			addTell(target,new LineMessage("",params.sender.getNick(),tell));
 			callback.append("I'll pass that along");
 		}
 	}

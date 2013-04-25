@@ -1,15 +1,13 @@
 import java.net.URLEncoder;
 import org.json.JSONObject;
-import org.pircbotx.Channel;
 import org.pircbotx.Colors;
-import org.pircbotx.PircBotX;
-import org.pircbotx.User;
 import pl.shockah.HTTPQuery;
 import pl.shockah.StringTools;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
+import pl.shockah.shocky.cmds.Parameters;
 
 public class ModuleUrban extends Module {
 	protected Command cmd;
@@ -28,31 +26,24 @@ public class ModuleUrban extends Module {
 	
 	public class CmdUrban extends Command {
 		public String command() {return "urban";}
-		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+		public String help(Parameters params) {
 			StringBuilder sb = new StringBuilder();
 			sb.append("urban");
 			sb.append("\nurban {query} - returns the first Urban dictionary search result");
 			return sb.toString();
 		}
 		
-		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-			String[] args = message.split(" ");
-			if (args.length == 1) {
+		public void doCommand(Parameters params, CommandCallback callback) {
+			if (params.tokenCount == 0) {
 				callback.type = EType.Notice;
-				callback.append(help(bot,type,channel,sender));
+				callback.append(help(params));
 				return;
-			}
-			
-			StringBuilder sb = new StringBuilder();
-			for (int i = 1; i < args.length; i++) {
-				if (i != 1) sb.append(" ");
-				sb.append(args[i]);
 			}
 			
 			HTTPQuery q;
 			StringBuilder result = new StringBuilder();
 			try {
-				q = HTTPQuery.create("http://api.urbandictionary.com/v0/define?term=" + URLEncoder.encode(sb.toString(), "UTF8"));
+				q = HTTPQuery.create("http://api.urbandictionary.com/v0/define?term=" + URLEncoder.encode(params.input, "UTF8"));
 			} catch (Exception e) {
 				e.printStackTrace();
 				return;

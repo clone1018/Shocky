@@ -1,11 +1,9 @@
 import java.util.Random;
-import org.pircbotx.Channel;
-import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 import pl.shockah.shocky.Module;
-import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
+import pl.shockah.shocky.cmds.Parameters;
 
 public class ModuleProbability extends Module {
 	protected Command cmd;
@@ -24,30 +22,30 @@ public class ModuleProbability extends Module {
 	
 	public class CmdProbability extends Command {
 		public String command() {return "probability";}
-		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+		public String help(Parameters params) {
 			return "probability {user} - check what the sensor is saying";
 		}
 		
-		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-			String[] args = message.split(" ");
-			if (args.length != 2) {
+		public void doCommand(Parameters params, CommandCallback callback) {
+			if (params.tokenCount != 1) {
 				callback.type = EType.Notice;
-				callback.append(help(bot,type,channel,sender));
+				callback.append(help(params));
 				return;
 			}
 			
-			User u = Shocky.getUser(bot,args[1]);
-			if (u == null) {
+			String username = params.tokens.nextToken();
+			User user = params.bot.getUser(username);
+			if (user == null) {
 				callback.type = EType.Notice;
 				callback.append("No such user");
 				return;
 			}
 			
-			Random rnd = getRandom(u);
+			Random rnd = getRandom(user);
 			callback.append("I am detecting a ");
 			callback.append(getRandomProbability(rnd));
 			callback.append("% probability that ");
-			callback.append(u.getNick());
+			callback.append(user.getNick());
 			callback.append(" is ");
 			callback.append(getRandomAdjective(rnd));
 		}

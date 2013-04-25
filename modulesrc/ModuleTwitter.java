@@ -4,9 +4,7 @@ import java.util.Locale;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
-import org.pircbotx.User;
 import org.pircbotx.hooks.events.MessageEvent;
 import pl.shockah.HTTPQuery;
 import pl.shockah.StringTools;
@@ -17,6 +15,7 @@ import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
+import pl.shockah.shocky.cmds.Parameters;
 
 public class ModuleTwitter extends Module {
 	private final static SimpleDateFormat sdf = new SimpleDateFormat("EEE MMM dd HH:mm:ss Z yyyy",Locale.US);
@@ -72,20 +71,26 @@ public class ModuleTwitter extends Module {
 	
 	public class CmdTwitter extends Command {
 		public String command() {return "twitter";}
-		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+		public String help(Parameters params) {
 			return "twitter\ntwitter {nick} [index] - returns a tweet";
 		}
 		
-		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-			String[] args = message.split(" ");
-			if (args.length < 2 || args.length > 3) {
+		public void doCommand(Parameters params, CommandCallback callback) {
+			if (params.tokenCount < 1 || params.tokenCount > 2) {
 				callback.type = EType.Notice;
-				callback.append(help(bot,type,channel,sender));
+				callback.append(help(params));
 				return;
 			}
 			
-			String nick = args[1];
-			int index = args.length == 3 ? Integer.parseInt(args[2]) : 1;
+			String nick = params.tokens.nextToken();
+			int index = 1;
+			if (params.tokenCount == 2) {
+				String indexString = params.tokens.nextToken();
+				try {
+					index = Integer.parseInt(indexString);
+				}
+				catch (NumberFormatException e) {}
+			}
 			
 			if (index < 1 || index > 20) {
 				callback.type = EType.Notice;
@@ -106,7 +111,7 @@ public class ModuleTwitter extends Module {
 				author += " (@"+user.getElement("screen_name").getValue()+")";
 				String tweet = status.getElement("text").getValue();
 				Date date = sdf.parse(status.getElement("created_at").getValue());
-				callback.append(Utils.mungeAllNicks(channel,0,author+", "+Utils.timeAgo(date)+": "+tweet,sender.getNick()));
+				callback.append(Utils.mungeAllNicks(params.channel,0,author+", "+Utils.timeAgo(date)+": "+tweet,params.sender.getNick()));
 			} catch (Exception e) {e.printStackTrace();}
 		}
 	}

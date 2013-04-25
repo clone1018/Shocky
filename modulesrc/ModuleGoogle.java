@@ -1,14 +1,12 @@
 import java.net.URLEncoder;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.pircbotx.Channel;
-import org.pircbotx.PircBotX;
-import org.pircbotx.User;
 import pl.shockah.HTTPQuery;
 import pl.shockah.StringTools;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
+import pl.shockah.shocky.cmds.Parameters;
 import pl.shockah.shocky.cmds.Command.EType;
 
 public class ModuleGoogle extends Module {
@@ -30,18 +28,16 @@ public class ModuleGoogle extends Module {
 		Command.removeCommands(cmd2);
 	}
 	
-	public void doSearch(Command cmd, PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-		String[] args = message.split(" ");
-		if (args.length == 1) {
+	public void doSearch(Command cmd, Parameters params, CommandCallback callback) {
+		if (params.tokenCount == 0) {
 			callback.type = EType.Notice;
-			callback.append(cmd.help(bot,type,channel,sender));
+			callback.append(cmd.help(params));
 			return;
 		}
-		message = message.substring(message.indexOf(" ")+1);
 		
 		HTTPQuery q;
 		try {
-			q = HTTPQuery.create("http://ajax.googleapis.com/ajax/services/search/"+(cmd instanceof CmdGoogleImg?"images":"web")+"?v=1.0&safe=off&q=" + URLEncoder.encode(message, "UTF8"));
+			q = HTTPQuery.create("http://ajax.googleapis.com/ajax/services/search/"+(cmd instanceof CmdGoogleImg?"images":"web")+"?v=1.0&safe=off&q=" + URLEncoder.encode(params.input, "UTF8"));
 		} catch (Exception e) {
 			e.printStackTrace();
 			return;
@@ -74,29 +70,29 @@ public class ModuleGoogle extends Module {
 	
 	public class CmdGoogle extends Command {
 		public String command() {return "google";}
-		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+		public String help(Parameters params) {
 			StringBuilder sb = new StringBuilder();
 			sb.append("google/g");
 			sb.append("\ngoogle {query} - returns the first Google search result");
 			return sb.toString();
 		}
 		@Override
-		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-			doSearch(this, bot, type, callback, channel, sender, message);
+		public void doCommand(Parameters params, CommandCallback callback) {
+			doSearch(this, params, callback);
 		}
 	}
 	
 	public class CmdGoogleImg extends Command {
 		public String command() {return "gis";}
-		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+		public String help(Parameters params) {
 			StringBuilder sb = new StringBuilder();
 			sb.append("gis");
 			sb.append("\ngis {query} - returns the first Google Image search result");
 			return sb.toString();
 		}
 		@Override
-		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-			doSearch(this, bot, type, callback, channel, sender, message);
+		public void doCommand(Parameters params, CommandCallback callback) {
+			doSearch(this, params, callback);
 		}
 	}
 }

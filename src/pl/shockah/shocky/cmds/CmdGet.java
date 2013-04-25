@@ -1,46 +1,45 @@
 package pl.shockah.shocky.cmds;
 
-import org.pircbotx.Channel;
-import org.pircbotx.PircBotX;
-import org.pircbotx.User;
-
 import pl.shockah.Config;
 import pl.shockah.shocky.Data;
 
 public class CmdGet extends Command {
 	public String command() {return "get";}
-	public String help(PircBotX bot, EType type, Channel channel, User sender) {
+	public String help(Parameters params) {
 		return "[r:controller] get {key} - gets a bot option value";
 	}
 	
-	public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-		String[] args = message.split(" ");
+	public void doCommand(Parameters params, CommandCallback callback) {
 		callback.type = EType.Notice;
+		if (params.tokenCount < 1 || params.tokenCount > 2) {
+			callback.append(help(params));
+			return;
+		}
 		
-		int i = 1;
-		boolean global = (args.length >= i && args[i].equalsIgnoreCase("."));
-		if (global) i++;
-		String key = (args.length >= i)?args[i++].toLowerCase():null;
-		
-		if (global && !canUseController(bot,type,sender)) return;
-		else if (!canUseAny(bot,type,channel, sender)) return;
+		String key = params.tokens.nextToken();
+		boolean global = false;
+		if (key.equals(".")) {
+			global = true;
+			key = params.tokens.nextToken();
+		}
+
+		if (global) params.checkController();
+		else params.checkAny();
 		
 		Config config;
 		if (global)
 			config = Data.config;
 		else {
 			if (key != null && Data.protectedKeys.contains(key)) {
-				callback.append("Key "+key+" is protected");
+				callback.append("Key ").append(key).append(" is protected");
 				return;
 			}
-			config = Data.forChannel(channel);
+			config = Data.forChannel(params.channel);
 		}
 		
 		if (key != null) {
-			callback.append(key+": "+config.getString(key));
+			callback.append(key).append(": ").append(config.getString(key));
 			return;
 		}
-		
-		callback.append(help(bot,type,channel,sender));
 	}
 }

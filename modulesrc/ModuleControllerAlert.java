@@ -4,9 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
-import org.pircbotx.User;
 import org.pircbotx.hooks.Event;
 import org.pircbotx.hooks.events.ActionEvent;
 import org.pircbotx.hooks.events.JoinEvent;
@@ -19,12 +17,12 @@ import org.pircbotx.hooks.events.TopicEvent;
 import org.pircbotx.hooks.events.UserModeEvent;
 import org.pircbotx.hooks.types.GenericMessageEvent;
 import pl.shockah.FileLine;
-import pl.shockah.StringTools;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.Whois;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
+import pl.shockah.shocky.cmds.Parameters;
 import pl.shockah.shocky.events.ActionOutEvent;
 import pl.shockah.shocky.events.MessageOutEvent;
 import pl.shockah.shocky.lines.Line;
@@ -156,7 +154,7 @@ public class ModuleControllerAlert extends Module {
 	
 	public class CmdAlert extends Command {
 		public String command() {return "alert";}
-		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+		public String help(Parameters params) {
 			StringBuilder sb = new StringBuilder();
 			sb.append("[r:controller] alert - lists set alerts");
 			sb.append("[r:controller] alert add {parameters} - alerts you of specific events");
@@ -170,44 +168,47 @@ public class ModuleControllerAlert extends Module {
 			return sb.toString();
 		}
 
-		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
+		public void doCommand(Parameters params, CommandCallback callback) {
 			callback.type = EType.Notice;
 			
-			String[] args = message.split(" ");
-			if (args.length == 1) {
+			if (params.tokenCount == 0) {
 				int i2 = 1;
 				StringBuilder sb = new StringBuilder();
 				for (int i = 0; i < alerts.size(); i++) {
 					ImmutablePair<String,Alert> pair = alerts.get(i);
-					if (pair.left.equals(sender.getNick())) {
+					if (pair.left.equals(params.sender.getNick())) {
 						if (sb.length() != 0) sb.append("\n");
 						sb.append(""+(i2++)+": "+pair.right);
 					}
 				}
 				callback.append(sb.length() == 0 ? "No alerts set" : sb.toString());
 				return;
-			} else if (args.length == 3 && args[1].equals("remove")) {
-				int i2 = 1, toRemove = Integer.parseInt(args[2]);
-				for (int i = 0; i < alerts.size(); i++) {
-					ImmutablePair<String,Alert> pair = alerts.get(i);
-					if (pair.left.equals(sender.getNick()) && i2++ == toRemove) {
-						alerts.remove(i);
-						callback.append("Removed");
+			} else if (params.tokenCount >= 2) {
+				String method = params.tokens.nextToken();
+				if (method.equalsIgnoreCase("remove")) {
+					String idString = params.tokens.nextToken();
+					int i2 = 1, toRemove = Integer.parseInt(idString);
+					for (int i = 0; i < alerts.size(); i++) {
+						ImmutablePair<String,Alert> pair = alerts.get(i);
+						if (pair.left.equals(params.sender.getNick()) && i2++ == toRemove) {
+							alerts.remove(i);
+							callback.append("Removed");
+							return;
+						}
+					}
+					callback.append("No such index");
+					return;
+				} else if (method.equalsIgnoreCase("add")) {
+					Alert alert = Alert.newAlert(params.getParams(0));
+					if (alert.isProper()) {
+						alerts.add(new ImmutablePair<String,Alert>(params.sender.getNick(),alert));
+						callback.append("Added");
 						return;
 					}
 				}
-				callback.append("No such index");
-				return;
-			} else if (args.length >= 3 && args[1].equals("add")) {
-				Alert alert = Alert.newAlert(StringTools.implode(message,2," "));
-				if (alert.isProper()) {
-					alerts.add(new ImmutablePair<String,Alert>(sender.getNick(),alert));
-					callback.append("Added");
-					return;
-				}
 			}
 			
-			callback.append(help(bot,type,channel,sender));
+			callback.append(help(params));
 			return;
 		}
 	}

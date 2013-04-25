@@ -7,7 +7,6 @@ import java.util.*;
 import java.util.regex.*;
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
-import org.pircbotx.User;
 import org.pircbotx.hooks.events.*;
 import pl.shockah.*;
 import pl.shockah.shocky.Data;
@@ -15,6 +14,7 @@ import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
+import pl.shockah.shocky.cmds.Parameters;
 import pl.shockah.shocky.events.*;
 import pl.shockah.shocky.lines.*;
 import pl.shockah.shocky.prototypes.IRollback;
@@ -220,11 +220,11 @@ public class ModuleRollback extends Module implements IRollback {
 	
 	public class CmdPastebin extends Command {
 		public String command() {return "pastebin";}
-		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+		public String help(Parameters params) {
 			StringBuilder sb = new StringBuilder();
 			sb.append("pastebin/pb");
 			
-			if (type == EType.Channel) {
+			if (params.type == EType.Channel) {
 				sb.append("\npastebin [channel] [user] {lines} - uploads last lines to paste.kde.org/pastebin.com/pastebin.ca");
 				sb.append("\npastebin [channel] [user] -{lines} - uploads first lines to paste.kde.org/pastebin.com/pastebin.ca");
 				sb.append("\npastebin [channel] [user] {time}{d/h/m/s} - uploads last lines from set time to paste.kde.org/pastebin.com/pastebin.ca");
@@ -237,40 +237,40 @@ public class ModuleRollback extends Module implements IRollback {
 			return sb.toString();
 		}
 		
-		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-			String[] args = message.split(" ");
+		public void doCommand(Parameters params, CommandCallback callback) {
+			String[] args = params.input.split(" ");
 			String pbLink = "", regex = null;
 			callback.type = EType.Notice;
 			
 			for (int i = args.length-1; i > 0; i--) {
 				if (args[i].equals("|")) {
-					regex = StringTools.implode(message,i+1," ");
+					regex = StringTools.implode(params.input,i+1," ");
 					args = StringTools.implode(args,0,i-1," ").split(" ");
 					break;
 				}
 			}
 			
-			if (args.length < 2 || args.length > 4) {
-				callback.append(help(bot,type,channel,sender));
+			if (args.length < 1 || args.length > 3) {
+				callback.append(help(params));
 				return;
 			}
 			
-			if (args.length >= 2) {
+			if (args.length >= 1) {
 				String aChannel = null, aUser = null, aLines;
 				
-				if (args.length == 2) {
+				if (args.length == 1) {
+					aLines = args[0];
+				} else if (args.length == 2) {
+					if (args[0].startsWith("#")) aChannel = args[0]; else aUser = args[0];
 					aLines = args[1];
-				} else if (args.length == 3) {
-					if (args[1].startsWith("#")) aChannel = args[1]; else aUser = args[1];
-					aLines = args[2];
 				} else {
-					aChannel = args[1];
-					aUser = args[2];
-					aLines = args[3];
+					aChannel = args[0];
+					aUser = args[1];
+					aLines = args[2];
 				}
 				if (aChannel == null && aUser == null) {
-					if (type == EType.Channel) aChannel = channel.getName(); else {
-						callback.append(help(bot,type,channel,sender));
+					if (params.type == EType.Channel) aChannel = params.channel.getName(); else {
+						callback.append(help(params));
 						return;
 					}
 				}
@@ -302,7 +302,7 @@ public class ModuleRollback extends Module implements IRollback {
 				}
 				pbLink = getLink(list,aUser != null && aChannel == null);
 			} else {
-				callback.append(help(bot,type,channel,sender));
+				callback.append(help(params));
 				return;
 			}
 			

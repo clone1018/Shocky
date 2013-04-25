@@ -5,10 +5,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.Random;
-import java.util.regex.Pattern;
-import org.pircbotx.Channel;
-import org.pircbotx.PircBotX;
-import org.pircbotx.User;
 import pl.shockah.BinBuffer;
 import pl.shockah.BinFile;
 import pl.shockah.StringTools;
@@ -16,6 +12,7 @@ import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
+import pl.shockah.shocky.cmds.Parameters;
 
 public class ModuleQuote extends Module {
 	protected Command cmd, cmdAdd, cmdRemove;
@@ -68,49 +65,55 @@ public class ModuleQuote extends Module {
 	
 	public class CmdQuote extends Command {
 		public String command() {return "quote";}
-		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+		public String help(Parameters params) {
 			StringBuilder sb = new StringBuilder();
 			sb.append("quote/q");
 			sb.append("\nquote [channel] [nick] [id] - shows a quote");
 			return sb.toString();
 		}
 		
-		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-			String[] args = message.split(" ");
-			if (args.length == 1 && type != EType.Channel) {
+		public void doCommand(Parameters params, CommandCallback callback) {
+			if (params.tokenCount==0 && params.type != EType.Channel) {
 				callback.type = EType.Notice;
-				callback.append(help(bot,type,channel,sender));
+				callback.append(help(params));
 				return;
 			}
 			
-			String aChannel = type == EType.Channel ? channel.getName() : null, aNick = null;
+			String aChannel = params.type == EType.Channel ? params.channel.getName() : null, aNick = null;
 			int aId = 0;
 			
-			if (args.length == 2) {
-				if (args[1].charAt(0) == '#') aChannel = args[1];
-				else if (StringTools.isNumber(args[1])) aId = Integer.parseInt(args[1]);
-				else aNick = args[1];
-			} else if (args.length == 3) {
-				if (args[1].charAt(0) == '#') {
-					aChannel = args[1];
-					if (StringTools.isNumber(args[2])) aId = Integer.parseInt(args[2]);
-					else aNick = args[2];
-				} else if (StringTools.isNumber(args[2])) {
-					aId = Integer.parseInt(args[2]);
-					aNick = args[1];
+			if (params.tokenCount>=1) {
+				String par1 = params.tokens.nextToken();
+				if (par1.charAt(0) == '#')
+					aChannel = par1;
+				else if (StringTools.isNumber(par1))
+					aId = Integer.parseInt(par1);
+				else
+					aNick = par1;
+			
+				if (params.tokenCount>=2) {
+					String par2 = params.tokens.nextToken();
+					if (StringTools.isNumber(par2))
+						aId = Integer.parseInt(par2);
+					else
+						aNick = par2;
+					
+					if (params.tokenCount==3) {
+						String par3 = params.tokens.nextToken();
+						if (aId == 0 && StringTools.isNumber(par3))
+							aId = Integer.parseInt(par3);
+					}
 				}
-			} else if (args.length == 4) {
-				aChannel = args[1];
-				aNick = args[2];
-				aId = Integer.parseInt(args[3]);
 			}
+			
 			if (aChannel == null) {
 				callback.type = EType.Notice;
-				callback.append(help(bot,type,channel,sender));
+				callback.append(help(params));
 				return;
 			}
 			
-			if (aNick != null) aNick = aNick.toLowerCase();
+			if (aNick != null)
+				aNick = aNick.toLowerCase();
 			ArrayList<Quote> list = new ArrayList<Quote>();
 			for (Quote quote : quotes.get(aChannel))
 				if (aNick == null || Arrays.binarySearch(quote.nicks,aNick) >= 0)
@@ -124,7 +127,7 @@ public class ModuleQuote extends Module {
 			if (aId < 0) aId = list.size()-aId-1;
 			aId = Math.min(Math.max(aId,1),list.size()+1);
 			
-			String quote = Utils.mungeAllNicks(channel, 0, list.get(aId-1).quote);
+			String quote = Utils.mungeAllNicks(params.channel, 0, list.get(aId-1).quote);
 			callback.append("[")
 			.append(aChannel)
 			.append(": ")
@@ -137,70 +140,75 @@ public class ModuleQuote extends Module {
 	}
 	public class CmdQuoteAdd extends Command {
 		public String command() {return "quoteadd";}
-		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+		public String help(Parameters params) {
 			StringBuilder sb = new StringBuilder();
 			sb.append("quoteadd/qadd");
 			sb.append("\nquoteadd {nick1};{nick2};(...) {quote} - adds a quote");
 			return sb.toString();
 		}
 		
-		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-			String[] args = message.split(" ");
+		public void doCommand(Parameters params, CommandCallback callback) {
 			callback.type = EType.Notice;
-			if (args.length < 3) {
-				callback.append(help(bot,type,channel,sender));
+			if (params.tokenCount < 2) {
+				callback.append(help(params));
 				return;
 			}
 			
-			String[] nicks = args[1].toLowerCase().split(Pattern.quote(";"));
-			String quote = StringTools.implode(message,2," ");
-			if (!quotes.containsKey(channel.getName())) quotes.put(channel.getName(),new ArrayList<Quote>());
-			quotes.get(channel.getName()).add(new Quote(nicks,quote));
+			String[] nicks = params.tokens.nextToken().toLowerCase().split(";");
+			String quote = params.getParams(0);
+			if (!quotes.containsKey(params.channel.getName()))
+				quotes.put(params.channel.getName(),new ArrayList<Quote>());
+			quotes.get(params.channel.getName()).add(new Quote(nicks,quote));
 			callback.append("Done.");
 		}
 	}
 	
 	public class CmdQuoteRemove extends Command {
 		public String command() {return "quoteremove";}
-		public String help(PircBotX bot, EType type, Channel channel, User sender) {
+		public String help(Parameters params) {
 			StringBuilder sb = new StringBuilder();
 			sb.append("quoteremove/qdel");
 			sb.append("\nquoteremove [channel] [nick] id - removes a quote");
 			return sb.toString();
 		}
 		
-		public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-			if (!canUseController(bot,type,sender)) return;
-			String[] args = message.split(" ");
+		public void doCommand(Parameters params, CommandCallback callback) {
+			params.checkController();
 			callback.type = EType.Notice;
-			if (args.length == 1 && type != EType.Channel) {
-				callback.append(help(bot,type,channel,sender));
+			if (params.tokenCount==0 && params.type != EType.Channel) {
+				callback.type = EType.Notice;
+				callback.append(help(params));
 				return;
 			}
 			
-			String aChannel = type == EType.Channel ? channel.getName() : null, aNick = null;
-			int aId = Integer.MIN_VALUE;
+			String aChannel = params.type == EType.Channel ? params.channel.getName() : null, aNick = null;
+			int aId = 0;
 			
-			if (args.length == 2) {
-				if (args[1].charAt(0) == '#') aChannel = args[1];
-				else if (StringTools.isNumber(args[1])) aId = Integer.parseInt(args[1]);
-				else aNick = args[1];
-			} else if (args.length == 3) {
-				if (args[1].charAt(0) == '#') {
-					aChannel = args[1];
-					if (StringTools.isNumber(args[2])) aId = Integer.parseInt(args[2]);
-					else aNick = args[2];
-				} else if (StringTools.isNumber(args[2])) {
-					aId = Integer.parseInt(args[2]);
-					aNick = args[1];
+			if (params.tokenCount>=1) {
+				String par1 = params.tokens.nextToken();
+				if (par1.charAt(0) == '#')
+					aChannel = par1;
+				else if (StringTools.isNumber(par1))
+					aId = Integer.parseInt(par1);
+				else
+					aNick = par1;
+			
+				if (params.tokenCount>=2) {
+					String par2 = params.tokens.nextToken();
+					if (StringTools.isNumber(par2))
+						aId = Integer.parseInt(par2);
+					else
+						aNick = par2;
+					
+					if (params.tokenCount==3) {
+						String par3 = params.tokens.nextToken();
+						if (StringTools.isNumber(par3))
+							aId = Integer.parseInt(par3);
+					}
 				}
-			} else if (args.length == 4) {
-				aChannel = args[1];
-				aNick = args[2];
-				aId = Integer.parseInt(args[3]);
 			}
 			if (aChannel == null) {
-				callback.append(help(bot,type,channel,sender));
+				callback.append(help(params));
 				return;
 			}
 			

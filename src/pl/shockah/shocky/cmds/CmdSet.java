@@ -1,30 +1,31 @@
 package pl.shockah.shocky.cmds;
 
-import org.pircbotx.Channel;
-import org.pircbotx.PircBotX;
-import org.pircbotx.User;
-
 import pl.shockah.Config;
 import pl.shockah.shocky.Data;
 
 public class CmdSet extends Command {
 	public String command() {return "set";}
-	public String help(PircBotX bot, EType type, Channel channel, User sender) {
+	public String help(Parameters params) {
 		return "[r:controller] set {key} {value} - sets a bot option value";
 	}
 	
-	public void doCommand(PircBotX bot, EType type, CommandCallback callback, Channel channel, User sender, String message) {
-		String[] args = message.split(" ");
+	public void doCommand(Parameters params, CommandCallback callback) {
 		callback.type = EType.Notice;
+		if (params.tokenCount < 2) {
+			callback.append(help(params));
+			return;
+		}
 		
-		int i = 1;
-		boolean global = (args.length > i && args[i].equalsIgnoreCase("."));
-		if (global) i++;
-		String key = (args.length > i)?args[i++].toLowerCase():null;
-		String value = (args.length > i)?args[i++]:null;
-		
-		if (global && !canUseController(bot,type,sender)) return;
-		else if (!canUseAny(bot,type,channel, sender)) return;
+		String key = params.tokens.nextToken();
+		boolean global = false;
+		if (key.equals(".")) {
+			global = true;
+			key = params.tokens.nextToken();
+		}
+		String value = params.getParams(0);
+
+		if (global) params.checkController();
+		else params.checkAny();
 		
 		Config config;
 		if (global)
@@ -34,20 +35,20 @@ public class CmdSet extends Command {
 				callback.append("Key "+key+" is protected");
 				return;
 			}
-			config = Data.forChannel(channel);
+			config = Data.forChannel(params.channel);
 		}
 		
-		if (key != null && value != null) {
+		if (key != null && !value.isEmpty()) {
 			config.set(key,value);
-			callback.append("Set "+key+" to "+value);
+			callback.append("Set ").append(key).append(" to ").append(value);
 			return;
 		} else if (!global && key != null) {
 			value = config.getString(key);
 			config.remove(key);
-			callback.append("Unset "+key+". Was "+value);
+			callback.append("Unset ").append(key).append(". Was ").append(value);
 			return;
 		}
 		
-		callback.append(help(bot,type,channel,sender));
+		callback.append(help(params));
 	}
 }
