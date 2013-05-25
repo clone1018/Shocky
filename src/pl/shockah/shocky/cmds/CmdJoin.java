@@ -16,6 +16,7 @@ public class CmdJoin extends Command {
 			try {
 				MultiChannel.join(channel);
 			} catch (Exception e) {
+				e.printStackTrace();
 				callback.append("Already in channel ").append(channel);
 			}
 			return;

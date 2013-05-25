@@ -450,13 +450,13 @@ public class ModuleFactoid extends Module implements IFactoid {
 				checkRecursive.add(message);
 				continue;
 			} else {
-				return parse(cache, bot, channel, sender, message, raw);
+				return parse(cache, bot, channel, sender, message, f, raw);
 			}
 		}
 		return null;
 	}
 	
-	public String parse(Map<Integer,Object> cache, PircBotX bot, Channel channel, User sender, String message, String raw) {
+	public String parse(Map<Integer,Object> cache, PircBotX bot, Channel channel, User sender, String message, Factoid f, String raw) {
 		if (raw.startsWith("<noreply>"))
 			return "";
 		String type = null;
@@ -470,8 +470,8 @@ public class ModuleFactoid extends Module implements IFactoid {
 		ScriptModule sModule = Module.getScriptingModule(type);
 		if (sModule != null) {
 			raw = parseVariables(bot, channel, sender, message, raw);
-			String parsed = sModule.parse(cache, bot, channel == null ? EType.Notice : EType.Channel, channel, sender, raw, message);
-			return parse(cache, bot, channel, sender, message, parsed);
+			String parsed = sModule.parse(cache, bot, channel == null ? EType.Notice : EType.Channel, channel, sender, f, raw, message);
+			return parse(cache, bot, channel, sender, message, f, parsed);
 		} else if (type != null && type.contentEquals("cmd")) {
 			CommandCallback callback = new CommandCallback();
 			Command cmd = Command.getCommand(bot,sender,channel.getName(),EType.Channel,callback,raw);
@@ -732,7 +732,7 @@ public class ModuleFactoid extends Module implements IFactoid {
 		
 		public void doCommand(Parameters params, CommandCallback callback) {
 			callback.type = EType.Notice;
-			if (params.tokenCount <= 2) {
+			if (params.tokenCount < 2) {
 				callback.append(help(params));
 				return;
 			}
@@ -740,6 +740,8 @@ public class ModuleFactoid extends Module implements IFactoid {
 			String name = params.tokens.nextToken();
 			String prefix = null;
 			if (name.equals(".")) {
+				if (params.tokenCount < 3)
+					return;
 				prefix = params.channel.getName();
 				name = params.tokens.nextToken();
 			}

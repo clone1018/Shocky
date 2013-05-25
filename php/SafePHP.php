@@ -79,6 +79,7 @@ class SafePHP {
      * @return array
      */
     public function evaluate($code) {
+		global $_STATE;
         $this->code = $code;
         $this->tokens = token_get_all('<?php ' . $this->code . ' ?>');
         $this->errors = array();
@@ -147,28 +148,32 @@ class SafePHP {
                 $this->code .= $token;
             }
         }
-
-        ob_start();
-        $start = microtime(true);
-        eval($this->code);
-        $time = microtime(true) - $start;
-
-        $buffer = ob_get_contents();
-        ob_end_clean();
-
-        $output = array('output' => $buffer);
+		
+		unset($code, $key, $token, $i, $id, $this->tokens, $this->braces);
+        ob_start(array($this, 'dump_json'));
+        $this->start = microtime(true);
+		if (empty($this->errors))
+			eval($this->code);
+		ob_end_flush();
+    }
+	
+	public function dump_json($buffer) {
+		global $_STATE;
+		$output = array('output' => $buffer);
         $output['debug'] = array(
-            'time' => $time,
+            'time' => microtime(true) - $this->start,
             'version' => phpversion(),
             'memory' => memory_get_usage()
         );
         if (error_get_last())
             $output['error'] = error_get_last();
         if(!empty($this->errors))
-            $output['safe_errors'] = $this->errors;
+            $output['safe_errors'] = $this->text_errors($this->errors);
+		if (isset($_STATE) && !is_resource($_STATE))
+			$output['data'] = $_STATE;
 
-        return $output;
-    }
+        return json_encode($output);
+	}
     
     /**
      * SafePHP html_errors

@@ -30,11 +30,11 @@ function prep_url($str = '') {
 	return $str;
 }
 
-$output = $safe->evaluate($_POST["code"]);
+$safe->evaluate($_POST["code"]);
 
-if(isset($output['safe_errors'])) {
+/*if(isset($output['safe_errors'])) {
 	$errors = $safe->text_errors($output['safe_errors']);
 	echo $errors;
 } else {
-	echo $output['output'];
-}
+	echo json_encode($output);
+}*/

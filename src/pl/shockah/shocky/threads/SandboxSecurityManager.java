@@ -22,6 +22,8 @@ public class SandboxSecurityManager extends SecurityManager
 			"./libs/pircbotx-1.8.jar",
 	};
 	
+	private final File phpData = new File("data", "php").getAbsoluteFile();
+	
 	public boolean enabled = false;
 	
 	public SandboxSecurityManager(SandboxThreadGroup group) {
@@ -48,6 +50,10 @@ public class SandboxSecurityManager extends SecurityManager
 				allowed.add(new FilePermission(this.readonlyFiles[i].getPath()+"/-","read"));
 			}
 		}
+		
+		allowed.add(new FilePermission(phpData.getPath(),"read,write"));
+		allowed.add(new FilePermission(phpData.getPath()+"/-","read,write"));
+		
 		allowed.setReadOnly();
 		
 		disallowed.add(new PropertyPermission("*","write"));

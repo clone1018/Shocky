@@ -25,22 +25,31 @@ public class ModuleInvite extends Module {
 	public boolean isListener() {return true;}
 	
 	public void onInvite(InviteEvent<PircBotX> event) {
-		if (Data.isBlacklisted(event.getBot().getUser(event.getUser()))) return;
-		queue.put(event.getChannel(), event.getUser());
-		event.getBot().sendMessage("ChanServ", String.format("INFO %s",event.getChannel()));
+		String username = event.getUser();
+		String channel = event.getChannel().toLowerCase();
+		User user = event.getBot().getUser(username);
+		System.out.println(String.format("[invite] %s(%s) -> %s", username, user, channel));
+		if (Data.isBlacklisted(user)) return;
+		queue.put(channel, username);
+		event.getBot().sendMessage("ChanServ", String.format("INFO %s",channel));
 	}
 	@Override
 	public void onNotice(NoticeEvent<PircBotX> event) throws Exception {
-		if (!event.getUser().getNick().equals("ChanServ"))
-			return;
-		
 		if (queue.isEmpty())
 			return;
 		
+		System.out.println("[invite] Queue not empty.");
+		
+		if (!event.getUser().getNick().equals("ChanServ"))
+			return;
+		
+		System.out.println("[invite] Noticed from ChanServ.");
+		
 		Matcher m = chanNotExists.matcher(event.getMessage());
 		if (m.find()) {
-			String channel = m.group(1);
+			String channel = m.group(1).toLowerCase();
 			String username = queue.remove(channel);
+			System.out.println(String.format("[invite] [not exists] %s -> %s", username, channel));
 			if (username != null) {
 				User user = event.getBot().getUser(username);
 				if (user != null)
@@ -51,8 +60,9 @@ public class ModuleInvite extends Module {
 	
 		m = chanExists.matcher(event.getMessage());
 		if (m.find()) {
-			String channel = m.group(1);
+			String channel = m.group(1).toLowerCase();
 			String username = queue.remove(channel);
+			System.out.println(String.format("[invite] [exists] %s -> %s", username, channel));
 			if (username != null)
 				joinChannel(event.getBot(), channel, username);
 		}
@@ -77,6 +87,7 @@ public class ModuleInvite extends Module {
 			MultiChannel.join(channel);
 		} catch (Exception e) {
 			if (username != null) {
+				e.printStackTrace();
 				User user = bot.getUser(username);
 				if (user != null)
 					Shocky.sendNotice(bot,user,"I'm already in channel "+channel);

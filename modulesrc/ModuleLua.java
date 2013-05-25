@@ -14,8 +14,11 @@ import org.pircbotx.hooks.events.KickEvent;
 import pl.shockah.Helper;
 import pl.shockah.StringTools;
 import pl.shockah.ZeroInputStream;
+import pl.shockah.shocky.Data;
+import pl.shockah.shocky.IFactoidData;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.ScriptModule;
+import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
@@ -270,7 +273,7 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 	}
 
 	@Override
-	public String parse(Map<Integer, Object> cache, PircBotX bot, EType type, Channel channel, User sender, String code, String message) {
+	public String parse(Map<Integer, Object> cache, PircBotX bot, EType type, Channel channel, User sender, Factoid factoid, String code, String message) {
 		if (code == null)
 			return "";
 		int key = luaHash + code.hashCode();
@@ -353,7 +356,7 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			}
 
 			HashMap<Integer, Object> cache = new HashMap<Integer, Object>();
-			String output = parse(cache,params.bot,params.type,params.channel,params.sender,params.input,null);
+			String output = parse(cache,params.bot,params.type,params.channel,params.sender,null,params.input,null);
 			if (output != null && !output.isEmpty())
 				callback.append(StringTools.limitLength(StringTools.formatLines(output)));
 		}
@@ -507,6 +510,13 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 		public String typename() {
 			return "userdata";
 		}
+		
+		public boolean isController() {
+			if (bot == null) return true;
+			if (bot.getInetAddress().isLoopbackAddress()) return true;
+			if (Shocky.getLogin(user) == null) return false;
+			return Data.controllers.contains(Shocky.getLogin(user));
+		}
 	}
 
 	public static class Print extends VarArgFunction {
@@ -592,6 +602,41 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			}
 			return state;
 		}
+		
+		private Factoid getFactoid(LuaState state) {
+			if (!(state.factoidmod instanceof Module))
+				return null;
+			int hash = factoidHash+factoid.hashCode();
+			Factoid f = null;
+			if (state.cache != null) {
+				if (state.cache.containsKey(hash))
+				{
+					Object obj = state.cache.get(hash);
+					if (obj instanceof Factoid)
+						f = (Factoid)obj;
+				}
+			}
+			if (f == null && state.chan != null)
+				f = state.factoidmod.getFactoid(state.chan.getName(), factoid);
+			if (f == null)
+				f = state.factoidmod.getFactoid(null, factoid);
+			if (f != null && state.cache != null && !state.cache.containsKey(hash))
+				state.cache.put(hash, f);
+			return f;
+		}
+		
+		public ScriptModule getScriptModule(Factoid f) {
+			String raw = f.rawtext;
+			String type = null;
+			if (raw.startsWith("<")) {
+				int closingIndex = raw.indexOf(">");
+				if (closingIndex != -1)
+					type = raw.substring(1, closingIndex);
+			}
+			if (type != null)
+				return Module.getScriptingModule(type);
+			return null;
+		}
 
 		@Override
 		public LuaValue call(LuaValue arg) {
@@ -612,43 +657,64 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 		@Override
 		public LuaValue get(LuaValue key) {
 			String name = key.checkjstring();
+			if (name == null)
+				return NIL;
 			boolean src = name.equals("src");
 			boolean author = false;
 			boolean time = false;
+			boolean data = false;
 			if (!src)
 				author = name.equals("author");
 			if (!src && !author)
 				time = name.equals("time");
-			if (src||author||time) {
+			if (!src && !author && !time)
+				data = name.equals("data");
+			if (src||author||time||data) {
 				LuaState state = getState();
 				if (state == null)
 					return NIL;
-				Factoid f = null;
-				int hash = factoidHash+factoid.hashCode();
-				if (state.cache != null) {
-					if (state.cache.containsKey(hash))
-					{
-						Object obj = state.cache.get(hash);
-						if (obj instanceof Factoid)
-							f = (Factoid)obj;
-					}
-				}
-				if (f == null && state.chan != null)
-					f = state.factoidmod.getFactoid(state.chan.getName(), factoid);
-				if (f == null)
-					f = state.factoidmod.getFactoid(null, factoid);
+				Factoid f = getFactoid(state);
 				if (f == null)
 					return NIL;
-				if (state.cache != null && !state.cache.containsKey(hash))
-					state.cache.put(hash, f);
 				if (src)
 					return valueOf(f.rawtext);
 				if (author)
 					return valueOf(f.author);
 				if (time)
 					return valueOf(f.stamp);
+				if (data) {
+					ScriptModule sModule = getScriptModule(f);
+					if (sModule != null && sModule instanceof IFactoidData) {
+						IFactoidData dModule = (IFactoidData)sModule;
+						String s = dModule.getData(f);
+						if (s != null)
+							return valueOf(s);
+					}
+					return NIL;
+				}
 			}
 			return super.get(key);
+		}
+		
+		@Override
+		public void set(LuaValue key, LuaValue value) {
+			String name = key.checkjstring();
+			if (name == null)
+				return;
+			if (name.equals("data")) {
+				String data = value.checkjstring();
+				if (data == null)
+					return;
+				LuaState state = getState();
+				if (state == null || !state.isController())
+					return;
+				Factoid f = getFactoid(state);
+				if (f == null)
+					return;
+				ScriptModule sModule = getScriptModule(f);
+				if (sModule != null && sModule instanceof IFactoidData)
+					((IFactoidData)sModule).setData(f, data);
+			}
 		}
 	}
 

@@ -12,6 +12,7 @@ import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Parameters;
 import pl.shockah.shocky.cmds.Command.EType;
+import pl.shockah.shocky.sql.Factoid;
 
 public class ModulePython extends ScriptModule {
 	protected Command cmd;
@@ -27,29 +28,40 @@ public class ModulePython extends ScriptModule {
 		Command.removeCommands(cmd);
 	}
 	
-	public String parse(Map<Integer,Object> cache, PircBotX bot, EType type, Channel channel, User sender, String code, String message) {
+	public String parse(Map<Integer,Object> cache, PircBotX bot, EType type, Channel channel, User sender, Factoid factoid, String code, String message) {
 		if (code == null) return "";
 		
-		StringBuilder sb = new StringBuilder("channel = \""+channel.getName()+"\";bot = \""+bot.getNick().replace("\"","\\\"")+"\";sender = \""+sender.getNick().replace("\"","\\\"")+"\";");
+		StringBuilder sb = new StringBuilder("channel=");
+		appendEscape(sb,channel.getName());
+		sb.append(";bot=");
+		appendEscape(sb,bot.getNick());
+		sb.append(";sender=");
+		appendEscape(sb,sender.getNick());
+		sb.append(';');
 		if (message != null) {
 			String[] args = message.split(" ");
-			String argsImp = StringTools.implode(args,1," "); if (argsImp == null) argsImp = "";
-			sb.append("argc = "+(args.length-1)+";args = \""+argsImp.replace("\"","\\\"")+"\";ioru = \""+(args.length-1 == 0 ? sender.getNick() : argsImp).replace("\"","\\\"")+"\";");
-			sb.append("arg = [");
+			String argsImp = StringTools.implode(args,1," ");
+			sb.append("argc=").append(args.length-1).append(";args=");
+			appendEscape(sb,argsImp);
+			sb.append(";ioru=");
+			appendEscape(sb,(args.length == 1 ? sender.getNick() : argsImp));
+			sb.append(';');
+			sb.append("arg=[");
 			for (int i = 1; i < args.length; i++) {
-				if (i != 1) sb.append(",");
-				sb.append("\""+args[i].replace("\"","\\\"")+"\"");
+				if (i != 1) sb.append(',');
+				appendEscape(sb,args[i]);
 			}
 			sb.append("];");
 		}
 		
 		User[] users = channel.getUsers().toArray(new User[channel.getUsers().size()]);
-		sb.append("randnick = \""+users[new Random().nextInt(users.length)].getNick().replace("\"","\\\"")+"\";");
+		sb.append("randnick=");
+		appendEscape(sb,users[new Random().nextInt(users.length)].getNick());
+		sb.append(';');
 		
-		code = sb.toString()+code;
+		sb.append(code);
 		
-		System.out.println(Data.forChannel(channel).getString("python-url")+"?"+HTTPQuery.parseArgs("statement",code));
-		HTTPQuery q = HTTPQuery.create(Data.forChannel(channel).getString("python-url")+"?"+HTTPQuery.parseArgs("statement",code));
+		HTTPQuery q = HTTPQuery.create(Data.forChannel(channel).getString("python-url")+'?'+HTTPQuery.parseArgs("statement",sb.toString()));
 		q.connect(true,false);
 		
 		sb = new StringBuilder();
@@ -79,7 +91,7 @@ public class ModulePython extends ScriptModule {
 				return;
 			}
 			
-			String output = parse(null,params.bot,params.type,params.channel,params.sender,params.input,null);
+			String output = parse(null,params.bot,params.type,params.channel,params.sender,null,params.input,null);
 			if (output != null && !output.isEmpty())
 				callback.append(StringTools.limitLength(StringTools.formatLines(output)));
 		}

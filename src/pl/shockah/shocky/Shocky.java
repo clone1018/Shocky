@@ -236,7 +236,7 @@ public class Shocky extends ListenerAdapter {
 			send(event.getBot(),Command.EType.Notice,event.getChannel(),event.getUser(),callback.toString());
 	}
 	public void onKick(KickEvent<PircBotX> event) {
-		if (event.getRecipient().getNick().equals(event.getBot().getNick())) try {
+		if (event.getRecipient().equals(event.getBot())) try {
 			MultiChannel.lostChannel(event.getBot(), event.getChannel().getName());
 		} catch (Exception e) {e.printStackTrace();}
 	}

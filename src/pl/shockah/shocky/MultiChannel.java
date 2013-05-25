@@ -43,7 +43,8 @@ public class MultiChannel {
 		} catch (IrcException e) {
 			e.printStackTrace();
 		}
-		if (bot != null) bot.disconnect();
+		if (bot != null && bot.isConnected())
+			bot.disconnect();
 		return null;
 	}
 	
@@ -86,8 +87,8 @@ public class MultiChannel {
 			if (bot == null)
 				bot = createBot();
 		
-			if (bot != null)
-			{
+			if (bot == null) break;
+			else {
 				if (bot.getChannels().contains(channel))
 					throw new Exception("Already in channel "+channel);
 				
