@@ -158,6 +158,7 @@ public class StringTools {
 			throw new IllegalArgumentException("separator cannot be null");
 		if (a < 0)
 			throw new IndexOutOfBoundsException("a must be positive");
+		// dobry szit 
 		if (a == 0)
 			return spl;
 		int ap = 0,i = 0;
