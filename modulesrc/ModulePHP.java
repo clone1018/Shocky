@@ -4,7 +4,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.io.UnsupportedEncodingException;
 import java.util.Map;
 import java.util.Random;
 
@@ -14,6 +13,7 @@ import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 import pl.shockah.HTTPQuery;
+import pl.shockah.Helper;
 import pl.shockah.StringTools;
 import pl.shockah.shocky.Data;
 import pl.shockah.shocky.IFactoidData;
@@ -32,7 +32,7 @@ public class ModulePHP extends ScriptModule implements IFactoidData {
 	public String name() {return "php";}
 	public String identifier() {return "php";}
 	public char stringCharacter() {return '\'';}
-	public void onEnable() {
+	public void onEnable(File dir) {
 		if (!savedData.exists())
 			savedData.mkdirs();
 		
@@ -42,6 +42,10 @@ public class ModulePHP extends ScriptModule implements IFactoidData {
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd);
+	}
+	
+	public File[] getReadableFiles() {
+		return new File[]{savedData};
 	}
 	
 	public String parse(Map<Integer,Object> cache, PircBotX bot, EType type, Channel channel, User sender, Factoid factoid, String code, String message) {
@@ -55,7 +59,7 @@ public class ModulePHP extends ScriptModule implements IFactoidData {
 		appendEscape(sb,sender.getNick());
 		sb.append(';');
 		if (message != null) {
-			String[] args = message.split(" ");
+			String[] args = message.replace("\\", "\\\\").split(" ");
 			String argsImp = StringTools.implode(args,1," ");
 			sb.append("$argc=").append((args.length-1)).append(";$args=");
 			appendEscape(sb,argsImp);
@@ -82,11 +86,12 @@ public class ModulePHP extends ScriptModule implements IFactoidData {
 		q.connect(true,true);
 		q.write(HTTPQuery.parseArgs("code",sb.toString()));
 		
-		String ret = q.readWhole();
-		q.close();
-		
+		String ret = null;
 		try {
+			ret = q.readWhole();
+			q.close();
 			JSONObject json = new JSONObject(ret);
+			//json = json.getJSONObject("output");
 			JSONObject error = json.optJSONObject("error");
 			if (error != null)
 				return error.getString("message");
@@ -96,28 +101,24 @@ public class ModulePHP extends ScriptModule implements IFactoidData {
 			String newdata = json.optString("data", null);
 			if (factoid != null && newdata != null && (data == null || !newdata.contentEquals(data)))
 				setData(factoid,newdata);
-			return json.getString("output");
+			return json.optString("output");
 		} catch (JSONException e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		
-		return ret;
+		return (ret != null)?ret.trim():null;
 	}
 	
 	public String readFile(File file) {
 		try {
-			StringBuilder sb = new StringBuilder();
 			FileInputStream fs = new FileInputStream(file);
-			InputStreamReader sr = new InputStreamReader(fs, "UTF-8");
-			char[] buffer = new char[64];
-			int i = -1;
-			while ((i = sr.read(buffer)) > 0)
-				sb.append(buffer, 0, i);
+			InputStreamReader sr = new InputStreamReader(fs, Helper.utf8);
+			char[] buffer = new char[(int)file.length()];
+			sr.read(buffer);
 			sr.close();
 			fs.close();
-			return sb.toString();
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
+			return new String(buffer);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -127,14 +128,12 @@ public class ModulePHP extends ScriptModule implements IFactoidData {
 	public boolean writeFile(File file, CharSequence str) {
 		try {
 			FileOutputStream fs = new FileOutputStream(file);
-			OutputStreamWriter sr = new OutputStreamWriter(fs, "UTF-8");
+			OutputStreamWriter sr = new OutputStreamWriter(fs, Helper.utf8);
 			sr.append(str);
 			sr.flush();
 			sr.close();
 			fs.close();
 			return true;
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

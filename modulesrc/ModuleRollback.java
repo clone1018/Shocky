@@ -1,3 +1,4 @@
+import java.io.File;
 import java.net.URLEncoder;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -16,8 +17,8 @@ import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Parameters;
 import pl.shockah.shocky.events.*;
+import pl.shockah.shocky.interfaces.IRollback;
 import pl.shockah.shocky.lines.*;
-import pl.shockah.shocky.prototypes.IRollback;
 import pl.shockah.shocky.sql.*;
 import pl.shockah.shocky.sql.Criterion.Operation;
 
@@ -55,7 +56,7 @@ public class ModuleRollback extends Module implements IRollback {
 	
 	public String name() {return "rollback";}
 	public boolean isListener() {return true;}
-	public void onEnable() {
+	public void onEnable(File dir) {
 		Data.config.setNotExists("rollback-dateformat","dd.MM.yyyy HH:mm:ss");
 		sdf.applyPattern(Data.config.getString("rollback-dateformat"));
 		sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
@@ -63,7 +64,7 @@ public class ModuleRollback extends Module implements IRollback {
 		Command.addCommands(this, cmd = new CmdPastebin());
 		Command.addCommand(this, "pb", cmd);
 		
-		SQL.raw("CREATE TABLE IF NOT EXISTS rollback (channel varchar(50) NOT NULL,users text,type int(1) unsigned NOT NULL,stamp bigint(20) unsigned NOT NULL,text text NOT NULL) ENGINE=ARCHIVE DEFAULT CHARSET=utf8;");
+		SQL.raw("CREATE TABLE IF NOT EXISTS rollback (channel varchar(50) NOT NULL,users text,type int(1) unsigned NOT NULL,stamp bigint(20) unsigned NOT NULL,text text NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;");
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd);

@@ -1,3 +1,5 @@
+import java.io.File;
+
 import org.pircbotx.User;
 import pl.shockah.Config;
 import pl.shockah.shocky.Data;
@@ -5,7 +7,7 @@ import pl.shockah.shocky.Module;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Parameters;
-import pl.shockah.shocky.prototypes.IFactoid;
+import pl.shockah.shocky.interfaces.IFactoid;
 
 public class ModuleOP extends Module {
 	protected CmdKick cmdKick;
@@ -13,7 +15,7 @@ public class ModuleOP extends Module {
 	protected Command cmdKickban, cmdQuiet, cmdOp, cmdDeop;
 	
 	public String name() {return "op";}
-	public void onEnable() {
+	public void onEnable(File dir) {
 		Command.addCommands(this,cmdKick = new CmdKick(),cmdBan = new CmdBan(),cmdKickban = new CmdKickban(),cmdQuiet = new CmdQuiet(),cmdOp = new CmdOp(),cmdDeop = new CmdDeop());
 	}
 	public void onDisable() {

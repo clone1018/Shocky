@@ -8,7 +8,7 @@ import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Parameters;
-import pl.shockah.shocky.prototypes.ISeen;
+import pl.shockah.shocky.interfaces.ISeen;
 
 public class ModuleSeen extends Module implements ISeen {
 	private Config config;
@@ -16,15 +16,15 @@ public class ModuleSeen extends Module implements ISeen {
 	
 	public String name() {return "seen";}
 	public boolean isListener() {return true;}
-	public void onEnable() {
-		(config = new Config()).load(new File("data","seen.cfg"));
+	public void onEnable(File dir) {
+		(config = new Config()).load(new File(dir,"seen.cfg"));
 		Command.addCommands(this, cmd = new CmdSeen());
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd);
 	}
-	public void onDataSave() {
-		config.save(new File("data","seen.cfg"));
+	public void onDataSave(File dir) {
+		config.save(new File(dir,"seen.cfg"));
 	}
 	
 	public void onMessage(MessageEvent<PircBotX> event) {

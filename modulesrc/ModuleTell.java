@@ -23,8 +23,8 @@ import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Parameters;
 import pl.shockah.shocky.cmds.Command.EType;
+import pl.shockah.shocky.interfaces.ISeen;
 import pl.shockah.shocky.lines.LineMessage;
-import pl.shockah.shocky.prototypes.ISeen;
 
 public class ModuleTell extends Module {
 	public final HashMap<String,ArrayList<LineMessage>> tells = new HashMap<String,ArrayList<LineMessage>>();
@@ -32,16 +32,16 @@ public class ModuleTell extends Module {
 	
 	public String name() {return "tell";}
 	public boolean isListener() {return true;}
-	public void onEnable() {
+	public void onEnable(File dir) {
 		Command.addCommands(this, cmd = new CmdTell());
 		
-		ArrayList<String> lines = FileLine.read(new File("data","tell.cfg"));
+		ArrayList<String> lines = FileLine.read(new File(dir,"tell.cfg"));
 		for (int i = 0; i < lines.size(); i += 4) addTell(lines.get(i),new LineMessage(Long.parseLong(lines.get(i+2)),"",lines.get(i+1),lines.get(i+3)));
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd);
 	}
-	public void onDataSave() {
+	public void onDataSave(File dir) {
 		ArrayList<String> lines = new ArrayList<String>();
 		Iterator<Entry<String,ArrayList<LineMessage>>> it = tells.entrySet().iterator();
 		while (it.hasNext()) {
@@ -53,7 +53,7 @@ public class ModuleTell extends Module {
 				lines.add(l.text);
 			}
 		}
-		FileLine.write(new File("data","tell.cfg"),lines);
+		FileLine.write(new File(dir,"tell.cfg"),lines);
 	}
 	
 	public void onMessage(MessageEvent<PircBotX> event) {

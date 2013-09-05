@@ -20,7 +20,7 @@ public abstract class ModuleLoader {
 	}
 	
 	public void unloadAllModules() {
-		while (!modules.isEmpty()) Module.unload(modules.get(0));
+		while (!modules.isEmpty()) modules.get(0).unload();
 	}
 	
 	protected abstract boolean accept(ModuleSource<?> source);

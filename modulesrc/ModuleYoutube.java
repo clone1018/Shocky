@@ -1,3 +1,4 @@
+import java.io.File;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.regex.Matcher;
@@ -38,10 +39,16 @@ public class ModuleYoutube extends Module {
 			double vRating = jItem.has("rating") ? jItem.getDouble("rating") : -1;
 			int vViewCount = jItem.getInt("viewCount");
 			
-			int iDh = vDuration/3600, iDm = (vDuration/60) % 60, iDs = vDuration % 60;
-			
-			return vTitle+" | length "+(vDuration >= 3600 ? iDh+"h " : "")+(vDuration >= 60 ? iDm+"m " : "")+iDs+"s | rated "
-				+(vRating != -1 ? String.format("%.2f",vRating).replace(",",".")+"/5.00 | " : "")+vViewCount+" view"+(vViewCount != 1 ? "s" : "") +" | by "+vUploader;
+			StringBuilder sb = new StringBuilder();
+			sb.append(vTitle);
+			sb.append(" | length ").append(Utils.timeAgo(vDuration));
+			if (vRating != -1)
+				sb.append(" | rated ").append(String.format("%.2f",vRating).replace(',','.')).append("/5.00");
+			sb.append(" | ").append(vViewCount).append(" view");
+			if (vViewCount != 1)
+				sb.append('s');
+			sb.append(" | by ").append(vUploader);
+			return sb.toString();
 		} catch (Exception e) {e.printStackTrace();}
 		return null;
 	}
@@ -66,19 +73,30 @@ public class ModuleYoutube extends Module {
 			double vRating = jItem.has("rating") ? jItem.getDouble("rating") : -1;
 			int vViewCount = jItem.getInt("viewCount");
 			
-			int iDh = vDuration/3600, iDm = (vDuration/60) % 60, iDs = vDuration % 60;
+			StringBuilder sb = new StringBuilder();
+			if (data) {
+				sb.append(Colors.BOLD).append(vTitle).append(Colors.NORMAL);
+				sb.append(" | length ").append(Colors.BOLD).append(Utils.timeAgo(vDuration)).append(Colors.NORMAL);
+				if (vRating != -1)
+					sb.append(" | rated ").append(Colors.BOLD).append(String.format("%.2f",vRating).replace(',','.')).append("/5.00").append(Colors.NORMAL);
+				sb.append(" | ").append(Colors.BOLD).append(vViewCount).append(Colors.NORMAL).append(" view");
+				if (vViewCount != 1)
+					sb.append('s');
+				sb.append(" | by ").append(Colors.BOLD).append(vUploader).append(Colors.NORMAL);
+				if (url)
+					sb.append(" | ");
+			}
+			if (url)
+				sb.append("http://youtu.be/").append(vID);
 			
-			return (data ? Colors.BOLD+vTitle+Colors.NORMAL+" | length "+Colors.BOLD+(vDuration >= 3600 ? iDh+"h " : "")+(vDuration >= 60 ? iDm+"m " : "")+iDs+"s"+Colors.NORMAL+" | rated "
-				+(vRating != -1 ? Colors.BOLD+String.format("%.2f",vRating).replace(",",".")+"/5.00"+Colors.NORMAL+" | " : "")
-				+Colors.BOLD+vViewCount+Colors.NORMAL+" view"+(vViewCount != 1 ? "s" : "")+" | by "+Colors.BOLD+vUploader+Colors.NORMAL
-				+(url ? " | " : "") : "")+(url ? "http://youtu.be/"+vID : "");
+			return sb.toString();
 		} catch (Exception e) {e.printStackTrace();}
 		return null;
 	}
 	
 	public String name() {return "youtube";}
 	public boolean isListener() {return true;}
-	public void onEnable() {
+	public void onEnable(File dir) {
 		Data.config.setNotExists("yt-otherbot",false);
 		Command.addCommands(this, cmd = new CmdYoutube());
 		Command.addCommand(this, "yt", cmd);

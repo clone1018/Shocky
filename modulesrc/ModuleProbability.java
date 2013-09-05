@@ -1,3 +1,4 @@
+import java.io.File;
 import java.util.Random;
 import org.pircbotx.User;
 import pl.shockah.shocky.Module;
@@ -13,7 +14,7 @@ public class ModuleProbability extends Module {
 	};
 	
 	public String name() {return "probability";}
-	public void onEnable() {
+	public void onEnable(File dir) {
 		Command.addCommands(this, cmd = new CmdProbability());
 	}
 	public void onDisable() {

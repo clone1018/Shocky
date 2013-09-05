@@ -11,7 +11,6 @@ import sun.security.util.SecurityConstants;
 
 public class SandboxSecurityManager extends SecurityManager 
 {
-	public final SandboxThreadGroup group;
 	public final File[] readonlyFiles;
 	private final PermissionCollection allowed = new Permissions();
 	private final PermissionCollection disallowed = new Permissions();
@@ -24,15 +23,12 @@ public class SandboxSecurityManager extends SecurityManager
 	
 	private final File phpData = new File("data", "php").getAbsoluteFile();
 	
-	public boolean enabled = false;
-	
-	public SandboxSecurityManager(SandboxThreadGroup group) {
-		this(group, new File[0]);
+	public SandboxSecurityManager() {
+		this(new File[0]);
 	}
 	
-	public SandboxSecurityManager(SandboxThreadGroup group, File... readonlyFiles) {
+	public SandboxSecurityManager(File... readonlyFiles) {
 		super();
-		this.group = group;
 		this.readonlyFiles = readonlyFiles;
 		
 		allowed.add(new FilePermission(System.getProperty("java.home").replace('\\','/')+"/lib/-","read"));
@@ -74,7 +70,7 @@ public class SandboxSecurityManager extends SecurityManager
 	@Override
 	public void checkPermission(Permission perm) 
 	{
-		if (!enabled || getThreadGroup() != group)
+		if (!(getThreadGroup() instanceof SandboxThreadGroup))
 			return;
 		
 		boolean disallow = disallowed.implies(perm);
@@ -88,12 +84,14 @@ public class SandboxSecurityManager extends SecurityManager
 	
 	@Override
 	public void checkExit(int status) {
+		if (!(getThreadGroup() instanceof SandboxThreadGroup))
+			return;
 		throw new SecurityException();
 	}
 
 	@Override
 	public void checkPackageAccess(String pkg) {
-		if (enabled && getThreadGroup() == group) {
+		if (getThreadGroup() instanceof SandboxThreadGroup) {
 			if (
 					pkg.startsWith("java.util.concurrent")||
 					pkg.startsWith("java.lang.reflect")
@@ -101,5 +99,16 @@ public class SandboxSecurityManager extends SecurityManager
 				throw new SecurityException(pkg+" package is not allowed.");
 		}
 		super.checkPackageAccess(pkg);
+	}
+
+	@Override
+	public void checkAccess(Thread t) {
+		Thread parent = Thread.currentThread();
+		if (!(parent.getThreadGroup() instanceof SandboxThreadGroup))
+			return;
+		if (t.getThreadGroup() instanceof SandboxThreadGroup)
+			return;
+		Thread.dumpStack();
+		throw new SecurityException("Sandboxed threads must remain in sandbox thread group.");
 	}
 }

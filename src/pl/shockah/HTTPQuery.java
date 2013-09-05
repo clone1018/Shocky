@@ -71,6 +71,14 @@ public class HTTPQuery {
 		c.setRequestProperty("User-Agent",s);
 	}
 	
+	public void setHeaderProperty(String header, String value) {
+		c.setRequestProperty(header,value);
+	}
+	
+	public String getHeaderProperty(String header) {
+		return c.getRequestProperty(header);
+	}
+	
 	public void write(String s) {
 		write(s.getBytes());
 	}
@@ -104,7 +112,7 @@ public class HTTPQuery {
 		}
 		return ret;
 	}
-	public String readWhole() {
+	public String readWhole() throws IOException {
 		char[] buffer = new char[1024];
 		StringBuilder sb = new StringBuilder(buffer.length);
 		InputStreamReader is = null;
@@ -113,8 +121,6 @@ public class HTTPQuery {
 			int count = 0;
 			while ((count=is.read(buffer))>0)
 				sb.append(buffer, 0, count);
-		} catch (Exception e) {
-			e.printStackTrace();
 		} finally {
 				try {
 					if (is != null)

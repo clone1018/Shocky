@@ -1,3 +1,5 @@
+import java.io.File;
+
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
@@ -7,7 +9,7 @@ public class ModuleSay extends Module {
 	protected Command cmdSay, cmdAction;
 	
 	public String name() {return "say";}
-	public void onEnable() {
+	public void onEnable(File dir) {
 		Command.addCommands(this, cmdSay = new CmdSay(),cmdAction = new CmdAction());
 	}
 	public void onDisable() {

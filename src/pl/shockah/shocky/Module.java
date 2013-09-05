@@ -6,6 +6,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -16,10 +17,12 @@ import pl.shockah.shocky.cmds.CommandCallback;
 
 public abstract class Module extends ListenerAdapter implements Comparable<Module> {
 	private static final List<Module> modules = Collections.synchronizedList(new ArrayList<Module>());
-	private static final List<Module> modulesOn = Collections.synchronizedList(new ArrayList<Module>());
 	private static final List<ModuleLoader> loaders = Collections.synchronizedList(new ArrayList<ModuleLoader>());
 	private static final Map<String, ScriptModule> scriptingModules = Collections.synchronizedMap(new HashMap<String,ScriptModule>());
-	private static final Map<String, List<Module>> disabledModules = Collections.synchronizedMap(new HashMap<String,List<Module>>());
+	private static final LinkedList<Module> needsInit =  new LinkedList<Module>();
+	
+	private boolean enabled = false;
+	private final List<String> disabledChannnels = Collections.synchronizedList(new LinkedList<String>());
 	
 	static {
 		Module.registerModuleLoader(new ModuleLoader.Java());
@@ -57,78 +60,76 @@ public abstract class Module extends ListenerAdapter implements Comparable<Modul
 			}
 			
 			modules.add(module);
+			needsInit.push(module);
 			if (module instanceof ScriptModule) {
 				ScriptModule sModule = (ScriptModule)module;
 				scriptingModules.put(sModule.identifier(), sModule);
 			}
-			Data.config.setNotExists("module-"+module.name(),true);
-			if (Data.config.getBoolean("module-"+module.name())) enable(module,null);
-			for (String key : Data.config.getKeysSubconfigs())
-				if (key.startsWith("#")&&!Data.forChannel(key).getBoolean("module-"+module.name())) disable(module,key);
 		}
 		return module;
 	}
-	public static boolean unload(Module module) {
-		if (module == null) return false;
-		if (!modules.contains(module)) return false;
-		if (modulesOn.contains(module)) {
-			disable(module,null);
+	
+	public static void postLoad() {
+		synchronized (needsInit) {
+			while (!needsInit.isEmpty()) {
+				Module module = needsInit.pop();
+				String name = "module-"+module.name();
+				Data.config.setNotExists(name,true);
+				if (Data.config.getBoolean(name))
+					module.enable(null);
+				for (String key : Data.config.getKeysSubconfigs())
+					if (key.startsWith("#")&&!Data.forChannel(key).getBoolean(name))
+						module.disable(key);
+			}
 		}
-		modules.remove(module);
-		if (module instanceof ScriptModule) {
-			ScriptModule sModule = (ScriptModule)module;
-			scriptingModules.remove(sModule.identifier());
-		}
-		module.loader.unloadModule(module);
-		return true;
-	}
-	public static boolean reload(Module module) {
-		if (module == null) return false;
-		ModuleSource<?> src = module.source;
-		unload(module);
-		return load(src) != null;
 	}
 	
-	public static boolean enable(Module module, String channel) {
-		if (module == null) return false;
+	public final boolean unload() {
+		if (!modules.contains(this))
+			return false;
+		if (this.enabled)
+			this.disable(null);
+		modules.remove(this);
+		if (this instanceof ScriptModule)
+			scriptingModules.remove(((ScriptModule)this).identifier());
+		this.loader.unloadModule(this);
+		return true;
+	}
+	public final boolean reload() {
+		ModuleSource<?> src = this.source;
+		this.unload();
+		boolean ret = load(src) != null;
+		postLoad();
+		return ret;
+	}
+	
+	public final boolean enable(String channel) {
 		if (channel != null) {
-			List<Module> disabled;
-			if (!disabledModules.containsKey(channel))
-			{
-				disabled = new ArrayList<Module>();
-				disabledModules.put(channel, disabled);
-			} else {
-				disabled = disabledModules.get(channel);
-			}
-			return disabled.remove(module);
+			return disabledChannnels.remove(channel);
 		} else {
-			if (modulesOn.contains(module)) return false;
-			module.onEnable();
-			if (module.isListener()) Shocky.getBotManager().getListenerManager().addListener(module);
-			modulesOn.add(module);
+			if (this.enabled)
+				return false;
+			this.onEnable(Data.lastSave);
+			if (this.isListener())
+				Shocky.getBotManager().getListenerManager().addListener(this);
+			this.enabled = true;
 			return true;
 		}
 	}
-	public static boolean disable(Module module, String channel) {
-		if (module == null) return false;
+	
+	public final boolean disable(String channel) {
 		if (channel != null) {
-			List<Module> disabled;
-			if (!disabledModules.containsKey(channel))
-			{
-				disabled = new ArrayList<Module>();
-				disabledModules.put(channel, disabled);
-			} else {
-				disabled = disabledModules.get(channel);
-			}
-			if (disabled.contains(module))
+			if (disabledChannnels.contains(channel))
 				return false;
-			return disabled.add(module);
+			return disabledChannnels.add(channel);
 		} else {
-			if (!modulesOn.contains(module)) return false;
-			if (module.isListener()) Shocky.getBotManager().getListenerManager().removeListener(module);
-			module.onDataSave();
-			module.onDisable();
-			modulesOn.remove(module);
+			if (!this.enabled)
+				return false;
+			if (this.isListener())
+				Shocky.getBotManager().getListenerManager().removeListener(this);
+			this.onDataSave(Data.lastSave);
+			this.onDisable();
+			this.enabled = false;
 			return true;
 		}
 	}
@@ -141,12 +142,14 @@ public abstract class Module extends ListenerAdapter implements Comparable<Modul
 			Module m = load(new ModuleSource<File>(f));
 			if (m != null) ret.add(m);
 		}
+		Module.postLoad();
 		Collections.sort(ret);
 		return ret;
 	}
 	
 	public static Module getModule(String name) {
-		for (int i = 0; i < modules.size(); i++) if (modules.get(i).name().equals(name)) return modules.get(i);
+		for (int i = 0; i < modules.size(); i++)
+			if (modules.get(i).name().equals(name)) return modules.get(i);
 		return null;
 	}
 	public static ArrayList<Module> getModules() {
@@ -155,14 +158,24 @@ public abstract class Module extends ListenerAdapter implements Comparable<Modul
 		return ret;
 	}
 	public static ArrayList<Module> getModules(boolean enabled) {
-		ArrayList<Module> ret = getModules();
-		for (int i = 0; i < ret.size(); i++) if (modulesOn.contains(ret.get(i)) != enabled) ret.remove(i--);
+		ArrayList<Module> ret = new ArrayList<Module>(modules.size());
+		for (int i = modules.size()-1; i >= 0; --i) {
+			Module m = modules.get(i);
+			if (m.enabled == enabled)
+				ret.add(m);
+		}
+		Collections.sort(ret);
 		return ret;
 	}
 	
 	public static ScriptModule getScriptingModule(String id) {
-		if (scriptingModules.containsKey(id)) return scriptingModules.get(id);
+		if (scriptingModules.containsKey(id))
+			return scriptingModules.get(id);
 		return null;
+	}
+	
+	public File[] getReadableFiles() {
+		return new File[0];
 	}
 	
 	private ModuleLoader loader;
@@ -170,17 +183,17 @@ public abstract class Module extends ListenerAdapter implements Comparable<Modul
 	
 	public abstract String name();
 	
-	public void onEnable() {}
+	public void onEnable(File dir) {}
 	public void onDisable() {}
 	public void onDie(PircBotX bot) {}
-	public void onDataSave() {}
+	public void onDataSave(File dir) {}
 	public void onCleanup(PircBotX bot, CommandCallback callback, User sender) {}
 	public boolean isListener() {return false;}
 	
 	public final boolean isEnabled(String channel) {
-		if (disabledModules.containsKey(channel) && disabledModules.get(channel).contains(this))
+		if (this.disabledChannnels.contains(channel))
 			return false;
-		return modulesOn.contains(this);
+		return this.enabled;
 	}
 	
 	public final int compareTo(Module module) {

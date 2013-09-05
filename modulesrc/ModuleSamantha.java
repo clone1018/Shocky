@@ -1,3 +1,4 @@
+import java.io.File;
 import java.util.HashMap;
 import java.util.Random;
 
@@ -19,7 +20,7 @@ public class ModuleSamantha extends Module  {
 	public boolean isListener() {return true;}
 
 	@Override
-	public void onEnable() {
+	public void onEnable(File dir) {
 		Data.config.setNotExists("samantha-chance",5);
 		Data.config.setNotExists("samantha-next",1000*60*2);
 	}

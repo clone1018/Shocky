@@ -1,4 +1,4 @@
-package pl.shockah.shocky.prototypes;
+package pl.shockah.shocky.interfaces;
 
 import java.util.ArrayList;
 

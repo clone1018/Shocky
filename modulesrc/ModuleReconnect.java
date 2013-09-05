@@ -1,3 +1,4 @@
+import java.io.File;
 import java.util.List;
 import org.pircbotx.PircBotX;
 import org.pircbotx.hooks.events.DisconnectEvent;
@@ -13,7 +14,7 @@ public class ModuleReconnect extends Module /*implements ActionListener*/ {
 	
 	public String name() {return "reconnect";}
 	public boolean isListener() {return true;}
-	public void onEnable() {
+	public void onEnable(File dir) {
 		//timers.clear();
 		//bots.clear();
 	}

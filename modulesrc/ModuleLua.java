@@ -15,41 +15,31 @@ import pl.shockah.Helper;
 import pl.shockah.StringTools;
 import pl.shockah.ZeroInputStream;
 import pl.shockah.shocky.Data;
-import pl.shockah.shocky.IFactoidData;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.ScriptModule;
-import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Parameters;
 import pl.shockah.shocky.cmds.Command.EType;
-import pl.shockah.shocky.prototypes.IFactoid;
+import pl.shockah.shocky.interfaces.ILua;
 import pl.shockah.shocky.sql.Factoid;
 import pl.shockah.shocky.threads.*;
 
 public class ModuleLua extends ScriptModule implements ResourceFinder {
 
-	public static final File binary = new File("data", "luastate.bin").getAbsoluteFile();
+	public static final File binary = new File(Data.lastSave, "luastate.bin").getAbsoluteFile();
 	public static final File scripts = new File("data", "lua").getAbsoluteFile();
+	public static final int factoidHash = "factoid".hashCode();
+	public static final int cmdFuncHash = "cmdfunc".hashCode();
 
 	protected Command cmd, reset;
 	private final SandboxThreadGroup sandboxGroup = new SandboxThreadGroup("lua");
-	private final SandboxSecurityManager secure = new SandboxSecurityManager(sandboxGroup, scripts, binary);
 	private final ThreadFactory sandboxFactory = new SandboxThreadFactory(sandboxGroup);
 	private static final int luaHash = "lua".hashCode();
 
 	LuaTable env = null;
 	LuaTable envMeta = null;
-
-	/*
-	 * private static final Method closureExecute;
-	 * 
-	 * static { Method temp = null; try { temp =
-	 * LuaClosure.class.getDeclaredMethod("execute", LuaValue[].class,
-	 * Varargs.class); temp.setAccessible(true); } catch (Throwable t) { }
-	 * closureExecute = temp; }
-	 */
 
 	@Override
 	public String name() {
@@ -62,38 +52,59 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 	}
 
 	@Override
-	public void onEnable() {
-		initLua();
+	public void onEnable(File dir) {
 		Command.addCommands(this, cmd = new CmdLua(), reset = new CmdLuaReset());
+		initLua();
 	}
 
 	@Override
 	public void onDisable() {
 		Command.removeCommands(cmd, reset);
 	}
-	
-	public boolean isListener() {return true;}
+
+	public File[] getReadableFiles() {
+		return new File[] { binary, scripts };
+	}
+
+	public boolean isListener() {
+		return true;
+	}
+
 	public void onKick(KickEvent<PircBotX> event) {
-		if (event.getRecipient()==event.getBot().getUserBot() && ChannelData.intern.containsKey(event.getChannel()))
-				ChannelData.intern.remove(event.getChannel());
+		if (event.getRecipient() == event.getBot().getUserBot()
+				&& ChannelData.intern.containsKey(event.getChannel()))
+			ChannelData.intern.remove(event.getChannel());
 	}
 
 	@Override
-	public void onDataSave() {
+	public void onDataSave(File dir) {
+		File file = new File(dir, "luastate.bin");
+		LuaValue value = env.get("irc");
+		if (!value.istable())
+			return;
+		
+		File temp = null;
 		try {
-			LuaValue value = env.get("irc");
-			if (value.istable()) {
-				if (binary.exists() || binary.createNewFile()) {
-					FileOutputStream fs = new FileOutputStream(binary);
-					DataOutputStream os = new DataOutputStream(fs);
-					writeValue(os, value);
-					os.flush();
-					os.close();
-					fs.close();
-				}
+			try {
+				temp = File.createTempFile("shocky", ".tmp");
+			} catch (IOException e1) {
+				throw new RuntimeException(e1);
 			}
+			
+			System.out.printf("File: %s Temp: %s", file.getAbsolutePath(), temp.getAbsolutePath()).println();
+			
+			DataOutputStream os = new DataOutputStream(new FileOutputStream(temp));
+			writeValue(os, value);
+			os.close();
+			
+			if (file.exists())
+				file.delete();
+			temp.renameTo(file);
 		} catch (Exception e) {
 			e.printStackTrace();
+		} finally {
+			if (temp != null && temp.exists())
+				temp.delete();
 		}
 	}
 
@@ -111,11 +122,15 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 		env.load(new BotLib());
 		env.load(new JSONLib());
 
-		env.set("factoid", new FactoidData());
 		env.set("cmd", new CmdData());
+		
+		for (Module module : Module.getModules()) {
+			if (module instanceof ILua)
+				((ILua)module).setupLua(env);
+		}
 
 		try {
-			Class.forName("ModuleLua$FactoidFunction");
+			Class.forName("org.luaj.vm2.lib.LuaState");
 			Class.forName("ModuleLua$CmdFunction");
 			if (!scripts.exists())
 				scripts.mkdirs();
@@ -301,8 +316,7 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 		subTable.set("bot", bot.getNick());
 		subTable.set("sender", sender.getNick());
 
-		IFactoid module = (IFactoid) Module.getModule("factoid");
-		LuaState state = new LuaState(module, bot, channel, sender, cache);
+		LuaState state = new LuaState(bot, channel, sender, cache);
 		subTable.set("state", state);
 
 		LuaClosure func = null;
@@ -314,10 +328,13 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			}
 		}
 
-		final ExecutorService service = Executors.newSingleThreadExecutor(sandboxFactory);
+		final ExecutorService service = Executors
+				.newSingleThreadExecutor(sandboxFactory);
 		try {
 			if (func == null) {
-				func = LuaC.instance.load(new ByteArrayInputStream(code.getBytes(Helper.utf8)), "script", subTable).checkclosure();
+				func = LuaC.instance
+						.load(new ByteArrayInputStream(code.getBytes(Helper.utf8)), "script", subTable)
+						.checkclosure();
 				if (cache != null)
 					cache.put(key, func);
 			}
@@ -356,9 +373,10 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			}
 
 			HashMap<Integer, Object> cache = new HashMap<Integer, Object>();
-			String output = parse(cache,params.bot,params.type,params.channel,params.sender,null,params.input,null);
+			String output = parse(cache, params.bot, params.type, params.channel, params.sender, null, params.input, null);
 			if (output != null && !output.isEmpty())
-				callback.append(StringTools.limitLength(StringTools.formatLines(output)));
+				callback.append(StringTools.limitLength(StringTools
+						.formatLines(output)));
 		}
 	}
 
@@ -395,14 +413,7 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 
 		@Override
 		public String call() throws Exception {
-			SecurityManager sysSecure = System.getSecurityManager();
-
 			try {
-
-				if (sysSecure != secure) {
-					System.setSecurityManager(secure);
-					secure.enabled = true;
-				}
 				/*
 				 * LuaValue[] stack = new LuaValue[func.p.maxstacksize];
 				 * System.arraycopy(LuaValue.NILS, 0, stack, 0,
@@ -423,99 +434,9 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 				 * sb.append(')'); sb.append('\n'); } return sb.toString();
 				 */
 			} catch (LuaError ex) {
+				ex.printStackTrace(System.out);
 				return ex.getMessage();
-			} finally {
-				if (sysSecure != secure) {
-					secure.enabled = false;
-					System.setSecurityManager(sysSecure);
-				}
 			}
-		}
-	}
-
-	public static class FactoidData extends LuaValue {
-		@Override
-		public int type() {
-			return LuaValue.TUSERDATA;
-		}
-
-		@Override
-		public String typename() {
-			return "userdata";
-		}
-
-		@Override
-		public LuaValue get(LuaValue key) {
-			LuaFunction parent = LuaThread.getCallstackFunction(LuaThread.getCallstackDepth());
-			LuaValue env = parent.getfenv();
-			if (env == null)
-				return NIL;
-			LuaValue obj = env.get("state");
-			if (!(obj instanceof LuaState))
-				return NIL;
-			LuaState state = (LuaState) obj;
-			if (state.chan != null && state.factoidmod instanceof Module) {
-				Module factmod = (Module) state.factoidmod;
-				if (!factmod.isEnabled(state.chan.getName()))
-					return NIL;
-			}
-			LuaValue func = FactoidFunction.create(state, key.checkjstring());
-			func.setfenv(env);
-			return func;
-		}
-	}
-
-	public static class CmdData extends LuaValue {
-		@Override
-		public int type() {
-			return LuaValue.TUSERDATA;
-		}
-
-		@Override
-		public String typename() {
-			return "userdata";
-		}
-
-		@Override
-		public LuaValue get(LuaValue key) {
-			LuaFunction parent = LuaThread.getCallstackFunction(LuaThread.getCallstackDepth());
-			LuaValue func = CmdFunction.create(parent, key.checkjstring());
-			func.setfenv(parent.getfenv());
-			return func;
-		}
-	}
-
-	public static class LuaState extends LuaValue {
-		public final IFactoid factoidmod;
-		public final PircBotX bot;
-		public final Channel chan;
-		public final User user;
-		public final Map<Integer, Object> cache;
-
-		public LuaState(IFactoid module, PircBotX bot, Channel chan, User user, Map<Integer, Object> cache) {
-			super();
-			this.factoidmod = module;
-			this.bot = bot;
-			this.chan = chan;
-			this.user = user;
-			this.cache = cache;
-		}
-
-		@Override
-		public int type() {
-			return LuaValue.TUSERDATA;
-		}
-
-		@Override
-		public String typename() {
-			return "userdata";
-		}
-		
-		public boolean isController() {
-			if (bot == null) return true;
-			if (bot.getInetAddress().isLoopbackAddress()) return true;
-			if (Shocky.getLogin(user) == null) return false;
-			return Data.controllers.contains(Shocky.getLogin(user));
 		}
 	}
 
@@ -554,173 +475,28 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 		}
 	}
 
-	private static class FactoidFunction extends OneArgFunction {
-		//private static final Map<String, FactoidFunction> internMap = new HashMap<String, FactoidFunction>();
-		private static final int factoidHash = "factoid".hashCode();
-		private static final int factoidFuncHash = "factoidfunc".hashCode();
-		
-		final String factoid;
-
-		private FactoidFunction(String factoid) {
-			this.factoid = factoid;
-		}
-
-		public synchronized static LuaValue create(LuaState state, String factoid) {
-			if (factoid == null || factoid.isEmpty())
-				return NIL;
-			
-			int hash = factoidFuncHash+factoid.hashCode();
-			if (state.cache != null) {
-				if (state.cache.containsKey(hash))
-				{
-					Object obj = state.cache.get(hash);
-					if (obj instanceof FactoidFunction)
-						return (FactoidFunction)obj;
-				}
-			}
-
-			//if (internMap.containsKey(factoid))
-			//	return internMap.get(factoid);
-
-			FactoidFunction function = new FactoidFunction(factoid);
-			//internMap.put(factoid, function);
-			state.cache.put(hash, function);
-			return function;
-		}
-		
-		private LuaState getState() {
-			if (env == null)
-				return null;
-			LuaValue obj = env.get("state");
-			if (!(obj instanceof LuaState))
-				return null;
-			LuaState state = (LuaState) obj;
-			if (state.chan != null && state.factoidmod instanceof Module) {
-				Module factmod = (Module) state.factoidmod;
-				if (!factmod.isEnabled(state.chan.getName()))
-					return null;
-			}
-			return state;
-		}
-		
-		private Factoid getFactoid(LuaState state) {
-			if (!(state.factoidmod instanceof Module))
-				return null;
-			int hash = factoidHash+factoid.hashCode();
-			Factoid f = null;
-			if (state.cache != null) {
-				if (state.cache.containsKey(hash))
-				{
-					Object obj = state.cache.get(hash);
-					if (obj instanceof Factoid)
-						f = (Factoid)obj;
-				}
-			}
-			if (f == null && state.chan != null)
-				f = state.factoidmod.getFactoid(state.chan.getName(), factoid);
-			if (f == null)
-				f = state.factoidmod.getFactoid(null, factoid);
-			if (f != null && state.cache != null && !state.cache.containsKey(hash))
-				state.cache.put(hash, f);
-			return f;
-		}
-		
-		public ScriptModule getScriptModule(Factoid f) {
-			String raw = f.rawtext;
-			String type = null;
-			if (raw.startsWith("<")) {
-				int closingIndex = raw.indexOf(">");
-				if (closingIndex != -1)
-					type = raw.substring(1, closingIndex);
-			}
-			if (type != null)
-				return Module.getScriptingModule(type);
-			return null;
+	public static class CmdData extends LuaValue {
+		@Override
+		public int type() {
+			return LuaValue.TUSERDATA;
 		}
 
 		@Override
-		public LuaValue call(LuaValue arg) {
-			LuaState state = getState();
-			if (state == null)
-				return NIL;
-			String args = arg.optjstring(null);
-			StringBuilder message = new StringBuilder(factoid);
-			if (args != null)
-				message.append(' ').append(args);
-			try {
-				return valueOf(state.factoidmod.runFactoid(state.cache, state.bot, state.chan, state.user, message.toString()));
-			} catch (Exception e) {
-				throw new LuaError(e);
-			}
+		public String typename() {
+			return "userdata";
 		}
 
 		@Override
 		public LuaValue get(LuaValue key) {
-			String name = key.checkjstring();
-			if (name == null)
-				return NIL;
-			boolean src = name.equals("src");
-			boolean author = false;
-			boolean time = false;
-			boolean data = false;
-			if (!src)
-				author = name.equals("author");
-			if (!src && !author)
-				time = name.equals("time");
-			if (!src && !author && !time)
-				data = name.equals("data");
-			if (src||author||time||data) {
-				LuaState state = getState();
-				if (state == null)
-					return NIL;
-				Factoid f = getFactoid(state);
-				if (f == null)
-					return NIL;
-				if (src)
-					return valueOf(f.rawtext);
-				if (author)
-					return valueOf(f.author);
-				if (time)
-					return valueOf(f.stamp);
-				if (data) {
-					ScriptModule sModule = getScriptModule(f);
-					if (sModule != null && sModule instanceof IFactoidData) {
-						IFactoidData dModule = (IFactoidData)sModule;
-						String s = dModule.getData(f);
-						if (s != null)
-							return valueOf(s);
-					}
-					return NIL;
-				}
-			}
-			return super.get(key);
-		}
-		
-		@Override
-		public void set(LuaValue key, LuaValue value) {
-			String name = key.checkjstring();
-			if (name == null)
-				return;
-			if (name.equals("data")) {
-				String data = value.checkjstring();
-				if (data == null)
-					return;
-				LuaState state = getState();
-				if (state == null || !state.isController())
-					return;
-				Factoid f = getFactoid(state);
-				if (f == null)
-					return;
-				ScriptModule sModule = getScriptModule(f);
-				if (sModule != null && sModule instanceof IFactoidData)
-					((IFactoidData)sModule).setData(f, data);
-			}
+			LuaFunction parent = LuaThread.getCallstackFunction(LuaThread.getCallstackDepth());
+			LuaValue func = CmdFunction.create(parent, key.checkjstring());
+			if (func != NIL)
+				func.setfenv(parent.getfenv());
+			return func;
 		}
 	}
-
+	
 	private static class CmdFunction extends OneArgFunction {
-		private static final Map<Command, CmdFunction> internMap = new HashMap<Command, CmdFunction>();
-
 		final Command cmd;
 
 		private CmdFunction(Command factoid) {
@@ -731,20 +507,28 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			if (cmd == null || cmd.isEmpty())
 				return NIL;
 
-			LuaValue obj = parent.getfenv().get("state");
-			if (!(obj instanceof LuaState))
+			LuaValue v = parent.getfenv().get("state");
+			if (!(v instanceof LuaState))
 				return NIL;
-			LuaState state = (LuaState) obj;
+			LuaState state = (LuaState) v;
 
-			Command cmdobj = Command.getCommand(state.bot, state.user, state.chan.getName(), EType.Channel, new CommandCallback(), cmd);
+			Command cmdobj = Command
+					.getCommand(state.bot, state.user, state.chan.getName(), EType.Channel, new CommandCallback(), cmd);
 			if (cmdobj == null)
 				return NIL;
 
-			if (internMap.containsKey(cmdobj))
-				return internMap.get(cmdobj);
+			int hash = cmdFuncHash + cmdobj.command().hashCode();
+			if (state.cache != null) {
+				if (state.cache.containsKey(hash)) {
+					Object obj = state.cache.get(hash);
+					if (obj instanceof CmdFunction)
+						return (CmdFunction) obj;
+				}
+			}
 
 			CmdFunction function = new CmdFunction(cmdobj);
-			internMap.put(cmdobj, function);
+			if (state.cache != null)
+				state.cache.put(hash, function);
 			return function;
 		}
 
@@ -758,11 +542,11 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			if (args.isEmpty())
 				args = cmd.command();
 			else
-				args = cmd.command()+' '+args;
-			Parameters params = new Parameters(state.bot,EType.Channel,state.chan,state.user,args);
+				args = cmd.command() + ' ' + args;
+			Parameters params = new Parameters(state.bot, EType.Channel, state.chan, state.user, args);
 			CommandCallback callback = new CommandCallback();
 			try {
-				cmd.doCommand(params,callback);
+				cmd.doCommand(params, callback);
 				if (callback.type != EType.Channel)
 					return NIL;
 				return valueOf(callback.output.toString());
@@ -850,40 +634,41 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			return listOf(values);
 		}
 	}
-	
+
 	public static class PCall extends VarArgFunction {
-		
-		private static final String[] LIBV_KEYS = {
-			"pcall", // (f, arg1, ...) -> status, result1, ...
-			"xpcall", // (f, err) -> result1, ...
+
+		private static final String[] LIBV_KEYS = { "pcall", // (f, arg1, ...)
+																// -> status,
+																// result1, ...
+				"xpcall", // (f, err) -> result1, ...
 		};
-		
+
 		public LuaValue init() {
-			bind( env, PCall.class, LIBV_KEYS, 1 );
+			bind(env, PCall.class, LIBV_KEYS, 1);
 			return env;
 		}
-		
+
 		public Varargs invoke(Varargs args) {
-			switch ( opcode ) {
-			case 0:
-			{
-				init(); break;
+			switch (opcode) {
+			case 0: {
+				init();
+				break;
 			}
 			case 1: // "pcall", // (f, arg1, ...) -> status, result1, ...
 			{
 				LuaValue func = args.checkvalue(1);
 				LuaThread.onCall(this);
 				try {
-					return pcall(func,args.subargs(2),null);
+					return pcall(func, args.subargs(2), null);
 				} finally {
 					LuaThread.onReturn();
 				}
 			}
-			case 2: // "xpcall", // (f, err) -> result1, ...				
+			case 2: // "xpcall", // (f, err) -> result1, ...
 			{
 				LuaThread.onCall(this);
 				try {
-					return pcall(args.arg1(),NONE,args.checkvalue(2));
+					return pcall(args.arg1(), NONE, args.checkvalue(2));
 				} finally {
 					LuaThread.onReturn();
 				}
@@ -891,7 +676,7 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			}
 			return NONE;
 		}
-		
+
 		public static Varargs pcall(LuaValue func, Varargs args, LuaValue errfunc) {
 			try {
 				for (int i = LuaThread.getCallstackDepth(); i > 0; i--) {
@@ -908,12 +693,12 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 				} finally {
 					thread.err = olderr;
 				}
-			} catch ( LuaError le ) {
+			} catch (LuaError le) {
 				String m = le.getMessage();
-				return varargsOf(FALSE, m!=null? valueOf(m): NIL);
-			} catch ( Exception e ) {
+				return varargsOf(FALSE, m != null ? valueOf(m) : NIL);
+			} catch (Exception e) {
 				String m = e.getMessage();
-				return varargsOf(FALSE, valueOf(m!=null? m: e.toString()));
+				return varargsOf(FALSE, valueOf(m != null ? m : e.toString()));
 			}
 		}
 	}

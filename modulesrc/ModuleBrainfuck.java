@@ -1,5 +1,6 @@
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.InputStream;
 import java.util.Map;
 
@@ -21,7 +22,7 @@ public class ModuleBrainfuck extends ScriptModule {
 	
 	public String name() {return "brainfuck";}
 	public String identifier() {return "bf";}
-	public void onEnable() {
+	public void onEnable(File dir) {
 		cmd = new CmdBrainfuck();
 		Command.addCommands(this, cmd);
 		Command.addCommand(this, "bf", cmd);

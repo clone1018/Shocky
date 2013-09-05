@@ -19,7 +19,7 @@ public class ModuleLOLCode extends ScriptModule {
 	
 	public String name() {return "lolcode";}
 	public String identifier() {return "lol";}
-	public void onEnable() {
+	public void onEnable(File dir) {
 		Command.addCommands(this, cmd = new CmdLOLCode());
 	}
 	public void onDisable() {
@@ -38,6 +38,8 @@ public class ModuleLOLCode extends ScriptModule {
 			lolcode.CompilationUnit().interpret(run);
 			s = stream.toString();
 		} catch (ParseException e) {
+			s = e.getMessage();
+		} catch (TokenMgrError e) {
 			s = e.getMessage();
 		} catch (Exception e) {
 			return "";

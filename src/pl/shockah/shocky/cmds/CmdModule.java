@@ -32,7 +32,9 @@ public class CmdModule extends Command {
 			StringBuilder sb = new StringBuilder();
 			for (Module module : modules) {
 				if (sb.length() != 0) sb.append(", ");
-				sb.append(module.isEnabled(params.channel.getName()) ? Colors.DARK_GREEN : Colors.RED);
+				boolean inchan = !module.isEnabled(params.channel.getName());
+				boolean global = !module.isEnabled(null);
+				sb.append(global ? Colors.RED : (inchan ? Colors.OLIVE : Colors.DARK_GREEN));
 				sb.append(module.name());
 				sb.append(Colors.NORMAL);
 			}
@@ -70,11 +72,11 @@ public class CmdModule extends Command {
 					}
 					
 					if (state) {
-						callback.append(Module.enable(module,channelName) ? "Enabled" : "Failed");
+						callback.append(module.enable(channelName) ? "Enabled" : "Failed");
 						config.set("module-"+module.name(),true);
 						return;
 					} else {
-						callback.append(Module.disable(module,channelName) ? "Disabled" : "Failed");
+						callback.append(module.disable(channelName) ? "Disabled" : "Failed");
 						config.set("module-"+module.name(),false);
 						return;
 					}
@@ -106,7 +108,7 @@ public class CmdModule extends Command {
 			} else if (method.equalsIgnoreCase("reloadall")) {
 				params.checkController();
 				ArrayList<Module> modules = Module.getModules(true);
-				for (Module module : modules) Module.reload(module);
+				for (Module module : modules) module.reload();
 				callback.append("Reloaded all modules");
 				return;
 			} else if (params.tokenCount >= 2 && (method.equalsIgnoreCase("reload") || method.equalsIgnoreCase("unload"))) {
@@ -119,15 +121,16 @@ public class CmdModule extends Command {
 					return;
 				}
 				if (state)
-					callback.append(Module.reload(module) ? "Reloaded" : "Failed");
+					callback.append(module.reload() ? "Reloaded" : "Failed");
 				else
-					callback.append(Module.unload(module) ? "Unloaded" : "Failed");
+					callback.append(module.unload() ? "Unloaded" : "Failed");
 				return;
 			} else if (params.tokenCount >= 2 && method.equalsIgnoreCase("loadhttp")) {
 				params.checkController();
 				try {
 					URL url = new URL(params.getParams(0));
 					callback.append(Module.load(new ModuleSource<URL>(url)) != null ? "Loaded" : "Failed");
+					Module.postLoad();
 				} catch (Exception e) {
 					e.printStackTrace();
 				}

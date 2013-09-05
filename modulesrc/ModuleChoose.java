@@ -1,3 +1,4 @@
+import java.io.File;
 import java.util.Random;
 import java.util.StringTokenizer;
 
@@ -10,7 +11,7 @@ public class ModuleChoose extends Module {
 	protected Command cmd;
 	
 	public String name() {return "choose";}
-	public void onEnable() {
+	public void onEnable(File dir) {
 		Command.addCommands(this, cmd = new CmdChoose());
 	}
 	public void onDisable() {

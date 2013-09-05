@@ -47,8 +47,7 @@ public class FileLine {
 			}
 			//file.createNewFile();
 			
-			System.out.printf("File: %s Temp: %s", file.getAbsolutePath(), temp.getAbsolutePath());
-			System.out.println();
+			System.out.printf("File: %s Temp: %s", file.getAbsolutePath(), temp.getAbsolutePath()).println();
 			
 			BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(temp),Helper.utf8));
 			for (int i = 0; i < lines.size(); i++) {
@@ -60,7 +59,6 @@ public class FileLine {
 			if (file.exists())
 				file.delete();
 			temp.renameTo(file);
-			
 		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {

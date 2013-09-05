@@ -38,23 +38,23 @@ public class ModuleControllerAlert extends Module {
 	
 	public String name() {return "alert";}
 	public boolean isListener() {return true;}
-	public void onEnable() {
+	public void onEnable(File dir) {
 		Command.addCommands(this, cmd = new CmdAlert());
 		
-		ArrayList<String> lines = FileLine.read(new File("data","alerts.cfg"));
+		ArrayList<String> lines = FileLine.read(new File(dir,"alerts.cfg"));
 		for (int i = 0; i < lines.size(); i += 2) alerts.add(new ImmutablePair<String,Alert>(lines.get(i),Alert.newAlert(lines.get(i+1))));
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd);
 	}
-	public void onDataSave() {
+	public void onDataSave(File dir) {
 		ArrayList<String> lines = new ArrayList<String>();
 		for (int i = 0; i < alerts.size(); i++) {
 			ImmutablePair<String,Alert> pair = alerts.get(i);
 			lines.add(pair.left);
 			lines.add(pair.right.toString());
 		}
-		FileLine.write(new File("data","alerts.cfg"),lines);
+		FileLine.write(new File(dir,"alerts.cfg"),lines);
 	}
 	
 	public void onMessage(MessageEvent<PircBotX> event) {

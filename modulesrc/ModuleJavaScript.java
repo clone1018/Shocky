@@ -1,3 +1,4 @@
+import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Arrays;
@@ -29,19 +30,17 @@ import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Parameters;
 import pl.shockah.shocky.cmds.Command.EType;
 import pl.shockah.shocky.sql.Factoid;
-import pl.shockah.shocky.threads.SandboxSecurityManager;
 import pl.shockah.shocky.threads.SandboxThreadFactory;
 import pl.shockah.shocky.threads.SandboxThreadGroup;
 
 public class ModuleJavaScript extends ScriptModule {
 	protected Command cmd;
 	private final SandboxThreadGroup sandboxGroup = new SandboxThreadGroup("javascript");
-	private final SandboxSecurityManager secure = new SandboxSecurityManager(sandboxGroup);
 	private final ThreadFactory sandboxFactory = new SandboxThreadFactory(sandboxGroup);
 
 	public String name() {return "javascript";}
 	public String identifier() {return "js";}
-	public void onEnable() {
+	public void onEnable(File dir) {
 		Command.addCommands(this, cmd = new CmdJavascript());
 		Command.addCommand(this, "js",cmd);
 		
@@ -170,17 +169,13 @@ public class ModuleJavaScript extends ScriptModule {
 
 		@Override
 		public String call() throws Exception {
-			synchronized (secure) {
 				StringWriter sw = new StringWriter();
 				PrintWriter pw = new PrintWriter(sw);
 				ScriptContext context = engine.getContext();
 				context.setWriter(pw);
 				context.setErrorWriter(pw);
-			
-				SecurityManager sysSecure = System.getSecurityManager();
+				
 				try {
-					System.setSecurityManager(secure);
-					secure.enabled = true;
 					Object out = engine.eval(code);
 					if (sw.getBuffer().length() != 0)
 						return sw.toString();
@@ -190,12 +185,7 @@ public class ModuleJavaScript extends ScriptModule {
 				catch(ScriptException ex) {
 					return ex.getMessage();
 				}
-				finally {
-					secure.enabled = false;
-					System.setSecurityManager(sysSecure);
-				}
 				return null;
-			}
 		}
 		
 	}

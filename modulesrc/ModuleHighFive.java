@@ -2,15 +2,20 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.regex.Pattern;
 
+import org.luaj.vm2.LuaTable;
+import org.luaj.vm2.LuaValue;
+import org.luaj.vm2.lib.TwoArgFunction;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 import org.pircbotx.hooks.events.MessageEvent;
+
 import pl.shockah.Config;
 import pl.shockah.shocky.Data;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Shocky;
+import pl.shockah.shocky.interfaces.ILua;
 
-public class ModuleHighFive extends Module/* implements ActionListener*/ {
+public class ModuleHighFive extends Module implements ILua {
 	private Config config = new Config();
 	private HashMap<String,User> started = new HashMap<String,User>();
 	private HashMap<String,Long> timers = new HashMap<String,Long>();
@@ -22,9 +27,6 @@ public class ModuleHighFive extends Module/* implements ActionListener*/ {
 		if (nick1.equals(nick2))
 			return 0;
 		
-		//ArrayList<String> nicks = new ArrayList<String>(Arrays.asList(new String[]{nick1,nick2}));
-		//Collections.sort(nicks);
-		//nick1 = nicks.get(0); nick2 = nicks.get(1);
 		if (nick1.compareTo(nick2)>0) {
 			String temp = nick1;
 			nick1 = nick2;
@@ -40,16 +42,16 @@ public class ModuleHighFive extends Module/* implements ActionListener*/ {
 	
 	public String name() {return "highfive";}
 	public boolean isListener() {return true;}
-	public void onEnable() {
+	public void onEnable(File dir) {
 		Data.config.setNotExists("hf-announce",true);
 		Data.config.setNotExists("hf-maxtime",1000*60*5);
 		Data.config.setNotExists("hf-kickat",5);
-		config.load(new File("data","highfive.cfg"));
+		config.load(new File(dir,"highfive.cfg"));
 	}
 	public void onDisable() {
 	}
-	public void onDataSave() {
-		config.save(new File("data","highfive.cfg"));
+	public void onDataSave(File dir) {
+		config.save(new File(dir,"highfive.cfg"));
 	}
 	
 	public void onMessage(MessageEvent<PircBotX> event) {
@@ -74,13 +76,6 @@ public class ModuleHighFive extends Module/* implements ActionListener*/ {
 			started.put(chan,event.getUser());
 			timers.put(chan,time);
 		} else {
-			/*if (event.getUser().equals(s) && event.getBot().getUserBot().getChannelsOpIn().contains(event.getChannel())) {
-				event.getBot().kick(event.getChannel(),event.getUser());
-				started.remove(chan);
-				timers.remove(chan);
-				return;
-			}*/
-			
 			int stat = changeStat(s.getNick(),event.getUser().getNick(),1);
 			if (stat != 0) {
 				if (event.getChannel().isOp(event.getBot().getUserBot()) && stat >= Data.forChannel(event.getChannel()).getInt("hf-kickat")) {
@@ -126,21 +121,27 @@ public class ModuleHighFive extends Module/* implements ActionListener*/ {
 		}
 		return sb.toString();
 	}
-
-	/*public void actionPerformed(ActionEvent e) {
-		TimerClear tc = (TimerClear)e.getSource();
-		tc.stop();
-		started.remove(tc.channel);
-		timers.remove(tc.channel);
-	}
 	
-	public class TimerClear extends Timer {
-		private static final long serialVersionUID = 7774482809649593019L;
-		private final String channel;
+	public class Function extends TwoArgFunction {
 
-		public TimerClear(int ms, ActionListener al, String channel) {
-			super(ms,al);
-			this.channel = channel;
+		@Override
+		public LuaValue call(LuaValue arg1, LuaValue arg2) {
+			String nick1 = arg1.checkjstring().toLowerCase();
+			String nick2 = arg2.checkjstring().toLowerCase();
+			
+			if (nick1.compareTo(nick2)>0) {
+				String temp = nick1;
+				nick1 = nick2;
+				nick2 = temp;
+			}
+			
+			String key = nick1+' '+nick2;
+			return valueOf(config.exists(key)?config.getInt(key):0);
 		}
-	}*/
+	}
+
+	@Override
+	public void setupLua(LuaTable env) {
+		env.set("hf", new Function());
+	}
 }

@@ -38,7 +38,7 @@ public class ModuleDFWords extends Module {
 	}
 
 	@Override
-	public void onEnable() {
+	public void onEnable(File dir) {
 		try {
 
 			words = new HashMap<String, Word>();

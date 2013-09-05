@@ -1,3 +1,4 @@
+import java.io.File;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import org.pircbotx.Channel;
@@ -58,7 +59,7 @@ public class ModuleWolframAlpha extends Module {
 	}
 	
 	public String name() {return "wolfram";}
-	public void onEnable() {
+	public void onEnable(File dir) {
 		Command.addCommands(this, cmd = new CmdWolframAlpha());
 		Command.addCommand(this, "wa", cmd);
 		Data.config.setNotExists("wolfram-apikey","");

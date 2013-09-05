@@ -1,3 +1,4 @@
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
@@ -19,17 +20,17 @@ import pl.shockah.StringTools;
 import pl.shockah.shocky.Data;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Shocky;
+import pl.shockah.shocky.interfaces.IRollback;
 import pl.shockah.shocky.lines.LineAction;
 import pl.shockah.shocky.lines.LineMessage;
 import pl.shockah.shocky.lines.LineWithUsers;
-import pl.shockah.shocky.prototypes.IRollback;
 
 public class ModuleRegexReplace extends Module {
 	
 	public static String[] groupColors = new String[] {Colors.BLUE+",02", Colors.RED+",05", Colors.GREEN+",03", Colors.MAGENTA+",06", Colors.CYAN+",10"};
 	
 	@Override
-	public void onEnable() {
+	public void onEnable(File dir) {
 	}
 	@Override
 	public void onDisable() {

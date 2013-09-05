@@ -1,6 +1,7 @@
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -43,10 +44,10 @@ public class ModuleRSS extends Module {
 	protected ArrayList<Feed> feeds = new ArrayList<Feed>();
 	
 	public String name() {return "rss";}
-	public void onEnable() {
+	public void onEnable(File dir) {
 		Command.addCommands(this, cmd = new CmdRSS());
 		
-		ArrayList<String> lines = FileLine.read(new File("data","rss.cfg"));
+		ArrayList<String> lines = FileLine.read(new File(dir,"rss.cfg"));
 		for (int i = 0; i < lines.size(); i += 3) {
 			String url = lines.get(i);
 			long time = Long.parseLong(lines.get(i+1)); Date date = time <= 0 ? null : new Date(time);
@@ -58,14 +59,14 @@ public class ModuleRSS extends Module {
 		Command.removeCommands(cmd);
 		for (Feed feed : feeds) feed.stop();
 	}
-	public void onDataSave() {
+	public void onDataSave(File dir) {
 		ArrayList<String> lines = new ArrayList<String>();
 		for (Feed feed : feeds) {
 			lines.add(feed.getURL());
 			lines.add(""+feed.getDate().getTime());
 			lines.add(StringTools.implode(feed.channels.toArray(new String[feed.channels.size()])," "));
 		}
-		FileLine.write(new File("data","rss.cfg"),lines);
+		FileLine.write(new File(dir,"rss.cfg"),lines);
 	}
 	
 	protected class Feed implements ActionListener {
@@ -112,8 +113,15 @@ public class ModuleRSS extends Module {
 					
 					HTTPQuery q = HTTPQuery.create(url);
 					q.connect(true,false);
-					XMLObject xBase = XMLObject.deserialize(q.readWhole());
-					q.close();
+					XMLObject xBase;
+					try {
+						xBase = XMLObject.deserialize(q.readWhole());
+					} catch (IOException e1) {
+						e1.printStackTrace();
+						return;
+					} finally {
+						q.close();
+					}
 					if (xBase.getAllElements().get(0).getName().equals("feed")) {
 						ArrayList<XMLObject> xEntries = xBase.getElements("feed").get(0).getElements("entry");
 						for (XMLObject xEntry : xEntries) {

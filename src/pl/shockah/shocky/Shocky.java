@@ -1,5 +1,6 @@
 package pl.shockah.shocky;
 
+import java.io.File;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -12,6 +13,7 @@ import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.Command.EType;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.sql.SQL;
+import pl.shockah.shocky.threads.SandboxSecurityManager;
 
 public class Shocky extends ListenerAdapter {
 	private static final ScheduledExecutorService timer = Executors.newScheduledThreadPool(1);
@@ -19,8 +21,10 @@ public class Shocky extends ListenerAdapter {
 	private static ScheduledFuture<?> futureSave = null;
 	private static MultiBotManager multiBot;
 	private static boolean isClosing = false;
+	private static SandboxSecurityManager secure;
 	
 	public static void main(String[] args) {
+		System.setProperty("http.keepAlive", "false");
 		Data.load();
 		SQL.init();
 				
@@ -51,6 +55,15 @@ public class Shocky extends ListenerAdapter {
 		futureSave = timer.scheduleAtFixedRate(saver, delay, delay, TimeUnit.MINUTES);
 		
 		new ThreadConsoleInput().start();
+		List<File> files = new ArrayList<File>();
+		for (Module module : Module.getModules())
+		{
+			File[] fileArray = module.getReadableFiles();
+			for (int i = 0; i < fileArray.length; ++i)
+				files.add(fileArray[i]);
+		}
+		secure = new SandboxSecurityManager(files.toArray(new File[0]));
+		System.setSecurityManager(secure);
 	}
 	
 	public static void dataSave() {

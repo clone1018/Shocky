@@ -2,6 +2,7 @@ package pl.shockah.shocky;
 
 import java.io.Console;
 import java.io.File;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -26,6 +27,8 @@ public class Data {
 	public static final ArrayList<String> channels = new ArrayList<String>();
 	public static final ArrayList<String> blacklistNicks = new ArrayList<String>();
 	public static final ArrayList<String> protectedKeys = new ArrayList<String>();
+	public static final File saveDir = new File("data","saves");
+	public static final File lastSave = new File(saveDir, "last");
 	static {
 		initializeLineTypes();
 	}
@@ -41,6 +44,7 @@ public class Data {
 		Data.config.setNotExists("main-messagelength",400);
 		Data.config.setNotExists("main-messagedelay",500);
 		Data.config.setNotExists("main-saveinterval",300);
+		Data.config.setNotExists("main-backups",2);
 		Data.config.setNotExists("main-sqlurl","http://localhost/shocky/sql.php");
 		Data.config.setNotExists("main-sqlhost","localhost");
 		Data.config.setNotExists("main-sqluser","");
@@ -79,27 +83,73 @@ public class Data {
 		}
 	}
 	protected static synchronized void load() {
-		File dir = new File("data"); dir.mkdir();
+		lastSave.mkdir();
 		
-		config.load(new File(dir,"config.cfg"));
-		if (new File(dir,"config.cfg").exists()) {
-			controllers.addAll(FileLine.read(new File(dir,"controllers.cfg")));
-			channels.addAll(FileLine.read(new File(dir,"channels.cfg")));
-			blacklistNicks.addAll(FileLine.read(new File(dir,"blacklistNicks.cfg")));
+		config.load(new File(lastSave,"config.cfg"));
+		if (new File(lastSave,"config.cfg").exists()) {
+			controllers.addAll(FileLine.read(new File(lastSave,"controllers.cfg")));
+			channels.addAll(FileLine.read(new File(lastSave,"channels.cfg")));
+			blacklistNicks.addAll(FileLine.read(new File(lastSave,"blacklistNicks.cfg")));
 		} else blank();
 		
 		protectedKeys.add("main-bitlyuser");
 		protectedKeys.add("main-bitlyapikey");
+		Data.config.setNotExists("main-backups",2);
 	}
+	
 	protected static synchronized void save() {
-		File dir = new File("data"); dir.mkdir();
+		int backups = Data.config.getInt("main-backups");
 		
+		saveDir.mkdirs();
+		File[] dirs = new File[backups+1];
+		dirs[0] = lastSave;
+		for (int i = 1; i <= backups; ++i)
+			dirs[i]=new File(saveDir,"backup"+Integer.toString(i));
+		
+		for (int i = dirs.length-1; i > 0; --i)
+		{
+			File from = dirs[i-1];
+			File to = dirs[i];
+			if (from.isDirectory())
+				moveDir(from,to);
+		}
+		
+		File dir = dirs[0];
+		dir.mkdir();
 		config.save(new File(dir,"config.cfg"));
 		FileLine.write(new File(dir,"controllers.cfg"),controllers);
 		FileLine.write(new File(dir,"channels.cfg"),channels);
 		FileLine.write(new File(dir,"blacklistNicks.cfg"),blacklistNicks);
 		
-		for (Module module : Module.getModules()) module.onDataSave();
+		for (Module module : Module.getModules()) module.onDataSave(dir);
+	}
+	
+	private static boolean moveDir(File from, File to) {
+		if (!from.isDirectory())
+			return false;
+		to.mkdir();
+		URI fromURI = from.toURI();
+		URI toURI = to.toURI();
+		File[] files = from.listFiles();
+		boolean success = true;
+		for (int i = 0; success && i < files.length; ++i) {
+			File file = files[i];
+			URI oldURI = fromURI.relativize(file.toURI());
+			URI newURI = toURI.resolve(oldURI);
+			File newfile = new File(newURI);
+			if (file.isDirectory())
+				success = moveDir(file,newfile);
+			else {
+				if (newfile.isFile())
+					success = newfile.delete();
+				if (success)
+					success = file.renameTo(newfile);
+			}
+			
+		}
+		if (success)
+			success = from.delete();
+		return success;
 	}
 	
 	private static void firstRunSetupString(Console c, String key) {

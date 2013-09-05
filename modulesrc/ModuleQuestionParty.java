@@ -1,3 +1,5 @@
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.regex.Matcher;
@@ -19,8 +21,17 @@ public class ModuleQuestionParty extends Module {
 		HTTPQuery q = HTTPQuery.create("http://questionparty.com/questions/rand/");
 		
 		q.connect(true,false);
-		String html = q.readWhole();
-		q.close();
+		String html = null;
+		try {
+			html = q.readWhole();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			q.close();
+		}
+		
+		if (html == null)
+			return null;
 		
 		Matcher matcher = headerPattern.matcher(html);
 		if(!matcher.find())
@@ -47,7 +58,7 @@ public class ModuleQuestionParty extends Module {
 	}
 	
 	public String name() {return "questionparty";}
-	public void onEnable() {
+	public void onEnable(File dir) {
 		Command.addCommands(this, cmd = new CmdQuestionParty());
 		Command.addCommand(this, "qparty", cmd);
 	}

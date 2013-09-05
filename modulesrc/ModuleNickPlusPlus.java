@@ -1,13 +1,19 @@
 import java.io.File;
+
+import org.luaj.vm2.LuaTable;
+import org.luaj.vm2.LuaValue;
+import org.luaj.vm2.lib.OneArgFunction;
 import org.pircbotx.PircBotX;
 import org.pircbotx.hooks.events.MessageEvent;
+
 import pl.shockah.Config;
 import pl.shockah.shocky.Data;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.Utils;
+import pl.shockah.shocky.interfaces.ILua;
 
-public class ModuleNickPlusPlus extends Module {
+public class ModuleNickPlusPlus extends Module implements ILua {
 	private Config config = new Config();
 	
 	public int changeStat(String nick, int change) {
@@ -20,12 +26,12 @@ public class ModuleNickPlusPlus extends Module {
 	
 	public String name() {return "nickplusplus";}
 	public boolean isListener() {return true;}
-	public void onEnable() {
+	public void onEnable(File dir) {
 		Data.config.setNotExists("npp-announce",true);
-		config.load(new File("data","nickplusplus.cfg"));
+		config.load(new File(dir,"nickplusplus.cfg"));
 	}
-	public void onDataSave() {
-		config.save(new File("data","nickplusplus.cfg"));
+	public void onDataSave(File dir) {
+		config.save(new File(dir,"nickplusplus.cfg"));
 	}
 	
 	public void onMessage(MessageEvent<PircBotX> event) {
@@ -46,5 +52,18 @@ public class ModuleNickPlusPlus extends Module {
 			if (event.getMessage().endsWith("==") || Data.forChannel(event.getChannel()).getBoolean("npp-announce")) Shocky.sendChannel(event.getBot(),event.getChannel(),nick+" == "+stat);
 			else Shocky.sendNotice(event.getBot(),event.getUser(),nick+" == "+stat);
 		}
+	}
+
+	public class Function extends OneArgFunction {
+		@Override
+		public LuaValue call(LuaValue arg) {
+			String nick = arg.checkjstring().toLowerCase();
+			return valueOf(config.exists(nick)?config.getInt(nick):0);
+		}
+	}
+
+	@Override
+	public void setupLua(LuaTable env) {
+		env.set("npp", new Function());
 	}
 }

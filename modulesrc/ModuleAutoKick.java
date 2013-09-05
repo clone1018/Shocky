@@ -1,4 +1,5 @@
 import java.awt.event.ActionListener;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -18,7 +19,7 @@ public class ModuleAutoKick extends Module {
 	
 	public String name() {return "autokick";}
 	public boolean isListener() {return true;}
-	public void onEnable() {
+	public void onEnable(File dir) {
 		Data.config.setNotExists("autokick-messages",5);
 		Data.config.setNotExists("autokick-delay",1000);
 	}

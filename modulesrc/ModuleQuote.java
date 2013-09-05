@@ -19,8 +19,8 @@ public class ModuleQuote extends Module {
 	private HashMap<String,ArrayList<Quote>> quotes = new HashMap<String,ArrayList<Quote>>();
 	
 	public String name() {return "quote";}
-	public void onEnable() {
-		File dir = new File("data","quotes"); dir.mkdir();
+	public void onEnable(File dir) {
+		dir = new File(dir,"quotes"); dir.mkdir();
 		File[] files = dir.listFiles();
 		for (File f : files) {
 			if (f.isDirectory()) return;
@@ -43,8 +43,8 @@ public class ModuleQuote extends Module {
 	public void onDisable() {
 		Command.removeCommands(cmd,cmdAdd,cmdRemove);
 	}
-	public void onDataSave() {
-		File dir = new File("data","quotes"); dir.mkdir();
+	public void onDataSave(File dir) {
+		dir = new File(dir,"quotes"); dir.mkdir();
 		BinBuffer binb = new BinBuffer();
 		
 		Iterator<Entry<String,ArrayList<Quote>>> it = quotes.entrySet().iterator();

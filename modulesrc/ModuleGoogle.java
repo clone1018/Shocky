@@ -1,3 +1,4 @@
+import java.io.File;
 import java.net.URLEncoder;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -16,7 +17,7 @@ public class ModuleGoogle extends Module {
 	@Override
 	public String name() {return "google";}
 	@Override
-	public void onEnable() {
+	public void onEnable(File dir) {
 		Command.addCommands(this, cmd1 = new CmdGoogle());
 		Command.addCommands(this, cmd2 = new CmdGoogleImg());
 		Command.addCommand(this, "g", cmd1);
@@ -42,11 +43,11 @@ public class ModuleGoogle extends Module {
 			e.printStackTrace();
 			return;
 		}
-		q.connect(true, false);
-		String line = q.readWhole();
-		q.close();
 		
 		try {
+			q.connect(true, false);
+			String line = q.readWhole();
+			q.close();
 			JSONObject json = new JSONObject(line);
 			JSONArray results = json.getJSONObject("responseData").getJSONArray("results");
 			if (results.length() == 0) {

@@ -1,3 +1,4 @@
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Random;
 import pl.shockah.shocky.Module;
@@ -11,7 +12,7 @@ public class ModuleSaspiron extends Module {
 	public String name() {
 		return "saspiron";
 	}
-	public void onEnable() {
+	public void onEnable(File dir) {
 		Command.addCommands(this, cmd = new CmdSaspiron());
 	}
 	public void onDisable() {

@@ -1,3 +1,4 @@
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.Random;
@@ -19,7 +20,7 @@ public class ModulePython extends ScriptModule {
 	
 	public String name() {return "python";}
 	public String identifier() {return "py";}
-	public void onEnable() {
+	public void onEnable(File dir) {
 		Data.config.setNotExists("python-url","http://eval.appspot.com/eval");
 		Command.addCommands(this, cmd = new CmdPython());
 		Data.protectedKeys.add("python-url");

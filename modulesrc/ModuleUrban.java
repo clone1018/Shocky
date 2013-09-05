@@ -1,3 +1,4 @@
+import java.io.File;
 import java.net.URLEncoder;
 import org.json.JSONObject;
 import org.pircbotx.Colors;
@@ -15,7 +16,7 @@ public class ModuleUrban extends Module {
 	@Override
 	public String name() {return "urban";}
 	@Override
-	public void onEnable() {
+	public void onEnable(File dir) {
 		Command.addCommands(this, cmd = new CmdUrban());
 	}
 	
@@ -44,15 +45,9 @@ public class ModuleUrban extends Module {
 			StringBuilder result = new StringBuilder();
 			try {
 				q = HTTPQuery.create("http://api.urbandictionary.com/v0/define?term=" + URLEncoder.encode(params.input, "UTF8"));
-			} catch (Exception e) {
-				e.printStackTrace();
-				return;
-			}
-			q.connect(true, false);
-			String line = q.readWhole();
-			q.close();
-			
-			try {
+				q.connect(true, false);
+				String line = q.readWhole();
+				q.close();
 				JSONObject json = new JSONObject(line);
 				String resulttype = json.getString("result_type");
 				if (resulttype.contentEquals("no_results")) {

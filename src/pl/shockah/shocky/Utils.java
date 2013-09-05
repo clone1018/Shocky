@@ -145,22 +145,45 @@ public class Utils {
 	public static String timeAgo(Date date) {return timeAgo(date,new Date());}
 	public static String timeAgo(Date from, Date to) {
 		long dif = (to.getTime()-from.getTime())/1000;
-		int s,m,h,d,w;
+		String time = timeAgo(dif);
+		if (!time.contentEquals("now"))
+			return time+" ago";
+		return time;
+	}
+	
+	public static String timeAgo(long dif) {
+		if (dif == 0L)
+			return "now";
+		
 		StringBuilder sb = new StringBuilder();
+		int s = (int) dif % 60;dif /= 60L;
+		int m = (int) dif % 60;dif /= 60L;
+		int h = (int) dif % 24;dif /= 24L;
+		int d = (int) dif % 7; dif /= 7L;
+		int w = (int) (dif % 52.175D);
+		int y = (int) (dif / 52.175D);
 		
-		s = (int)dif%60; dif /= 60;
-		m = (int)dif%60; dif /= 60;
-		h = (int)dif%24; dif /= 24;
-		d = (int)dif%7; dif /= 7;
-		w = (int)dif;
-		
-		if (w > 0) {if (sb.length() != 0) sb.append(' '); sb.append(w); sb.append('w');}
-		if (w+d > 0) {if (sb.length() != 0) sb.append(' '); sb.append(d); sb.append('d');}
-		if (w+d+h > 0) {if (sb.length() != 0) sb.append(' '); sb.append(h); sb.append('h');}
-		if (w+d+h+m > 0) {if (sb.length() != 0) sb.append(' '); sb.append(m); sb.append('m');}
-		if (w+d+h+m+s > 0) {if (sb.length() != 0) sb.append(' '); sb.append(s); sb.append('s');}
-		if (sb.length() == 0) return "now";
-		sb.append(" ago");
+		int a = 0;
+		for (int i=5;i>=0;--i) {
+			int v;
+			char c;
+			switch(i)
+			{
+			default:
+			case 0: v = s;c = 's'; break;
+			case 1: v = m;c = 'm'; break;
+			case 2: v = h;c = 'h'; break;
+			case 3: v = d;c = 'd'; break;
+			case 4: v = w;c = 'w'; break;
+			case 5: v = y;c = 'y'; break;
+			}
+			if (a > 0)
+				sb.append(' ');
+			a |= v;
+			if (a > 0)
+				sb.append(v).append(c);
+		}
+
 		return sb.toString();
 	}
 }
