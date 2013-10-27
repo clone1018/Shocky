@@ -5,6 +5,8 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -29,25 +31,16 @@ public class BinFile {
 		if (file.exists()) {
 			try {
 				int value; long read = 0;
-				FileInputStream fis = new FileInputStream(file);
-				BufferedInputStream bis = new BufferedInputStream(fis);
+				InputStream is = new BufferedInputStream(new FileInputStream(file));
+				if (gzip)
+					is = new GZIPInputStream(is);
 				
-				if (gzip) {
-					GZIPInputStream gis = new GZIPInputStream(bis);
-					while ((value = gis.read()) != -1) {
-						buffer.writeByte(value);
-						if (++read == bytes) break;
-					}
-					gis.close();
-				} else {
-					while ((value = bis.read()) != -1) {
-						buffer.writeByte(value);
-						if (++read == bytes) break;
-					}
+				while ((value = is.read()) != -1) {
+					buffer.writeByte(value);
+					if (++read == bytes) break;
 				}
 				
-				bis.close();
-				fis.close();
+				is.close();
 			} catch (Exception e) {e.printStackTrace();}
 		}
 	}
@@ -60,20 +53,15 @@ public class BinFile {
 		try {
 			if (!file.exists()) file.createNewFile();
 			
-			FileOutputStream fos = new FileOutputStream(file,true);
-			BufferedOutputStream bos = new BufferedOutputStream(fos);
+			OutputStream os = new BufferedOutputStream(new FileOutputStream(file,true));
+			if (gzip)
+				os = new GZIPOutputStream(os);
 			
-			if (gzip) {
-				GZIPOutputStream gos = new GZIPOutputStream(bos);
-				while (buffer.bytesLeft() > 0) gos.write(buffer.readByte());
-				gos.flush(); gos.close();
-			} else {
-				while (buffer.bytesLeft() > 0) bos.write(buffer.readByte());
-				bos.flush();
-			}
+			while (buffer.bytesLeft() > 0)
+				os.write(buffer.readByte());
 			
-			bos.close();
-			fos.close();
+			os.flush();
+			os.close();
 		} catch (Exception e) {e.printStackTrace();}
 	}
 }

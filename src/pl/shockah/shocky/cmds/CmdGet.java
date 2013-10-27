@@ -16,11 +16,11 @@ public class CmdGet extends Command {
 			return;
 		}
 		
-		String key = params.tokens.nextToken();
+		String key = params.nextParam();
 		boolean global = false;
 		if (key.equals(".")) {
 			global = true;
-			key = params.tokens.nextToken();
+			key = params.nextParam();
 		}
 
 		if (global) params.checkController();

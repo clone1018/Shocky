@@ -9,11 +9,13 @@ import org.luaj.vm2.lib.jse.*;
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
-import org.pircbotx.hooks.events.KickEvent;
+
+import com.sun.script.javascript.RhinoScriptEngine;
 
 import pl.shockah.Helper;
 import pl.shockah.StringTools;
 import pl.shockah.ZeroInputStream;
+import pl.shockah.shocky.Cache;
 import pl.shockah.shocky.Data;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.ScriptModule;
@@ -30,13 +32,13 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 
 	public static final File binary = new File(Data.lastSave, "luastate.bin").getAbsoluteFile();
 	public static final File scripts = new File("data", "lua").getAbsoluteFile();
-	public static final int factoidHash = "factoid".hashCode();
-	public static final int cmdFuncHash = "cmdfunc".hashCode();
+	public static final String luaHash = "lua";
+	public static final String cmdFuncHash = "cmdfunc";
+	public static final String channelHash = "luachannel";
 
 	protected Command cmd, reset;
 	private final SandboxThreadGroup sandboxGroup = new SandboxThreadGroup("lua");
 	private final ThreadFactory sandboxFactory = new SandboxThreadFactory(sandboxGroup);
-	private static final int luaHash = "lua".hashCode();
 
 	LuaTable env = null;
 	LuaTable envMeta = null;
@@ -64,16 +66,6 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 
 	public File[] getReadableFiles() {
 		return new File[] { binary, scripts };
-	}
-
-	public boolean isListener() {
-		return true;
-	}
-
-	public void onKick(KickEvent<PircBotX> event) {
-		if (event.getRecipient() == event.getBot().getUserBot()
-				&& ChannelData.intern.containsKey(event.getChannel()))
-			ChannelData.intern.remove(event.getChannel());
 	}
 
 	@Override
@@ -112,7 +104,7 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 		BaseLib.FINDER = this;
 		env = new LuaTable();
 		env.load(new JseBaseLib());
-		env.load(new PCall());
+		//env.load(new PCall());
 		env.load(new PackageLib());
 		env.load(new TableLib());
 		env.load(new StringLib());
@@ -121,6 +113,10 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 
 		env.load(new BotLib());
 		env.load(new JSONLib());
+		
+		env.rawset("print", LuaValue.NIL);
+		env.rawset("pcall", LuaValue.NIL);
+		env.rawset("xpcall", LuaValue.NIL);
 
 		env.set("cmd", new CmdData());
 		
@@ -132,6 +128,7 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 		try {
 			Class.forName("org.luaj.vm2.lib.LuaState");
 			Class.forName("ModuleLua$CmdFunction");
+			new RhinoScriptEngine().eval("0");
 			if (!scripts.exists())
 				scripts.mkdirs();
 			if (binary.exists()) {
@@ -288,10 +285,9 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 	}
 
 	@Override
-	public String parse(Map<Integer, Object> cache, PircBotX bot, EType type, Channel channel, User sender, Factoid factoid, String code, String message) {
+	public String parse(Cache cache, PircBotX bot, Channel channel, User sender, Factoid factoid, String code, String message) {
 		if (code == null)
 			return "";
-		int key = luaHash + code.hashCode();
 		String output = null;
 
 		LuaTable subTable = new LuaTable();
@@ -311,34 +307,31 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 				arg.set(i, args[i]);
 			subTable.set("arg", arg);
 		}
+		
+		LuaState state = new LuaState(bot, channel, sender, cache);
 
-		subTable.set("channel", ChannelData.getChannelData(channel));
+		if (channel != null)
+			subTable.set("channel", ChannelData.getChannelData(state, channel));
 		subTable.set("bot", bot.getNick());
 		subTable.set("sender", sender.getNick());
-
-		LuaState state = new LuaState(bot, channel, sender, cache);
-		subTable.set("state", state);
+		subTable.set("host", sender.getHostmask());
 
 		LuaClosure func = null;
-		if (cache != null && cache.containsKey(key)) {
-			Object obj = cache.get(key);
-			if (obj instanceof LuaClosure) {
-				func = (LuaClosure) obj;
-				func.setfenv(subTable);
-			}
+		Object obj = state.get(luaHash, code);
+		if (obj instanceof LuaClosure) {
+			func = (LuaClosure) obj;
+			func.setfenv(subTable);
 		}
 
-		final ExecutorService service = Executors
-				.newSingleThreadExecutor(sandboxFactory);
+		final ExecutorService service = Executors.newSingleThreadExecutor(sandboxFactory);
+		Print print = null;
 		try {
 			if (func == null) {
-				func = LuaC.instance
-						.load(new ByteArrayInputStream(code.getBytes(Helper.utf8)), "script", subTable)
-						.checkclosure();
-				if (cache != null)
-					cache.put(key, func);
+				func = LuaC.instance.load(new ByteArrayInputStream(code.getBytes(Helper.utf8)), "script", subTable).checkclosure();
+				state.put(luaHash, code, func);
 			}
-			LuaRunner r = new LuaRunner(func);
+			LuaRunner r = new LuaRunner(func,state);
+			print = r.printer;
 			Future<String> f = service.submit(r);
 			output = f.get(30, TimeUnit.SECONDS);
 		} catch (LuaError e) {
@@ -349,6 +342,9 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			throw new RuntimeException(e);
 		} finally {
 			service.shutdown();
+			LuaState.clearState(state);
+			if (print != null)
+				print.dispose();
 		}
 		if (output == null || output.isEmpty())
 			return null;
@@ -356,27 +352,10 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 		return Utils.mungeAllNicks(channel, 2, output);
 	}
 
-	public class CmdLua extends Command {
-		public String command() {
-			return "lua";
-		}
-
+	public class CmdLua extends ScriptCommand {
+		public String command() {return "lua";}
 		public String help(Parameters params) {
 			return "lua\nlua {code} - runs Lua code";
-		}
-
-		public void doCommand(Parameters params, CommandCallback callback) {
-			if (params.tokenCount < 1) {
-				callback.type = EType.Notice;
-				callback.append(help(params));
-				return;
-			}
-
-			HashMap<Integer, Object> cache = new HashMap<Integer, Object>();
-			String output = parse(cache, params.bot, params.type, params.channel, params.sender, null, params.input, null);
-			if (output != null && !output.isEmpty())
-				callback.append(StringTools.limitLength(StringTools
-						.formatLines(output)));
 		}
 	}
 
@@ -403,10 +382,12 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 	public class LuaRunner implements Callable<String> {
 
 		private final LuaClosure func;
-		private final Print printer;
+		private final LuaState state;
+		public final Print printer;
 
-		public LuaRunner(LuaClosure f) {
+		public LuaRunner(LuaClosure f, LuaState s) {
 			func = f;
+			state = s;
 			printer = new Print(f.getfenv());
 			f.getfenv().rawset("print", printer);
 		}
@@ -420,6 +401,7 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 				 * func.p.maxstacksize); Varargs out = (Varargs)
 				 * closureExecute.invoke(func, stack, LuaValue.NONE);
 				 */
+				LuaState.setState(state);
 				Varargs out = func.invoke();
 				if (printer.hasOutput())
 					return printer.getOutput();
@@ -436,6 +418,9 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			} catch (LuaError ex) {
 				ex.printStackTrace(System.out);
 				return ex.getMessage();
+			} finally {
+				LuaState.clearState();
+				printer.dispose();
 			}
 		}
 	}
@@ -445,6 +430,7 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 		private final LuaValue env;
 		private final ByteArrayOutputStream array;
 		private final PrintStream stream;
+		private boolean disposed = false;
 
 		public Print(LuaValue luaValue) {
 			this.env = luaValue;
@@ -454,6 +440,8 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 
 		@Override
 		public Varargs invoke(Varargs args) {
+			if (disposed)
+				throw new LuaError("Print used while disposed.");
 			LuaValue tostring = env.get("tostring");
 			for (int i = 1, n = args.narg(); i <= n; i++) {
 				if (i > 1)
@@ -473,6 +461,11 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 		public String getOutput() throws UnsupportedEncodingException {
 			return array.toString("UTF-8");
 		}
+		
+		public void dispose() {
+			disposed = true;
+			stream.close();
+		}
 	}
 
 	public static class CmdData extends LuaValue {
@@ -488,11 +481,7 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 
 		@Override
 		public LuaValue get(LuaValue key) {
-			LuaFunction parent = LuaThread.getCallstackFunction(LuaThread.getCallstackDepth());
-			LuaValue func = CmdFunction.create(parent, key.checkjstring());
-			if (func != NIL)
-				func.setfenv(parent.getfenv());
-			return func;
+			return CmdFunction.create(key.checkjstring());
 		}
 	}
 	
@@ -503,46 +492,41 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			this.cmd = factoid;
 		}
 
-		public synchronized static LuaValue create(LuaValue parent, String cmd) {
+		public synchronized static LuaValue create(String cmd) {
 			if (cmd == null || cmd.isEmpty())
 				return NIL;
 
-			LuaValue v = parent.getfenv().get("state");
+			/*LuaValue v = parent.getfenv().get("state");
 			if (!(v instanceof LuaState))
 				return NIL;
-			LuaState state = (LuaState) v;
+			LuaState state = (LuaState) v;*/
+			LuaState state = LuaState.getState();
+			if (state == null)
+				return NIL;
 
-			Command cmdobj = Command
-					.getCommand(state.bot, state.user, state.chan.getName(), EType.Channel, new CommandCallback(), cmd);
+			Command cmdobj = Command.getCommand(state.bot, state.user, state.chan, EType.Channel, new CommandCallback(), cmd);
 			if (cmdobj == null)
 				return NIL;
 
-			int hash = cmdFuncHash + cmdobj.command().hashCode();
-			if (state.cache != null) {
-				if (state.cache.containsKey(hash)) {
-					Object obj = state.cache.get(hash);
-					if (obj instanceof CmdFunction)
-						return (CmdFunction) obj;
-				}
-			}
+			Object obj = state.get(cmdFuncHash, cmdobj.command());
+			if (obj instanceof CmdFunction)
+				return (CmdFunction) obj;
 
 			CmdFunction function = new CmdFunction(cmdobj);
-			if (state.cache != null)
-				state.cache.put(hash, function);
+			state.put(cmdFuncHash, cmdobj.command(), function);
 			return function;
 		}
 
 		@Override
 		public LuaValue call(LuaValue arg) {
-			LuaValue obj = env.get("state");
+			/*LuaValue obj = env.get("state");
 			if (!(obj instanceof LuaState))
 				return NIL;
-			LuaState state = (LuaState) obj;
+			LuaState state = (LuaState) obj;*/
+			LuaState state = LuaState.getState();
+			if (state == null)
+				return NIL;
 			String args = arg.optjstring("");
-			if (args.isEmpty())
-				args = cmd.command();
-			else
-				args = cmd.command() + ' ' + args;
 			Parameters params = new Parameters(state.bot, EType.Channel, state.chan, state.user, args);
 			CommandCallback callback = new CommandCallback();
 			try {
@@ -557,18 +541,17 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 	}
 
 	private static class ChannelData extends LuaValue {
-		private static final HashMap<Channel, ChannelData> intern = new HashMap<Channel, ChannelData>();
 		public final Channel channel;
 		public final LuaFunction isOp;
 		public final LuaFunction isVoiced;
 
-		public synchronized static LuaValue getChannelData(Channel channel) {
-			if (channel == null)
+		public static LuaValue getChannelData(LuaState state, Channel channel) {
+			if (state == null || channel == null)
 				return NIL;
-			if (intern.containsKey(channel))
-				return intern.get(channel);
+			if (state.containsKey(channelHash, channel))
+				return (LuaValue) state.get(channelHash, channel);
 			ChannelData data = new ChannelData(channel);
-			intern.put(channel, data);
+			state.put(channelHash,channel, data);
 			return data;
 		}
 

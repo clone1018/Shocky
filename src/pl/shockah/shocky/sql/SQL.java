@@ -80,6 +80,11 @@ public class SQL {
 			s.execute(query);
 		} catch (SQLException e) {
 			e.printStackTrace();
+		} finally {
+			try {
+				s.close();
+			} catch (SQLException e) {
+			}
 		}
 	}
 	

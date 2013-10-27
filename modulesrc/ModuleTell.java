@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
 import org.pircbotx.PircBotX;
+import org.pircbotx.ShockyBot;
 import org.pircbotx.User;
 import org.pircbotx.hooks.events.ActionEvent;
 import org.pircbotx.hooks.events.KickEvent;
@@ -56,25 +57,33 @@ public class ModuleTell extends Module {
 		FileLine.write(new File(dir,"tell.cfg"),lines);
 	}
 	
-	public void onMessage(MessageEvent<PircBotX> event) {
+	public void onMessage(MessageEvent<ShockyBot> event) {
 		String[] args = event.getMessage().split(" ");
-		if (args.length>0&&args[0].length()>0&&!Command.matches(cmd,event.getBot(),EType.Channel,event.getChannel().getName(),args[0]))
+		if (args.length>0&&args[0].length()>0&&!Command.matches(cmd,event.getBot(),EType.Channel,event.getChannel(),args[0]))
 			sendTells(event.getBot(),event.getUser());}
-	public void onPrivateMessage(PrivateMessageEvent<PircBotX> event) {if (!Command.matches(cmd,event.getBot(),EType.Private,null,event.getMessage().split(" ")[0])) sendTells(event.getBot(),event.getUser());}
-	public void onNotice(NoticeEvent<PircBotX> event) {if (!Command.matches(cmd,event.getBot(),EType.Notice,null,event.getMessage().split(" ")[0])) sendTells(event.getBot(),event.getUser());}
-	public void onAction(ActionEvent<PircBotX> event) {sendTells(event.getBot(),event.getUser());}
-	public void onTopic(TopicEvent<PircBotX> event) {if (event.isChanged()) sendTells(event.getBot(),event.getUser());}
-	public void onKick(KickEvent<PircBotX> event) {sendTells(event.getBot(),event.getSource());}
-	public void onMode(ModeEvent<PircBotX> event) {sendTells(event.getBot(),event.getUser());}
-	public void onUserMode(UserModeEvent<PircBotX> event) {sendTells(event.getBot(),event.getSource());}
+	public void onPrivateMessage(PrivateMessageEvent<ShockyBot> event) {if (!Command.matches(cmd,event.getBot(),EType.Private,null,event.getMessage().split(" ")[0])) sendTells(event.getBot(),event.getUser());}
+	public void onNotice(NoticeEvent<ShockyBot> event) {if (!Command.matches(cmd,event.getBot(),EType.Notice,null,event.getMessage().split(" ")[0])) sendTells(event.getBot(),event.getUser());}
+	public void onAction(ActionEvent<ShockyBot> event) {sendTells(event.getBot(),event.getUser());}
+	public void onTopic(TopicEvent<ShockyBot> event) {if (event.isChanged()) sendTells(event.getBot(),event.getUser());}
+	public void onKick(KickEvent<ShockyBot> event) {sendTells(event.getBot(),event.getSource());}
+	public void onMode(ModeEvent<ShockyBot> event) {sendTells(event.getBot(),event.getUser());}
+	public void onUserMode(UserModeEvent<ShockyBot> event) {sendTells(event.getBot(),event.getSource());}
 	
-	public void sendTells(PircBotX bot, User user) {
+	public synchronized void sendTells(PircBotX bot, User user) {
 		String unick = user.getNick().toLowerCase();
 		if (!tells.containsKey(unick)) return;
-		ArrayList<LineMessage> lines = tells.get(unick);
-		tells.remove(unick);
-		
-		for (LineMessage line : lines) Shocky.sendNotice(bot,user,line.users[0]+" said "+Utils.timeAgo(line.time)+": "+line.text);
+		try {
+			Iterator<LineMessage> lines = tells.get(unick).iterator();
+			while (lines.hasNext()) {
+				LineMessage line = lines.next();
+				Shocky.sendNotice(bot,user,line.users[0]+" said "+Utils.timeAgo(line.time)+": "+line.text);
+				lines.remove();
+				Thread.sleep(2000);
+			}
+			tells.remove(unick);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	public synchronized void addTell(String user, LineMessage line) {
@@ -97,7 +106,7 @@ public class ModuleTell extends Module {
 				return;
 			}
 			
-			String target = params.tokens.nextToken();
+			String target = params.nextParam();
 			
 			Module seenModule = Module.getModule("seen");
 			if (seenModule != null && seenModule instanceof ISeen && seenModule.isEnabled(params.channel.getName())) {

@@ -24,8 +24,8 @@ public class CmdHelp extends Command {
 	public void doCommand(Parameters params, CommandCallback callback) {
 		callback.type = EType.Notice;
 		if (params.tokenCount == 1) {
-			String cmdname = params.tokens.nextToken();
-			Command cmd = Command.getCommand(params.bot,params.sender,params.channel != null?params.channel.getName():null,params.type,callback,cmdname);
+			String cmdname = params.nextParam();
+			Command cmd = Command.getCommand(params.bot,params.sender,params.channel,params.type,callback,cmdname);
 			if (cmd != null)
 				callback.append(cmd.help(params));
 		} else {

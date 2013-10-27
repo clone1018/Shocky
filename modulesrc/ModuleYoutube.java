@@ -1,11 +1,16 @@
 import java.io.File;
+import java.net.URL;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.StringTokenizer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.json.JSONObject;
+import org.pircbotx.Channel;
 import org.pircbotx.Colors;
 import org.pircbotx.PircBotX;
+import org.pircbotx.ShockyBot;
+import org.pircbotx.User;
 import org.pircbotx.hooks.events.ActionEvent;
 import org.pircbotx.hooks.events.MessageEvent;
 import pl.shockah.HTTPQuery;
@@ -13,17 +18,19 @@ import pl.shockah.StringTools;
 import pl.shockah.shocky.Data;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Shocky;
+import pl.shockah.shocky.URLDispatcher;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Parameters;
+import pl.shockah.shocky.interfaces.IAcceptURLs;
 
-public class ModuleYoutube extends Module {
+public class ModuleYoutube extends Module implements IAcceptURLs {
 	protected Command cmd;
 	private ArrayList<Pattern> patternsAction = new ArrayList<Pattern>(), patternsMessage = new ArrayList<Pattern>();
-	private Pattern patternURL = Pattern.compile("https?://(?:(?:(?:www\\.)?youtube\\.com/watch\\?.*?v=([a-zA-Z0-9_\\-]+))|(?:(?:www\\.)?youtu\\.be/([a-zA-Z0-9_\\-]+)))");
+	//private Pattern patternURL = Pattern.compile("https?://(?:(?:(?:www\\.)?youtube\\.com/watch\\?.*?v=([a-zA-Z0-9_\\-]+))|(?:(?:www\\.)?youtu\\.be/([a-zA-Z0-9_\\-]+)))");
 	
-	public String getVideoInfo(String vID) {
+	public static String getVideoInfo(String vID) {
 		HTTPQuery q = null;
 		
 		try {
@@ -52,7 +59,7 @@ public class ModuleYoutube extends Module {
 		} catch (Exception e) {e.printStackTrace();}
 		return null;
 	}
-	public String getVideoSearch(String query, boolean data, boolean url) {
+	public static String getVideoSearch(String query, boolean data, boolean url) {
 		HTTPQuery q = null;
 		
 		try {
@@ -98,9 +105,11 @@ public class ModuleYoutube extends Module {
 	public boolean isListener() {return true;}
 	public void onEnable(File dir) {
 		Data.config.setNotExists("yt-otherbot",false);
+		
 		Command.addCommands(this, cmd = new CmdYoutube());
 		Command.addCommand(this, "yt", cmd);
 		Command.addCommand(this, "y", cmd);
+		URLDispatcher.addHandler(this);
 		
 		patternsAction.add(Pattern.compile("^.*?(?:(?:playing)|(?:listening (?:to)?)):? (.+)$"));
 		patternsMessage.add(Pattern.compile("^np: (.*)$"));
@@ -108,26 +117,67 @@ public class ModuleYoutube extends Module {
 	public void onDisable() {
 		patternsAction.clear();
 		patternsMessage.clear();
+		
 		Command.removeCommands(cmd);
+		URLDispatcher.removeHandler(this);
 	}
 	
-	public void onMessage(MessageEvent<PircBotX> event) {
-		if (Data.isBlacklisted(event.getUser())) return;
+	@Override
+	public boolean shouldAcceptURL(URL u) {
+		if (u == null)
+			return false;
+		if (!u.getProtocol().startsWith("http"))
+			return false;
+		String host = u.getHost();
+		return host.contentEquals("youtu.be") || host.endsWith("youtube.com");
+	}
+	@Override
+	public void handleURL(PircBotX bot, Channel channel, User sender, URL u) {
+		if (bot == null || u == null || (channel == null && sender == null))
+			return;
+		if (channel != null && (!isEnabled(channel.getName()) || Data.forChannel(channel).getBoolean("yt-otherbot")))
+			return;
 		
-		for (Pattern p : patternsMessage) {
-			Matcher m = p.matcher(event.getMessage());
-			if (m.find()) {
-				String s = m.group(1);
-				if (s.startsWith("http://") || s.startsWith("www.//") || s.startsWith("youtu.be/") || s.startsWith("youtube/")) return;
-				String result = getVideoSearch(s,!Data.forChannel(event.getChannel()).getBoolean("yt-otherbot"),true);
-				if (result == null) return;
-				s = Utils.mungeAllNicks(event.getChannel(),0,result);
-				Shocky.sendChannel(event.getBot(),event.getChannel(),event.getUser().getNick()+": "+s);
-				break;
+		String id = null;
+		String host = u.getHost();
+		
+		if (host.contentEquals("youtu.be")) {
+			if (u.getPath().isEmpty())
+				return;
+			id = u.getPath().substring(1);
+		}
+		else if (host.endsWith("youtube.com")) {
+			StringTokenizer tok1 = new StringTokenizer(u.getQuery(),"&");
+			while (tok1.hasMoreTokens()) {
+				StringTokenizer tok2 = new StringTokenizer(tok1.nextToken(),"=");
+				if (tok2.countTokens()!=2)
+					continue;
+				String key = tok2.nextToken();
+				String value = tok2.nextToken();
+				if (key.contentEquals("v")) {
+					id = value;
+					break;
+				}
 			}
 		}
 		
-		if (!Data.forChannel(event.getChannel()).getBoolean("yt-otherbot")) {
+		if (id == null)
+			return;
+		String result = getVideoInfo(id);
+		if (result == null)
+			return;
+		
+		if (channel != null)
+			bot.sendMessage(channel, sender.getNick()+": "+result);
+		else if (sender != null)
+			bot.sendMessage(sender, result);
+	}
+	
+	public void onMessage(MessageEvent<ShockyBot> event) {
+		if (Data.isBlacklisted(event.getUser())) return;
+		handleEvent(event.getBot(),event.getChannel(),event.getUser(),event.getMessage(),patternsMessage);
+		
+		/*if (!Data.forChannel(event.getChannel()).getBoolean("yt-otherbot")) {
 			Matcher m = patternURL.matcher(event.getMessage());
 			while (m.find()) {
 				String vID = m.group(1);
@@ -136,20 +186,23 @@ public class ModuleYoutube extends Module {
 				if (result == null) return;
 				Shocky.sendChannel(event.getBot(),event.getChannel(),event.getUser().getNick()+": "+result);
 			}
-		}
+		}*/
 	}
-	public void onAction(ActionEvent<PircBotX> event) {
+	public void onAction(ActionEvent<ShockyBot> event) {
 		if (Data.isBlacklisted(event.getUser())) return;
-		
-		for (Pattern p : patternsAction) {
-			Matcher m = p.matcher(event.getAction());
+		handleEvent(event.getBot(),event.getChannel(),event.getUser(),event.getAction(),patternsAction);
+	}
+	
+	private static void handleEvent(PircBotX bot, Channel channel, User user, CharSequence cs, Iterable<Pattern> patterns) {
+		for (Pattern p : patterns) {
+			Matcher m = p.matcher(cs);
 			if (m.find()) {
 				String s = m.group(1);
 				if (s.startsWith("http://") || s.startsWith("www.//") || s.startsWith("youtu.be/") || s.startsWith("youtube/")) return;
-				String result = getVideoSearch(s,!Data.forChannel(event.getChannel()).getBoolean("yt-otherbot"),true);
+				String result = getVideoSearch(s,!Data.forChannel(channel).getBoolean("yt-otherbot"),true);
 				if (result == null) return;
-				s = Utils.mungeAllNicks(event.getChannel(),0,result);
-				Shocky.sendChannel(event.getBot(),event.getChannel(),event.getUser().getNick()+": "+s);
+				s = Utils.mungeAllNicks(channel,0,result);
+				Shocky.sendChannel(bot,channel,user.getNick()+": "+s);
 				break;
 			}
 		}
@@ -173,7 +226,7 @@ public class ModuleYoutube extends Module {
 			
 			String search = getVideoSearch(params.input,!Data.forChannel(params.channel).getBoolean("yt-otherbot"),true);
 			if (search != null && !search.isEmpty()) {
-				search = Utils.mungeAllNicks(params.channel,0,search,params.sender.getNick());
+				search = Utils.mungeAllNicks(params.channel,0,search,params.sender);
 				callback.append(search);
 			} else {
 				callback.type = EType.Notice;

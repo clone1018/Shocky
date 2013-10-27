@@ -29,7 +29,7 @@ public class CmdPart extends Command {
 			}
 		} else if (params.tokenCount >= 1) {
 			params.checkController();
-			String channel = params.tokens.nextToken();
+			String channel = params.nextParam();
 			
 			if (channel.equalsIgnoreCase("all")) {
 				try {

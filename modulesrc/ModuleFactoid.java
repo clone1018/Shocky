@@ -7,12 +7,11 @@ import java.util.Map.Entry;
 import java.util.regex.*;
 
 import org.luaj.vm2.LuaError;
-import org.luaj.vm2.LuaFunction;
 import org.luaj.vm2.LuaTable;
-import org.luaj.vm2.LuaThread;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.lib.LuaState;
 import org.luaj.vm2.lib.OneArgFunction;
+import org.luaj.vm2.lib.ZeroArgFunction;
 import org.pircbotx.*;
 import org.pircbotx.hooks.events.MessageEvent;
 import org.pircbotx.hooks.events.NoticeEvent;
@@ -27,6 +26,7 @@ import pl.shockah.shocky.cmds.Parameters;
 import pl.shockah.shocky.cmds.Command.EType;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.interfaces.IFactoid;
+import pl.shockah.shocky.interfaces.IFactoidData;
 import pl.shockah.shocky.interfaces.ILua;
 import pl.shockah.shocky.interfaces.IRollback;
 import pl.shockah.shocky.lines.Line;
@@ -42,13 +42,14 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 	protected Command cmdR, cmdF, cmdU, cmdFCMD, cmdManage;
 	private final Map<CmdFactoid, String> fcmds = new HashMap<CmdFactoid, String>();
 	private final HashMap<String, Function> functions = new HashMap<String, Function>();
-	private static final Pattern functionPattern = Pattern
-			.compile("(?<!\\\\)\\$([a-zA-Z_][a-zA-Z0-9_]*)\\(.*?\\)");
-	private static final int factoidHash = "factoid".hashCode();
-	private static final int factoidFuncHash = "factoidfunc".hashCode();
-	private static final int getFactoidHash = "sql-getFactoid".hashCode();
-	private static final int getChannelFactoidHash = "sql-getChannelFactoid"
-			.hashCode();
+	private static final Pattern functionPattern = Pattern.compile("(?<!\\\\)\\$([a-zA-Z_][a-zA-Z0-9_]*)\\(.*?\\)");
+	private static final String factoidHash = "factoid";
+	private static final String factoidFuncHash = "factoidfunc";
+	private static final String sqlHash = "sql";
+	private static final String getFactoidHash = "getFactoid";
+	private static final String getChannelFactoidHash = "getChannelFactoid";
+	private static final String getFactoidForgetHash = "getFactoidForget";
+	private static final String getChannelFactoidForgetHash = "getChannelFactoidForget";
 
 	public String name() {
 		return "factoid";
@@ -349,179 +350,160 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 		FileLine.write(new File(dir, "factoidCmd.cfg"), lines);
 	}
 
-	public void onMessage(MessageEvent<PircBotX> event) {
+	public void onMessage(MessageEvent<ShockyBot> event) {
 		if (Data.isBlacklisted(event.getUser()))
 			return;
 		onMessage(event.getBot(), event.getChannel(), event.getUser(), event.getMessage());
 	}
 
-	public void onPrivateMessage(PrivateMessageEvent<PircBotX> event) {
+	public void onPrivateMessage(PrivateMessageEvent<ShockyBot> event) {
 		if (Data.isBlacklisted(event.getUser()))
 			return;
 		onMessage(event.getBot(), null, event.getUser(), event.getMessage());
 	}
 
-	public void onNotice(NoticeEvent<PircBotX> event) {
+	public void onNotice(NoticeEvent<ShockyBot> event) {
 		if (Data.isBlacklisted(event.getUser()))
 			return;
 		onMessage(event.getBot(), null, event.getUser(), event.getMessage());
+	}
+	
+	private static boolean charExists(CharSequence chars, CharSequence msg) {
+		for (int i = 0; i < chars.length(); i++)
+			if (msg.charAt(0) == chars.charAt(i))
+				return true;
+		return false;
 	}
 
 	public void onMessage(PircBotX bot, Channel channel, User sender, String msg) {
 		msg = StringTools.trimWhitespace(msg);
 		if (msg.length() < 2)
 			return;
-		Config config = channel == null ? Data.config : Data
-				.forChannel(channel);
-		String chars = config.getString("factoid-char");
 
-		for (int i = 0; i < chars.length(); i++)
-			if (msg.charAt(0) == chars.charAt(i)) {
-				msg = redirectMessage(channel, sender, msg);
-				String charsraw = config.getString("factoid-charraw");
-				String charsby = config.getString("factoid-charby");
+		Config config = channel == null ? Data.config : Data.forChannel(channel);
+		if (!charExists(config.getString("factoid-char"), msg))
+			return;
+		Command.EType msgtype = (channel == null ? Command.EType.Private : Command.EType.Channel);
+		
+		User target = sender;
+		String targetName = null;
+		String ping = null;
 
-				String[] args = msg.split(" ");
-				String target = null;
-				String ping = null;
-				if (args.length >= 2 && args[args.length - 2].equals(">")) {
-					target = args[args.length - 1];
-					msg = StringTools.implode(args, 0, args.length - 3, " ");
-				} else if (args.length >= 1
-						&& args[args.length - 1].equals("<")) {
-					target = sender.getNick();
-					msg = StringTools.implode(args, 0, args.length - 2, " ");
-				} else if (args.length >= 2
-						&& args[args.length - 2].equals("|")) {
-					ping = args[args.length - 1];
-					msg = StringTools.implode(args, 0, args.length - 3, " ");
+		msg = redirectMessage(channel, sender, msg);
+		String[] args = msg.split(" ");
+		if (args.length >= 2 && args[args.length - 2].equals(">")) {
+			targetName = args[args.length - 1];
+			msg = StringTools.implode(args, 0, args.length - 3, " ");
+			args = msg.split(" ");
+		} else if (args.length >= 1 && args[args.length - 1].equals("<")) {
+			targetName = sender.getNick();
+			msg = StringTools.implode(args, 0, args.length - 2, " ");
+			args = msg.split(" ");
+		} else if (args.length >= 2 && args[args.length - 2].equals("|")) {
+			ping = args[args.length - 1];
+			msg = StringTools.implode(args, 0, args.length - 3, " ");
+			args = msg.split(" ");
+		}
+		
+		String factoid = args[0].toLowerCase();
+
+		if (targetName != null) {
+			if (channel == null)
+				return;
+			boolean found = false;
+			for (User user : channel.getUsers())
+				if (user.getNick().equalsIgnoreCase(targetName)) {
+					target = user;
+					found = true;
+					break;
 				}
-
-				if (target != null) {
-					if (channel == null)
-						return;
-					boolean found = false;
-					for (User user : channel.getUsers())
-						if (user.getNick().equals(target)) {
-							found = true;
-							break;
-						}
-					if (!found)
-						return;
-				}
-				HashMap<Integer, Object> cache = new HashMap<Integer, Object>();
-				for (i = 0; i < charsraw.length(); i++)
-					if (msg.charAt(0) == charsraw.charAt(i)) {
-						msg = new StringBuilder(msg).deleteCharAt(0).toString()
-								.split(" ")[0].toLowerCase();
-						Factoid f = getFactoid(cache, channel != null ? channel.getName()
-								: null, msg, false);
-						if (f == null)
-							return;
-						StringBuilder sb = new StringBuilder();
-						if (target == null && ping != null) {
-							sb.append(ping);
-							sb.append(": ");
-						}
-						sb.append(msg);
-						sb.append(": ");
-						sb.append(StringTools.formatLines(f.rawtext));
-						Shocky.send(bot, target != null ? Command.EType.Notice
-								: (channel == null ? Command.EType.Notice
-										: Command.EType.Channel), channel, channel == null ? sender
-								: Shocky.getUser(target), StringTools
-								.limitLength(sb.toString()));
-						return;
-					}
-				for (i = 0; i < charsby.length(); i++)
-					if (msg.charAt(0) == charsby.charAt(i)) {
-						msg = new StringBuilder(msg).deleteCharAt(0).toString()
-								.split(" ")[0].toLowerCase();
-						Factoid f = getFactoid(cache, channel != null ? channel.getName()
-								: null, msg, false);
-						if (f == null)
-							return;
-						StringBuilder sb = new StringBuilder();
-						if (target == null && ping != null) {
-							sb.append(ping);
-							sb.append(": ");
-						}
-						sb.append(msg);
-						sb.append(", last edited by ");
-						sb.append(f.author);
-						if (f != null && !f.forgotten)
-							Shocky.send(bot, target != null ? Command.EType.Notice
-									: (channel == null ? Command.EType.Notice
-											: Command.EType.Channel), channel, channel == null ? sender
-									: Shocky.getUser(target), sb.toString());
-						return;
-					}
-
-				args = msg.split(" ");
-				String factoid = args[0].toLowerCase();
-				String[] chain = factoid.split(config
-						.getString("factoid-charchain"));
-				for (i = 0; i < chain.length; i++) {
-					int key = factoidHash + chain[i].hashCode();
-					Factoid f = null;
-					if (cache != null) {
-						if (cache.containsKey(key)) {
-							Object obj = cache.get(key);
-							if (obj instanceof Factoid)
-								f = (Factoid) obj;
-						}
-					}
-					if (f == null)
-						f = getFactoid(cache, channel != null ? channel.getName()
-								: null, chain[i], false);
-					if (f == null)
-						return;
-					if (cache != null && !cache.containsKey(key))
-						cache.put(key, f);
-				}
-
-				String message = StringTools.implode(args, 1, " ");
-				for (i = 0; i < chain.length; i++) {
-					msg = chain[i] + ' ' + message;
-					message = runFactoid(cache, bot, channel, sender, msg);
-				}
-
-				if (message != null && message.length() > 0) {
-					StringBuilder sb = new StringBuilder(StringTools.formatLines(message));
-					if (target == null && ping != null) {
-						sb.insert(0, ": ");
-						sb.insert(0, ping);
-					}
-					message = StringTools.limitLength(sb);
-
-					Shocky.send(bot, target != null ? Command.EType.Notice
-							: (channel == null ? Command.EType.Notice
-									: Command.EType.Channel), channel, channel == null ? sender
-							: Shocky.getUser(target), message);
-				}
+			if (!found)
+				return;
+			msgtype = Command.EType.Notice;
+		}
+		Cache cache = new Cache();
+		if (charExists(config.getString("factoid-charraw"), factoid)) {
+			factoid = factoid.substring(1);
+			Factoid f = getFactoid(cache, channel, factoid, false);
+			if (f == null)
+				return;
+			StringBuilder sb = new StringBuilder();
+			if (targetName == null && ping != null)
+				sb.append(ping).append(": ");
+			sb.append(factoid).append(": ");
+			sb.append(StringTools.formatLines(f.rawtext));
+			Shocky.send(bot, msgtype, channel, target, StringTools.limitLength(sb));
+			return;
+		}
+		if (charExists(config.getString("factoid-charby"), factoid)) {
+			factoid = factoid.substring(1);
+			Factoid f = getFactoid(cache, channel, factoid, false);
+			if (f == null)
+				return;
+			StringBuilder sb = new StringBuilder();
+			if (targetName == null && ping != null) {
+				sb.append(ping);
+				sb.append(": ");
 			}
+			sb.append(factoid).append(", last edited by ").append(f.author);
+			if (f != null && !f.forgotten)
+				Shocky.send(bot, msgtype, channel, target, sb.toString());
+			return;
+		}
+
+		String[] chain = factoid.split(config.getString("factoid-charchain"));
+		for (int i = 0; i < chain.length; i++) {
+			Object key = chain[i];
+			Factoid f = null;
+			if (cache != null && cache.containsKey(factoidHash, key)) {
+				Object obj = cache.get(factoidHash, key);
+				if (obj instanceof Factoid)
+					f = (Factoid) obj;
+			}
+			if (f == null)
+				f = getFactoid(cache, channel, chain[i], false);
+			if (f == null)
+				return;
+			if (cache != null && !cache.containsKey(factoidHash, key))
+				cache.put(factoidHash, key, f);
+		}
+
+		String message = StringTools.implode(args, 1, " ");
+		for (int i = 0; i < chain.length; i++) {
+			msg = chain[i] + ' ' + message;
+			message = runFactoid(cache, bot, channel, sender, msg);
+		}
+
+		if (message != null && message.length() > 0) {
+			StringBuilder sb = new StringBuilder(StringTools.formatLines(message));
+			if (targetName == null && ping != null) {
+				sb.insert(0, ": ");
+				sb.insert(0, ping);
+			}
+			message = StringTools.limitLength(sb);
+
+			Shocky.send(bot, msgtype, channel, target, message);
+		}
 	}
 
-	public String runFactoid(Map<Integer, Object> cache, PircBotX bot, Channel channel, User sender, String message) {
+	public String runFactoid(Cache cache, PircBotX bot, Channel channel, User sender, String message) {
 		message = StringTools.trimWhitespace(message);
 		LinkedList<String> checkRecursive = new LinkedList<String>();
 		while (true) {
 			String factoid = message.split(" ")[0].toLowerCase();
-			int key = factoidHash + factoid.hashCode();
+			Object key = factoid;
 
 			Factoid f = null;
-			if (cache != null) {
-				if (cache.containsKey(key)) {
-					Object obj = cache.get(key);
-					if (obj instanceof Factoid)
-						f = (Factoid) obj;
-				}
+			if (cache != null && cache.containsKey(factoidHash, key)) {
+				Object obj = cache.get(factoidHash, key);
+				if (obj instanceof Factoid)
+					f = (Factoid) obj;
 			}
-			f = getFactoid(cache, channel != null ? channel.getName() : null, factoid, false);
+			f = getFactoid(cache, channel, factoid, false);
 			if (f == null)
 				break;
-			if (cache != null && !cache.containsKey(key))
-				cache.put(key, f);
+			if (cache != null && !cache.containsKey(factoidHash, key))
+				cache.put(factoidHash, key, f);
 			String raw = f.rawtext;
 			if (raw.startsWith("<alias>")) {
 				raw = raw.substring(7);
@@ -540,34 +522,33 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 		return null;
 	}
 
-	public String parse(Map<Integer, Object> cache, PircBotX bot, Channel channel, User sender, String message, Factoid f, String raw) {
+	public String parse(Cache cache, PircBotX bot, Channel channel, User sender, String message, Factoid f, String raw) {
 		if (raw.startsWith("<noreply>"))
 			return "";
 		String type = null;
+		int closingIndex = -1;
 		if (raw.startsWith("<")) {
-			int closingIndex = raw.indexOf(">");
-			if (closingIndex != -1) {
+			closingIndex = raw.indexOf(">");
+			if (closingIndex != -1)
 				type = raw.substring(1, closingIndex);
-				raw = raw.substring(closingIndex + 1);
-			}
 		}
 		ScriptModule sModule = Module.getScriptingModule(type);
 		if (sModule != null) {
 			if (channel != null && !sModule.isEnabled(channel.getName()))
 				return "";
+			raw = raw.substring(closingIndex + 1);
 			raw = parseVariables(bot, channel, sender, message, raw);
-			String parsed = 
-				sModule.parse(cache, bot, 
-						channel == null ? EType.Notice : EType.Channel, 
-						channel, sender, f, raw, message);
+			String parsed = sModule.parse(cache, bot, channel, sender, f, raw, message);
 			return parse(cache, bot, channel, sender, message, f, parsed);
 		} else if (type != null && type.contentEquals("cmd")) {
 			CommandCallback callback = new CommandCallback();
-			Command cmd = Command.getCommand(bot, sender, channel.getName(), EType.Channel, callback, raw);
+			raw = raw.substring(closingIndex + 1);
+			String[] args = raw.split("\\s+", 2);
+			Command cmd = Command.getCommand(bot, sender, channel, EType.Channel, callback, args[0]);
 			if (cmd != null && !(cmd instanceof CmdFactoid)) {
-				raw = parseVariables(bot, channel, sender, message, raw);
-				Parameters params = new Parameters(bot, channel == null ? EType.Notice
-						: EType.Channel, channel, sender, raw);
+				EType etype = (channel == null) ? EType.Notice : EType.Channel;
+				raw = (args.length == 1) ? "" : parseVariables(bot, channel, sender, message, args[1]);
+				Parameters params = new Parameters(bot, etype, channel, sender, raw);
 				try {
 					cmd.doCommand(params, callback);
 					if (callback.type == EType.Channel)
@@ -577,10 +558,13 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 			}
 			return "";
 		} else {
+			boolean action = type != null && type.contentEquals("action");
+			if (action)
+				raw = raw.substring(closingIndex + 1);
 			raw = parseVariables(bot, channel, sender, message, raw);
 			StringBuilder output = new StringBuilder();
 			parseFunctions(raw, output);
-			if (type != null && type.contentEquals("action")) {
+			if (action) {
 				output.insert(0, "ACTION ");
 				output.insert(0, '\001');
 				output.append('\001');
@@ -668,24 +652,20 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 
 	public String redirectMessage(Channel channel, User sender, String message) {
 		String[] args = message.split(" ");
-		if (args.length >= 2 && args.length <= 3 && args[1].contentEquals("^")
-				&& channel != null) {
+		if (args.length >= 2 && args.length <= 3 && args[1].contentEquals("^") && channel != null) {
 			IRollback module = (IRollback) Module.getModule("rollback");
 			try {
 				if (module != null) {
 					User user = null;
 					if (args.length == 3) {
 						for (User target : channel.getUsers()) {
-							if (target.getNick().contentEquals(args[2])) {
+							if (target.getNick().equalsIgnoreCase(args[2])) {
 								user = target;
 								break;
 							}
 						}
 					}
-					ArrayList<LineMessage> lines = module
-							.getRollbackLines(LineMessage.class, channel
-									.getName(), user != null ? user.getNick()
-									: null, null, message, true, 1, 0);
+					List<LineMessage> lines = module.getRollbackLines(LineMessage.class, channel.getName(), user != null ? user.getNick() : null, null, message, true, 1, 0);
 					if (lines.size() == 1) {
 						Line line = lines.get(0);
 						StringBuilder msg = new StringBuilder(args[0]);
@@ -744,54 +724,62 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 		}
 		output.append(input.subSequence(pos, input.length()));
 	}
+	
+	private static PreparedStatement prepareStatement(Cache cache, boolean hasChannel, boolean hasForget) throws SQLException {
+		String key;
+		if (hasForget) {
+			if (hasChannel)
+				key = getChannelFactoidHash;
+			else
+				key = getFactoidHash;
+		} else {
+			if (hasChannel)
+				key = getChannelFactoidForgetHash;
+			else
+				key = getFactoidForgetHash;
+		}
+		PreparedStatement p = null;
+		if (cache != null && cache.containsKey(sqlHash, key)) {
+			Object obj = cache.get(sqlHash, key);
+			if ((obj instanceof PreparedStatement)&& !((PreparedStatement) obj).isClosed())
+				p = (PreparedStatement) obj;
+		}
 
-	public Factoid getFactoid(Map<Integer, Object> cache, String channel, String factoid) {
-		return getFactoid(cache, channel, factoid, false);
+		if (p == null) {
+			if (hasForget) {
+				if (hasChannel)
+					p = SQL.getSQLConnection().prepareStatement("SELECT * FROM factoid WHERE ((channel IS NULL OR channel=?) AND factoid=? AND forgotten=?) ORDER BY channel DESC, stamp DESC LIMIT ?");
+				else
+					p = SQL.getSQLConnection().prepareStatement("SELECT * FROM factoid WHERE (channel IS NULL AND factoid=? AND forgotten=?) ORDER BY stamp DESC LIMIT ?");
+			} else {
+				if (hasChannel)
+					p = SQL.getSQLConnection().prepareStatement("SELECT * FROM factoid WHERE ((channel IS NULL OR channel=?) AND factoid=?) ORDER BY channel DESC, stamp DESC LIMIT ?");
+				else
+					p = SQL.getSQLConnection().prepareStatement("SELECT * FROM factoid WHERE (channel IS NULL AND factoid=?) ORDER BY stamp DESC LIMIT ?");
+			}
+			if (cache != null && !cache.containsKey(sqlHash, key))
+				cache.put(sqlHash, key, p);
+		}
+		return p;
 	}
 
-	public Factoid getFactoid(Map<Integer, Object> cache, String channel, String factoid, boolean forgotten) {
+	public Factoid getFactoid(Cache cache, Channel channel, String factoid) {
 		Factoid f = null;
 		ResultSet j;
-		boolean hasChannel = (channel != null);
-		int key;
-		if (hasChannel)
-			key = getChannelFactoidHash;
-		else
-			key = getFactoidHash;
-		PreparedStatement p = null;
+		boolean hasChannel = channel != null;
 		try {
-			if (cache != null) {
-				if (cache.containsKey(key)) {
-					Object obj = cache.get(key);
-					if ((obj instanceof PreparedStatement)
-							&& !((PreparedStatement) obj).isClosed())
-						p = (PreparedStatement) obj;
-				}
-			}
-
-			if (p == null) {
-				if (hasChannel)
-					p = SQL.getSQLConnection()
-							.prepareStatement("SELECT * FROM factoid WHERE ((channel IS NULL OR channel=?) AND factoid=? AND forgotten=?) ORDER BY channel DESC, stamp DESC LIMIT ?");
-				else
-					p = SQL.getSQLConnection()
-							.prepareStatement("SELECT * FROM factoid WHERE (channel IS NULL AND factoid=? AND forgotten=?) ORDER BY channel DESC, stamp DESC LIMIT ?");
-			}
+			PreparedStatement p = prepareStatement(cache, hasChannel, false);
 			synchronized (p) {
 				int i = 1;
 				if (hasChannel)
-					p.setString(i++, channel.toLowerCase());
+					p.setString(i++, channel.getName().toLowerCase());
 				p.setString(i++, factoid.toLowerCase());
-				p.setInt(i++, forgotten ? 1 : 0);
 				p.setInt(i++, 1);
 				j = p.executeQuery();
 				p.clearParameters();
 			}
 			if (j == null || j.isClosed())
 				return null;
-
-			if (cache != null && !cache.containsKey(key))
-				cache.put(key, p);
 
 			f = Factoid.fromResultSet(j);
 			if (cache == null)
@@ -804,51 +792,53 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 		return f;
 	}
 
-	public Factoid[] getFactoids(Map<Integer, Object> cache, int max, String channel, String factoid) {
-		return getFactoids(cache, max, channel, factoid, false);
-	}
-
-	public Factoid[] getFactoids(Map<Integer, Object> cache, int max, String channel, String factoid, boolean forgotten) {
-		Factoid[] f = null;
+	public Factoid getFactoid(Cache cache, Channel channel, String factoid, boolean forgotten) {
+		Factoid f = null;
 		ResultSet j;
 		boolean hasChannel = (channel != null);
-		int key;
-		if (hasChannel)
-			key = getChannelFactoidHash;
-		else
-			key = getFactoidHash;
-		PreparedStatement p = null;
 		try {
-			if (cache != null) {
-				if (cache.containsKey(key)) {
-					Object obj = cache.get(key);
-					if ((obj instanceof PreparedStatement)
-							&& !((PreparedStatement) obj).isClosed())
-						p = (PreparedStatement) obj;
-				}
-			}
-
-			if (hasChannel)
-				p = SQL.getSQLConnection()
-						.prepareStatement("SELECT * FROM factoid WHERE ((channel IS NULL OR channel=?) AND factoid=? AND forgotten=?) ORDER BY channel DESC, stamp DESC LIMIT ?");
-			else
-				p = SQL.getSQLConnection()
-						.prepareStatement("SELECT * FROM factoid WHERE (channel IS NULL AND factoid=? AND forgotten=?) ORDER BY channel DESC, stamp DESC LIMIT ?");
+			PreparedStatement p = prepareStatement(cache, hasChannel, true);
 			synchronized (p) {
 				int i = 1;
 				if (hasChannel)
-					p.setString(i++, channel.toLowerCase());
+					p.setString(i++, channel.getName().toLowerCase());
 				p.setString(i++, factoid.toLowerCase());
 				p.setInt(i++, forgotten ? 1 : 0);
-				p.setInt(i++, Math.max(Math.min(max, 50), 1));
+				p.setInt(i++, 1);
 				j = p.executeQuery();
 				p.clearParameters();
 			}
 			if (j == null || j.isClosed())
 				return null;
 
-			if (cache != null && !cache.containsKey(key))
-				cache.put(key, p);
+			f = Factoid.fromResultSet(j);
+			if (cache == null)
+				p.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return null;
+		}
+		
+		return f;
+	}
+
+	public Factoid[] getFactoids(Cache cache, int max, Channel channel, String factoid) {
+		Factoid[] f = null;
+		ResultSet j;
+		boolean hasChannel = (channel != null);
+		try {
+			PreparedStatement p = prepareStatement(cache, hasChannel, false);
+			synchronized (p) {
+				int i = 1;
+				if (hasChannel)
+					p.setString(i++, channel.getName().toLowerCase());
+				p.setString(i++, factoid.toLowerCase());
+				p.setInt(i++, Math.max(Math.min(max, 50), 1));
+				j = p.executeQuery();
+				p.clearParameters();
+			}
+			if (j == null || j.isClosed())
+				return null;
 			
 			f = Factoid.arrayFromResultSet(j);
 			if (cache == null)
@@ -859,6 +849,46 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 		}
 		
 		return f;
+	}
+
+	public Factoid[] getFactoids(Cache cache, int max, Channel channel, String factoid, boolean forgotten) {
+		Factoid[] f = null;
+		ResultSet j;
+		boolean hasChannel = (channel != null);
+		try {
+			PreparedStatement p = prepareStatement(cache, hasChannel, true);
+			synchronized (p) {
+				int i = 1;
+				if (hasChannel)
+					p.setString(i++, channel.getName().toLowerCase());
+				p.setString(i++, factoid.toLowerCase());
+				p.setInt(i++, forgotten ? 1 : 0);
+				p.setInt(i++, Math.max(Math.min(max, 50), 1));
+				j = p.executeQuery();
+				p.clearParameters();
+			}
+			if (j == null || j.isClosed())
+				return null;
+			
+			f = Factoid.arrayFromResultSet(j);
+			if (cache == null)
+				p.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return null;
+		}
+		
+		return f;
+	}
+	
+	public static boolean setForgotten(Factoid f, boolean forget) {
+		if (f.locked)
+			return false;
+		QueryUpdate q = new QueryUpdate(SQL.getTable("factoid"));
+		q.addCriterions(new CriterionNumber("id", CriterionNumber.Operation.Equals, f.id));
+		q.set("forgotten", forget ? 1 : 0);
+		SQL.update(q);
+		return true;
 	}
 
 	public abstract class Function {
@@ -910,32 +940,40 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 				return;
 			}
 
-			String name = params.tokens.nextToken();
-			String prefix = null;
+			String name = params.nextParam();
+			boolean local = false;
 			if (name.equals(".")) {
 				if (params.tokenCount < 3)
 					return;
-				prefix = params.channel.getName();
-				name = params.tokens.nextToken();
+				local = true;
+				name = params.nextParam();
 			}
 
 			String rem = params.getParams(0);
 			if (rem.isEmpty())
 				return;
-
-			Factoid f = getFactoid(null, prefix, name, false);
-			if (f != null && f.locked)
+			Factoid f = getFactoid(null, params.channel, name, false);
+			if (f != null && f.locked && f.channel != null && f.channel.equals(params.channel.getName()))
+			{
 				callback.append("Factoid is locked");
-			else {
-				QueryInsert q = new QueryInsert(SQL.getTable("factoid"));
-				q.add("channel", prefix);
-				q.add("factoid", name);
-				q.add("author", params.sender.getNick());
-				q.add("rawtext", rem);
-				q.add("stamp", System.currentTimeMillis() / 1000);
-				SQL.insert(q);
-				callback.append("Done.");
+				return;
 			}
+			if (!local) {
+				f = getFactoid(null, null, name, false);
+				if (f != null && f.locked) {
+					callback.append("Factoid is locked");
+					return;
+				}
+			}
+			QueryInsert q = new QueryInsert(SQL.getTable("factoid"));
+			if (local)
+				q.add("channel", params.channel.getName());
+			q.add("factoid", name);
+			q.add("author", params.sender.getNick());
+			q.add("rawtext", rem);
+			q.add("stamp", System.currentTimeMillis() / 1000);
+			SQL.insert(q);
+			callback.append("Done.");
 		}
 	}
 
@@ -958,31 +996,24 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 				return;
 			}
 
-			String name = params.tokens.nextToken();
-			String prefix = null;
+			String name = params.nextParam();
+			Channel channel = null;
 			if (name.equals(".")) {
 				if (params.tokenCount < 2)
 					return;
-				prefix = params.channel.getName();
-				name = params.tokens.nextToken();
+				channel = params.channel;
+				name = params.nextParam();
 			}
 
-			Factoid f = getFactoid(null, prefix, name, false);
-			if (f == null)
+			Factoid f = getFactoid(null, channel, name, false);
+			if (f == null || (channel != null && f.channel == null))
 				callback.append("No such factoid");
 			else {
 				if (f.locked)
 					callback.append("Factoid is locked");
 				else {
-					QueryUpdate q = new QueryUpdate(SQL.getTable("factoid"));
-					q.addCriterions(new CriterionNumber("id", CriterionNumber.Operation.Equals, f.id));
-					q.set("forgotten", 1);
-					SQL.update(q);
-					Shocky.sendNotice(params.bot, params.sender, "Done. Forgot ID "
-							+ f.id
-							+ ": "
-							+ StringTools.limitLength(StringTools
-									.formatLines(f.rawtext)));
+					setForgotten(f, true);
+					callback.append("Done. Forgot ID ").append(f.id).append(": ").append(f.rawtext);
 				}
 			}
 		}
@@ -1007,31 +1038,24 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 				return;
 			}
 
-			String name = params.tokens.nextToken();
-			String prefix = null;
+			String name = params.nextParam();
+			Channel channel = null;
 			if (name.equals(".")) {
 				if (params.tokenCount < 2)
 					return;
-				prefix = params.channel.getName();
-				name = params.tokens.nextToken();
+				channel = params.channel;
+				name = params.nextParam();
 			}
 
-			Factoid f = getFactoid(null, prefix, name, true);
-			if (f == null)
+			Factoid f = getFactoid(null, channel, name, true);
+			if (f == null || (channel != null && f.channel == null))
 				callback.append("No such factoid");
 			else {
 				if (f.locked)
 					callback.append("Factoid is locked");
 				else {
-					QueryUpdate q = new QueryUpdate(SQL.getTable("factoid"));
-					q.addCriterions(new CriterionNumber("id", CriterionNumber.Operation.Equals, f.id));
-					q.set("forgotten", 0);
-					SQL.update(q);
-					Shocky.sendNotice(params.bot, params.sender, "Done. Unforgot ID "
-							+ f.id
-							+ ": "
-							+ StringTools.limitLength(StringTools
-									.formatLines(f.rawtext)));
+					setForgotten(f, false);
+					callback.append("Done. Unforgot ID ").append(f.id).append(": ").append(f.rawtext);
 				}
 			}
 		}
@@ -1065,8 +1089,8 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 				callback.append(sb);
 				return;
 			} else if (params.tokenCount >= 2) {
-				String method = params.tokens.nextToken();
-				String name = params.tokens.nextToken();
+				String method = params.nextParam();
+				String name = params.nextParam();
 				if (method.equalsIgnoreCase("remove")) {
 					for (Entry<CmdFactoid, String> c : fcmds.entrySet()) {
 						for (String s : c.getValue().split(";"))
@@ -1080,7 +1104,7 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 					return;
 				} else if (params.tokenCount == 3
 						&& method.equalsIgnoreCase("add")) {
-					String factoid = params.tokens.nextToken();
+					String factoid = params.nextParam();
 					for (Iterator<Entry<CmdFactoid, String>> iter = fcmds
 							.entrySet().iterator(); iter.hasNext();) {
 						Entry<CmdFactoid, String> c = iter.next();
@@ -1157,12 +1181,12 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 			callback.type = EType.Notice;
 
 			if (params.tokenCount >= 2) {
-				String method = params.tokens.nextToken();
-				String factoid = params.tokens.nextToken();
+				String method = params.nextParam();
+				String factoid = params.nextParam();
 				boolean local = false;
 				if (params.tokenCount >= 3 && factoid.equals(".")) {
 					local = true;
-					factoid = params.tokens.nextToken();
+					factoid = params.nextParam();
 				}
 				factoid = factoid.toLowerCase();
 				boolean lock = method.equalsIgnoreCase("lock");
@@ -1172,8 +1196,7 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 						params.checkOp();
 					else
 						params.checkController();
-					Factoid f = getFactoid(null, local ? params.channel.getName()
-							: null, factoid, false);
+					Factoid f = getFactoid(null, local ? params.channel : null, factoid, false);
 					if (f == null) {
 						callback.append("No such factoid");
 						return;
@@ -1212,22 +1235,21 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 
 		@Override
 		public LuaValue get(LuaValue key) {
-			LuaFunction parent = LuaThread.getCallstackFunction(LuaThread.getCallstackDepth());
+			/*LuaFunction parent = LuaThread.getCallstackFunction(LuaThread.getCallstackDepth());
 			LuaValue env = parent.getfenv();
 			if (env == null)
 				return NIL;
 			LuaValue obj = env.get("state");
 			if (!(obj instanceof LuaState))
 				return NIL;
-			LuaState state = (LuaState) obj;
-			if (state.chan != null && state.getFactoidModule() instanceof Module) {
-				Module factmod = (Module) state.getFactoidModule();
-				if (!factmod.isEnabled(state.chan.getName()))
-					return NIL;
-			}
-			LuaValue func = FactoidFunction.create(state, key.checkjstring());
-			func.setfenv(env);
-			return func;
+			LuaState state = (LuaState) obj;*/
+			LuaState state = LuaState.getState();
+			if (state == null)
+				return NIL;
+			IFactoid module = state.getFactoidModule();
+			if (module == null)
+				return NIL;
+			return FactoidFunction.create(state, key.checkjstring());
 		}
 	}
 
@@ -1243,55 +1265,44 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 			if (factoid == null || factoid.isEmpty())
 				return NIL;
 
-			int hash = factoidFuncHash + factoid.hashCode();
-			if (state.cache != null) {
-				if (state.cache.containsKey(hash)) {
-					Object obj = state.cache.get(hash);
-					if (obj instanceof FactoidFunction)
-						return (FactoidFunction) obj;
-				}
-			}
+			Object obj = state.get(factoidFuncHash, factoid);
+			if (obj instanceof FactoidFunction)
+				return (FactoidFunction) obj;
 
 			FactoidFunction function = new FactoidFunction(factoid);
-			if (state.cache != null)
-				state.cache.put(hash, function);
+			state.put(factoidFuncHash, factoid, function);
 			return function;
 		}
 
 		private LuaState getState() {
-			if (env == null)
+			/*if (env == null)
 				return null;
 			LuaValue obj = env.get("state");
 			if (!(obj instanceof LuaState))
 				return null;
-			LuaState state = (LuaState) obj;
-			if (state.chan != null && state.getFactoidModule() instanceof Module) {
-				Module factmod = (Module) state.getFactoidModule();
-				if (!factmod.isEnabled(state.chan.getName()))
-					return null;
-			}
+			LuaState state = (LuaState) obj;*/
+			LuaState state = LuaState.getState();
+			if (state == null)
+				return null;
+			IFactoid module = state.getFactoidModule();
+			if (module == null)
+				return null;
 			return state;
 		}
 
 		private Factoid getFactoid(LuaState state) {
-			if (!(state.getFactoidModule() instanceof Module))
+			IFactoid module = state.getFactoidModule();
+			if (module == null)
 				return null;
-			int hash = factoidHash + factoid.hashCode();
+			Object obj = state.get(factoidHash, factoid);
 			Factoid f = null;
-			if (state.cache != null) {
-				if (state.cache.containsKey(hash)) {
-					Object obj = state.cache.get(hash);
-					if (obj instanceof Factoid)
-						f = (Factoid) obj;
-				}
-			}
+			if (obj instanceof Factoid)
+				f = (Factoid) obj;
 			if (f == null && state.chan != null)
-				f = state.getFactoidModule().getFactoid(state.cache, state.chan.getName(), factoid);
+				f = module.getFactoid(state.cache, state.chan, factoid, false);
 			if (f == null)
-				f = state.getFactoidModule().getFactoid(state.cache, null, factoid);
-			if (f != null && state.cache != null
-					&& !state.cache.containsKey(hash))
-				state.cache.put(hash, f);
+				f = module.getFactoid(state.cache, null, factoid, false);
+			state.put(factoidHash, factoid, f);
 			return f;
 		}
 
@@ -1313,12 +1324,15 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 			LuaState state = getState();
 			if (state == null)
 				return NIL;
+			IFactoid module = state.getFactoidModule();
+			if (module == null)
+				return NIL;
 			String args = arg.optjstring(null);
 			StringBuilder message = new StringBuilder(factoid);
 			if (args != null)
 				message.append(' ').append(args);
 			try {
-				String s = state.getFactoidModule().runFactoid(state.cache, state.bot, state.chan, state.user, message.toString());
+				String s = module.runFactoid(state.cache, state.bot, state.chan, state.user, message.toString());
 				return s != null ? valueOf(s) : NIL;
 			} catch (Exception e) {
 				throw new LuaError(e);
@@ -1397,19 +1411,32 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 			}
 		}
 	}
+	
+	public static class ForgetFunction extends ZeroArgFunction {
+		public final Factoid factoid;
+		public final boolean forget;
 
-	public static class FactoidHistory extends LuaTable {
-		private FactoidHistory(Factoid[] factoids) {
-			super(null, getTable(factoids), null);
+		public ForgetFunction(Factoid factoid, boolean forget) {
+			this.factoid = factoid;
+			this.forget = forget;
 		}
 
+		@Override
+		public LuaValue call() {
+			return valueOf(setForgotten(factoid,forget));
+		}
+		
+	}
+
+	public static class FactoidHistory {
 		public static LuaValue getHistory(LuaState state, String factoid) {
-			if (!(state.getFactoidModule() instanceof Module))
-				return NIL;
-			Factoid[] factoids = state.getFactoidModule().getFactoids(state.cache, 50, state.chan != null ? state.chan.getName() : null, factoid);
+			IFactoid module = state.getFactoidModule();
+			if (module == null)
+				return LuaValue.NIL;
+			Factoid[] factoids = module.getFactoids(state.cache, 50, state.chan, factoid);
 			if (factoids == null || factoids.length == 0)
-				return NIL;
-			return new FactoidHistory(factoids);
+				return LuaValue.NIL;
+			return LuaTable.listOf(getTable(factoids));
 		}
 
 		private static LuaValue[] getTable(Factoid[] factoids) {
@@ -1431,8 +1458,10 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 			if (f.rawtext != null)
 				t.rawset("rawtext", f.rawtext);
 			t.rawset("stamp", f.stamp);
-			t.rawset("locked", f.locked ? TRUE : FALSE);
-			t.rawset("forgotten", f.forgotten ? TRUE : FALSE);
+			t.rawset("locked", f.locked ? LuaValue.TRUE : LuaValue.FALSE);
+			t.rawset("forgotten", f.forgotten ? LuaValue.TRUE : LuaValue.FALSE);
+			t.rawset("forget", new ForgetFunction(f,true));
+			t.rawset("unforget", new ForgetFunction(f,false));
 			return t;
 		}
 	}
@@ -1440,6 +1469,7 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 	@Override
 	public void setupLua(LuaTable env) {
 		try {
+			Class.forName("ModuleFactoid$ForgetFunction");
 			Class.forName("ModuleFactoid$FactoidFunction");
 			Class.forName("ModuleFactoid$FactoidHistory");
 		} catch (Exception e) {

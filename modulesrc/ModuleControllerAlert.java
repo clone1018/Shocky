@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.pircbotx.PircBotX;
+import org.pircbotx.ShockyBot;
 import org.pircbotx.hooks.Event;
 import org.pircbotx.hooks.events.ActionEvent;
 import org.pircbotx.hooks.events.JoinEvent;
@@ -19,7 +20,6 @@ import org.pircbotx.hooks.types.GenericMessageEvent;
 import pl.shockah.FileLine;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Shocky;
-import pl.shockah.shocky.Whois;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Parameters;
@@ -57,7 +57,7 @@ public class ModuleControllerAlert extends Module {
 		FileLine.write(new File(dir,"alerts.cfg"),lines);
 	}
 	
-	public void onMessage(MessageEvent<PircBotX> event) {
+	public void onMessage(MessageEvent<ShockyBot> event) {
 		for (int i = 0; i < alerts.size(); i++) {
 			ImmutablePair<String,Alert> pair = alerts.get(i);
 			if (pair.right.matches(event)) {
@@ -67,7 +67,7 @@ public class ModuleControllerAlert extends Module {
 			}
 		}
 	}
-	public void onAction(ActionEvent<PircBotX> event) {
+	public void onAction(ActionEvent<ShockyBot> event) {
 		for (int i = 0; i < alerts.size(); i++) {
 			ImmutablePair<String,Alert> pair = alerts.get(i);
 			if (pair.right.matches(event)) {
@@ -77,7 +77,7 @@ public class ModuleControllerAlert extends Module {
 			}
 		}
 	}
-	public void onTopic(TopicEvent<PircBotX> event) {
+	public void onTopic(TopicEvent<ShockyBot> event) {
 		for (int i = 0; i < alerts.size(); i++) {
 			ImmutablePair<String,Alert> pair = alerts.get(i);
 			if (pair.right.matches(event)) {
@@ -87,7 +87,7 @@ public class ModuleControllerAlert extends Module {
 			}
 		}
 	}
-	public void onKick(KickEvent<PircBotX> event) {
+	public void onKick(KickEvent<ShockyBot> event) {
 		for (int i = 0; i < alerts.size(); i++) {
 			ImmutablePair<String,Alert> pair = alerts.get(i);
 			if (pair.right.matches(event)) {
@@ -97,7 +97,7 @@ public class ModuleControllerAlert extends Module {
 			}
 		}
 	}
-	public void onJoin(JoinEvent<PircBotX> event) {
+	public void onJoin(JoinEvent<ShockyBot> event) {
 		for (int i = 0; i < alerts.size(); i++) {
 			ImmutablePair<String,Alert> pair = alerts.get(i);
 			if (pair.right.matches(event)) {
@@ -107,7 +107,7 @@ public class ModuleControllerAlert extends Module {
 			}
 		}
 	}
-	public void onPart(PartEvent<PircBotX> event) {
+	public void onPart(PartEvent<ShockyBot> event) {
 		for (int i = 0; i < alerts.size(); i++) {
 			ImmutablePair<String,Alert> pair = alerts.get(i);
 			if (pair.right.matches(event)) {
@@ -117,7 +117,7 @@ public class ModuleControllerAlert extends Module {
 			}
 		}
 	}
-	public void onQuit(QuitEvent<PircBotX> event) {
+	public void onQuit(QuitEvent<ShockyBot> event) {
 		for (int i = 0; i < alerts.size(); i++) {
 			ImmutablePair<String,Alert> pair = alerts.get(i);
 			if (pair.right.matches(event)) {
@@ -127,7 +127,7 @@ public class ModuleControllerAlert extends Module {
 			}
 		}
 	}
-	public void onMode(ModeEvent<PircBotX> event) {
+	public void onMode(ModeEvent<ShockyBot> event) {
 		String mode = event.getMode();
 		if (mode.charAt(0) == ' ') mode = "+"+mode.substring(1);
 		for (int i = 0; i < alerts.size(); i++) {
@@ -139,7 +139,7 @@ public class ModuleControllerAlert extends Module {
 			}
 		}
 	}
-	public void onUserMode(UserModeEvent<PircBotX> event) {
+	public void onUserMode(UserModeEvent<ShockyBot> event) {
 		String mode = event.getMode();
 		if (mode.charAt(0) == ' ') mode = "+"+mode.substring(1);
 		for (int i = 0; i < alerts.size(); i++) {
@@ -184,9 +184,9 @@ public class ModuleControllerAlert extends Module {
 				callback.append(sb.length() == 0 ? "No alerts set" : sb.toString());
 				return;
 			} else if (params.tokenCount >= 2) {
-				String method = params.tokens.nextToken();
+				String method = params.nextParam();
 				if (method.equalsIgnoreCase("remove")) {
-					String idString = params.tokens.nextToken();
+					String idString = params.nextParam();
 					int i2 = 1, toRemove = Integer.parseInt(idString);
 					for (int i = 0; i < alerts.size(); i++) {
 						ImmutablePair<String,Alert> pair = alerts.get(i);
@@ -270,7 +270,7 @@ public class ModuleControllerAlert extends Module {
 		protected boolean isProper() {
 			return !(channel == null && uNick == null && uNickServ == null && uLogin == null && uHost == null && regex == null);
 		}
-		@SuppressWarnings("unchecked") protected boolean matches(Event<PircBotX> event) {
+		@SuppressWarnings("unchecked") protected boolean matches(Event<ShockyBot> event) {
 			boolean matches = true;
 			if (matches && type != Line.class) {
 				if ((event instanceof MessageEvent || event instanceof MessageOutEvent) && type != LineMessage.class) matches = false;
@@ -293,28 +293,28 @@ public class ModuleControllerAlert extends Module {
 				String eNick = null;
 				if (event instanceof MessageEvent || event instanceof ActionEvent) eNick = ((GenericMessageEvent<PircBotX>)event).getUser().getNick().toLowerCase();
 				if (event instanceof MessageOutEvent || event instanceof ActionOutEvent) eNick = ((GenericMessageEvent<PircBotX>)event).getBot().getNick().toLowerCase();
-				if (event instanceof KickEvent) matches = ((KickEvent<PircBotX>)event).getSource().getNick().toLowerCase().equals(uNick) || ((KickEvent<PircBotX>)event).getRecipient().getNick().toLowerCase().equals(uNick);
+				if (event instanceof KickEvent) matches = ((KickEvent<ShockyBot>)event).getSource().getNick().toLowerCase().equals(uNick) || ((KickEvent<ShockyBot>)event).getRecipient().getNick().toLowerCase().equals(uNick);
 				if (matches && (eNick == null || !eNick.equals(uNick))) matches = false;
 			}
 			if (matches && uNickServ != null) {
 				String eNickServ = null;
-				if (event instanceof MessageEvent || event instanceof ActionEvent) eNickServ = Whois.getWhoisLogin(((GenericMessageEvent<PircBotX>)event).getUser()).toLowerCase();
-				if (event instanceof MessageOutEvent || event instanceof ActionOutEvent) eNickServ = Whois.getWhoisLogin(((GenericMessageEvent<PircBotX>)event).getBot().getUserBot()).toLowerCase();
-				if (event instanceof KickEvent) matches = Whois.getWhoisLogin(((KickEvent<PircBotX>)event).getSource()).toLowerCase().equals(uNickServ) || Whois.getWhoisLogin(((KickEvent<PircBotX>)event).getRecipient()).toLowerCase().equals(uNickServ);
+				if (event instanceof MessageEvent || event instanceof ActionEvent) eNickServ = Shocky.getLogin(((GenericMessageEvent<PircBotX>)event).getUser()).toLowerCase();
+				if (event instanceof MessageOutEvent || event instanceof ActionOutEvent) eNickServ = Shocky.getLogin(((GenericMessageEvent<PircBotX>)event).getBot().getUserBot()).toLowerCase();
+				if (event instanceof KickEvent) matches = Shocky.getLogin(((KickEvent<ShockyBot>)event).getSource()).toLowerCase().equals(uNickServ) || Shocky.getLogin(((KickEvent<ShockyBot>)event).getRecipient()).toLowerCase().equals(uNickServ);
 				if (matches && (eNickServ == null || !eNickServ.equals(uNickServ))) matches = false;
 			}
 			if (matches && uLogin != null) {
 				String eLogin = null;
 				if (event instanceof MessageEvent || event instanceof ActionEvent) eLogin = ((GenericMessageEvent<PircBotX>)event).getUser().getLogin().toLowerCase();
 				if (event instanceof MessageOutEvent || event instanceof ActionOutEvent) eLogin = ((GenericMessageEvent<PircBotX>)event).getBot().getLogin().toLowerCase();
-				if (event instanceof KickEvent) matches = ((KickEvent<PircBotX>)event).getSource().getLogin().toLowerCase().equals(uLogin) || ((KickEvent<PircBotX>)event).getRecipient().getLogin().toLowerCase().equals(uLogin);
+				if (event instanceof KickEvent) matches = ((KickEvent<ShockyBot>)event).getSource().getLogin().toLowerCase().equals(uLogin) || ((KickEvent<ShockyBot>)event).getRecipient().getLogin().toLowerCase().equals(uLogin);
 				if (matches && (eLogin == null || !eLogin.equals(uLogin))) matches = false;
 			}
 			if (matches && uHost != null) {
 				String eHost = null;
 				if (event instanceof MessageEvent || event instanceof ActionEvent) eHost = ((GenericMessageEvent<PircBotX>)event).getUser().getHostmask();
 				if (event instanceof MessageOutEvent || event instanceof ActionOutEvent) eHost = ((GenericMessageEvent<PircBotX>)event).getBot().getUserBot().getHostmask();
-				if (event instanceof KickEvent) matches = ((KickEvent<PircBotX>)event).getSource().getHostmask().equals(uHost) || ((KickEvent<PircBotX>)event).getRecipient().getHostmask().equals(uHost);
+				if (event instanceof KickEvent) matches = ((KickEvent<ShockyBot>)event).getSource().getHostmask().equals(uHost) || ((KickEvent<ShockyBot>)event).getRecipient().getHostmask().equals(uHost);
 				if (matches && (eHost == null || !eHost.equals(uHost))) matches = false;
 			}
 			if (matches && regex != null && (type == Line.class || type == LineMessage.class || type == LineAction.class)) {

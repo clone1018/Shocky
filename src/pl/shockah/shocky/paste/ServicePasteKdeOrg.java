@@ -1,36 +1,40 @@
 package pl.shockah.shocky.paste;
 
-import java.util.ArrayList;
+import java.io.IOException;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import pl.shockah.HTTPQuery;
 
 public class ServicePasteKdeOrg implements PasteService {
 	
 	public String paste(CharSequence data) {
-		HTTPQuery q = HTTPQuery.create("http://paste.kde.org/",HTTPQuery.Method.POST);
+		HTTPQuery q = HTTPQuery.create("http://pastebin.kde.org/api/json/create",HTTPQuery.Method.POST);
 		
-		StringBuilder sb = new StringBuilder(data.length()+100);
-		sb.append("paste_lang=Text");
-		sb.append("&api_submit=1");
-		sb.append("&mode=xml");
-		sb.append("&paste_private=yes");
-		sb.append("&paste_data=");
-		sb.append(data);
+		StringBuilder sb = new StringBuilder(data.length()+32);
+		sb.append("language=text&private=true&data=").append(data);
 		
 		q.connect(true,true);
 		q.write(sb.toString());
-		ArrayList<String> list = q.readLines();
-		q.close();
-		
-		String pasteId = null, pasteHash = null;
-		for (String s : list) {
-			s = s.trim();
-			if (s.startsWith("<id>")) pasteId = s.substring(4,s.length()-5);
-			if (s.startsWith("<hash>")) pasteHash = s.substring(6,s.length()-7);
-		}
-		
-		if (pasteId != null) {
-			if (pasteHash != null) return "http://paste.kde.org/"+pasteId+"/"+pasteHash+"/";
-			return "http://paste.kde.org/"+pasteId+"/";
+		JSONObject json;
+		try {
+			json = new JSONObject(q.readWhole()).getJSONObject("result");
+			if (json.has("error")) {
+				System.out.println(json.getString("error"));
+				return null;
+			}
+			
+			String pasteId = json.getString("id");
+			String pasteHash = json.getString("hash");
+			
+			return "http://pastebin.kde.org/"+pasteId+"/"+pasteHash;
+		} catch (JSONException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			q.close();
 		}
 		return null;
 	}

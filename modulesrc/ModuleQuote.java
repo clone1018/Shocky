@@ -3,6 +3,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
 import pl.shockah.BinBuffer;
@@ -16,7 +18,7 @@ import pl.shockah.shocky.cmds.Parameters;
 
 public class ModuleQuote extends Module {
 	protected Command cmd, cmdAdd, cmdRemove;
-	private HashMap<String,ArrayList<Quote>> quotes = new HashMap<String,ArrayList<Quote>>();
+	private Map<String,List<Quote>> quotes = new HashMap<String,List<Quote>>();
 	
 	public String name() {return "quote";}
 	public void onEnable(File dir) {
@@ -27,11 +29,12 @@ public class ModuleQuote extends Module {
 			
 			String channel = f.getName();
 			BinBuffer binb = new BinFile(f).read(); binb.setPos(0);
-			quotes.put(channel,new ArrayList<Quote>());
+			List<Quote> list = new ArrayList<Quote>();
+			quotes.put(channel,list);
 			while (binb.bytesLeft() > 0) {
 				String[] nicks = binb.readUString().split(" ");
 				String quote = binb.readUString();
-				quotes.get(channel).add(new Quote(nicks,quote));
+				list.add(new Quote(nicks,quote));
 			}
 		}
 		
@@ -42,17 +45,18 @@ public class ModuleQuote extends Module {
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd,cmdAdd,cmdRemove);
+		quotes.clear();
 	}
 	public void onDataSave(File dir) {
 		dir = new File(dir,"quotes"); dir.mkdir();
 		BinBuffer binb = new BinBuffer();
 		
-		Iterator<Entry<String,ArrayList<Quote>>> it = quotes.entrySet().iterator();
+		Iterator<Entry<String,List<Quote>>> it = quotes.entrySet().iterator();
 		while (it.hasNext()) {
 			binb.clear();
-			Entry<String,ArrayList<Quote>> pair = it.next();
+			Entry<String,List<Quote>> pair = it.next();
 			
-			ArrayList<Quote> quotes = pair.getValue();
+			List<Quote> quotes = pair.getValue();
 			for (Quote quote : quotes) {
 				binb.writeUString(StringTools.implode(quote.nicks," "));
 				binb.writeUString(quote.quote);
@@ -83,7 +87,7 @@ public class ModuleQuote extends Module {
 			int aId = 0;
 			
 			if (params.tokenCount>=1) {
-				String par1 = params.tokens.nextToken();
+				String par1 = params.nextParam();
 				if (par1.charAt(0) == '#')
 					aChannel = par1;
 				else if (StringTools.isNumber(par1))
@@ -92,14 +96,14 @@ public class ModuleQuote extends Module {
 					aNick = par1;
 			
 				if (params.tokenCount>=2) {
-					String par2 = params.tokens.nextToken();
+					String par2 = params.nextParam();
 					if (StringTools.isNumber(par2))
 						aId = Integer.parseInt(par2);
 					else
 						aNick = par2;
 					
 					if (params.tokenCount==3) {
-						String par3 = params.tokens.nextToken();
+						String par3 = params.nextParam();
 						if (aId == 0 && StringTools.isNumber(par3))
 							aId = Integer.parseInt(par3);
 					}
@@ -112,10 +116,16 @@ public class ModuleQuote extends Module {
 				return;
 			}
 			
+			List<Quote> quoteList = quotes.get(aChannel);
+			if (quoteList == null) {
+				callback.append("No quotes found");
+				return;
+			}
+			
 			if (aNick != null)
 				aNick = aNick.toLowerCase();
 			ArrayList<Quote> list = new ArrayList<Quote>();
-			for (Quote quote : quotes.get(aChannel))
+			for (Quote quote : quoteList)
 				if (aNick == null || Arrays.binarySearch(quote.nicks,aNick) >= 0)
 					list.add(quote);
 			if (list.isEmpty()) {
@@ -128,11 +138,11 @@ public class ModuleQuote extends Module {
 			aId = Math.min(Math.max(aId,1),list.size()+1);
 			
 			String quote = Utils.mungeAllNicks(params.channel, 0, list.get(aId-1).quote);
-			callback.append("[")
+			callback.append('[')
 			.append(aChannel)
 			.append(": ")
 			.append(aId)
-			.append("/")
+			.append('/')
 			.append(list.size())
 			.append("] ")
 			.append(quote);
@@ -154,11 +164,18 @@ public class ModuleQuote extends Module {
 				return;
 			}
 			
-			String[] nicks = params.tokens.nextToken().toLowerCase().split(";");
+			String key = params.channel.getName();
+			String[] nicks = params.nextParam().toLowerCase().split(";");
 			String quote = params.getParams(0);
-			if (!quotes.containsKey(params.channel.getName()))
-				quotes.put(params.channel.getName(),new ArrayList<Quote>());
-			quotes.get(params.channel.getName()).add(new Quote(nicks,quote));
+			
+			List<Quote> list;
+			if (quotes.containsKey(key))
+				list = quotes.get(key);
+			else {
+				list = new ArrayList<Quote>();
+				quotes.put(key,list);
+			}
+			list.add(new Quote(nicks,quote));
 			callback.append("Done.");
 		}
 	}
@@ -185,7 +202,7 @@ public class ModuleQuote extends Module {
 			int aId = 0;
 			
 			if (params.tokenCount>=1) {
-				String par1 = params.tokens.nextToken();
+				String par1 = params.nextParam();
 				if (par1.charAt(0) == '#')
 					aChannel = par1;
 				else if (StringTools.isNumber(par1))
@@ -194,14 +211,14 @@ public class ModuleQuote extends Module {
 					aNick = par1;
 			
 				if (params.tokenCount>=2) {
-					String par2 = params.tokens.nextToken();
+					String par2 = params.nextParam();
 					if (StringTools.isNumber(par2))
 						aId = Integer.parseInt(par2);
 					else
 						aNick = par2;
 					
 					if (params.tokenCount==3) {
-						String par3 = params.tokens.nextToken();
+						String par3 = params.nextParam();
 						if (StringTools.isNumber(par3))
 							aId = Integer.parseInt(par3);
 					}

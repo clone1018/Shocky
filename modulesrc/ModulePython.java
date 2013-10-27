@@ -1,18 +1,16 @@
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Map;
 import java.util.Random;
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 import pl.shockah.HTTPQuery;
 import pl.shockah.StringTools;
+import pl.shockah.shocky.Cache;
 import pl.shockah.shocky.Data;
 import pl.shockah.shocky.ScriptModule;
 import pl.shockah.shocky.cmds.Command;
-import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Parameters;
-import pl.shockah.shocky.cmds.Command.EType;
 import pl.shockah.shocky.sql.Factoid;
 
 public class ModulePython extends ScriptModule {
@@ -29,15 +27,25 @@ public class ModulePython extends ScriptModule {
 		Command.removeCommands(cmd);
 	}
 	
-	public String parse(Map<Integer,Object> cache, PircBotX bot, EType type, Channel channel, User sender, Factoid factoid, String code, String message) {
+	public String parse(Cache cache, PircBotX bot, Channel channel, User sender, Factoid factoid, String code, String message) {
 		if (code == null) return "";
 		
-		StringBuilder sb = new StringBuilder("channel=");
-		appendEscape(sb,channel.getName());
-		sb.append(";bot=");
+		User[] users;
+		StringBuilder sb = new StringBuilder();
+		if (channel == null)
+			users = new User[]{bot.getUserBot(),sender};
+		else {
+			users = channel.getUsers().toArray(new User[0]);
+			sb.append("channel=");
+			appendEscape(sb,channel.getName());
+			sb.append(';');
+		}
+		sb.append("bot=");
 		appendEscape(sb,bot.getNick());
 		sb.append(";sender=");
 		appendEscape(sb,sender.getNick());
+		sb.append(";host=");
+		appendEscape(sb,sender.getHostmask());
 		sb.append(';');
 		if (message != null) {
 			String[] args = message.split(" ");
@@ -55,7 +63,6 @@ public class ModulePython extends ScriptModule {
 			sb.append("];");
 		}
 		
-		User[] users = channel.getUsers().toArray(new User[channel.getUsers().size()]);
 		sb.append("randnick=");
 		appendEscape(sb,users[new Random().nextInt(users.length)].getNick());
 		sb.append(';');
@@ -79,22 +86,10 @@ public class ModulePython extends ScriptModule {
 		return sb.toString();
 	}
 	
-	public class CmdPython extends Command {
+	public class CmdPython extends ScriptCommand {
 		public String command() {return "python";}
 		public String help(Parameters params) {
 			return "python\npython {code} - runs Python code";
-		}
-		
-		public void doCommand(Parameters params, CommandCallback callback) {
-			if (params.tokenCount < 1) {
-				callback.type = EType.Notice;
-				callback.append(help(params));
-				return;
-			}
-			
-			String output = parse(null,params.bot,params.type,params.channel,params.sender,null,params.input,null);
-			if (output != null && !output.isEmpty())
-				callback.append(StringTools.limitLength(StringTools.formatLines(output)));
 		}
 	}
 }

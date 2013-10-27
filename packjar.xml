@@ -8,7 +8,7 @@
         <jar destfile="shocky.jar" filesetmanifest="mergewithoutmain">
             <manifest>
                 <attribute name="Main-Class" value="pl.shockah.shocky.Shocky"/>
-                <attribute name="Class-Path" value=". libs/pircbotx-1.8.jar libs/commons-lang3-3.1.jar libs/commons-codec-1.8.jar libs/LOLCODE-0.11.jar libs/luaj-jse-2.0.2.jar libs/mysql-connector-java-5.1.22-bin.jar"/>
+                <attribute name="Class-Path" value=". libs/pircbotx-1.8.jar libs/commons-lang3-3.1.jar libs/commons-codec-1.8.jar libs/opennlp-tools-1.5.3.jar libs/LOLCODE-0.11.jar libs/luaj-jse-2.0.2.jar libs/mysql-connector-java-5.1.22-bin.jar"/>
             </manifest>
             <fileset dir="bin"/>
         </jar>

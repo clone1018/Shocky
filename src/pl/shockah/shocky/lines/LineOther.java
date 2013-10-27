@@ -1,6 +1,7 @@
 package pl.shockah.shocky.lines;
 
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Date;
 
@@ -10,6 +11,11 @@ import pl.shockah.shocky.sql.Wildcard;
 
 public class LineOther extends Line {
 	public final String text;
+	
+	public LineOther(ResultSet result) throws SQLException {
+		super(result);
+		this.text = result.getString("text");
+	}
 	
 	public LineOther(String channel, String text) {this(new Date(),channel,text);}
 	public LineOther(long ms, String channel, String text) {this(new Date(ms),channel,text);}

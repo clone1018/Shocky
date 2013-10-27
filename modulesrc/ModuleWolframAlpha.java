@@ -1,62 +1,99 @@
 import java.io.File;
+import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.logging.LogManager;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpression;
+import javax.xml.xpath.XPathFactory;
+
+import org.luaj.vm2.LuaTable;
+import org.luaj.vm2.LuaValue;
+import org.luaj.vm2.lib.OneArgFunction;
 import org.pircbotx.Channel;
 import org.pircbotx.Colors;
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
+
 import pl.shockah.HTTPQuery;
 import pl.shockah.StringTools;
-import pl.shockah.XMLObject;
 import pl.shockah.shocky.Data;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Parameters;
+import pl.shockah.shocky.interfaces.ILua;
 
-public class ModuleWolframAlpha extends Module {
+public class ModuleWolframAlpha extends Module implements ILua {
 	protected Command cmd;
+	
+	public Map<String,String> getResultMap(String apiKey, String query, String xquery) {
+		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+		XPathFactory xpathFactory = XPathFactory.newInstance();
+		
+		try {
+			query = URLEncoder.encode(query,"UTF8");
+			DocumentBuilder builder = factory.newDocumentBuilder();
+			HTTPQuery q = HTTPQuery.create("http://api.wolframalpha.com/v2/query?appid="+apiKey+"&format=Plaintext&input="+query);
+			q.connect(true,false);
+			Document doc = builder.parse(q.getConnection().getInputStream());
+			q.close();
+			
+			if (Boolean.parseBoolean(doc.getDocumentElement().getAttribute("error"))) return null;
+			boolean success = Boolean.parseBoolean(doc.getDocumentElement().getAttribute("success"));
+			if (!success)
+				return null;
+			
+			Map<String,String> parts = new LinkedHashMap<String,String>();
+			XPath xpath = xpathFactory.newXPath();
+			XPathExpression xptitle = xpath.compile("./@title");
+			NodeList xe = (NodeList) xpath.evaluate(xquery,doc,XPathConstants.NODESET);
+			for (int i = 0; i < xe.getLength();++i) {
+				String text = StringTools.deleteWhitespace(xe.item(i).getTextContent()).trim();
+				if (text.length() > 0)
+					parts.put(xptitle.evaluate(xe.item(i)),text);
+			}
+			return parts;
+		} catch (Exception e) {e.printStackTrace();}
+		
+		return null;
+	}
 	
 	public String getResult(Channel channel, String query) {
 		String apiKey = Data.forChannel(channel).getString("wolfram-apikey");
 		if (apiKey.isEmpty()) return ">>> WolframAlpha module can't be used without setting up an API key. Get one at http://products.wolframalpha.com/developers/ <<<";
 		
-		try {
-			HTTPQuery q = HTTPQuery.create("http://api.wolframalpha.com/v2/query?appid="+apiKey+"&format=Plaintext&input="+URLEncoder.encode(query,"UTF8"));
-			q.connect(true,false);
-			XMLObject xBase = XMLObject.deserialize(q.readWhole());
-			q.close();
+		Map<String,String> resultMap = getResultMap(apiKey,query,"//queryresult/pod[(@primary='true') or (@title='Alternate form')]");
 			
-			if (xBase.getBaseElement().getAttribute("error").equals("true")) return null;
-			if (xBase.getBaseElement().getAttribute("success").equals("false")) return "No result | "+Utils.shortenUrl("http://www.wolframalpha.com/input/?i="+URLEncoder.encode(query,"UTF8"));
-			
-			ArrayList<String> parts = new ArrayList<String>();
-			parts.add(Utils.shortenUrl("http://www.wolframalpha.com/input/?i="+URLEncoder.encode(query,"UTF8")));
-			
-			ArrayList<XMLObject> xPods = xBase.getElements("queryresult").get(0).getElements("pod");
-			for (XMLObject xPod : xPods) {
-				if (!"true".equals(xPod.getAttribute("primary")) && !xPod.getAttribute("title").equals("Alternate form")) continue;
-				
-				StringBuilder sb = new StringBuilder();
-				ArrayList<XMLObject> xSubpods = xPod.getElements("subpod");
-				for (XMLObject xSubpod : xSubpods) {
-					if (xSubpod.getElements("plaintext").isEmpty()) continue;
-					if (sb.length() != 0) sb.append("  ");
-					sb.append(xSubpod.getElements("plaintext").get(0).getValue());
-				}
-				if (sb.length() != 0) parts.add(Colors.BOLD+xPod.getAttribute("title")+Colors.NORMAL+": "+sb.toString().replace("\n"," "));
+		ArrayList<String> parts = new ArrayList<String>();
+		if (resultMap == null)
+			parts.add("No result");
+		try {query = URLEncoder.encode(query,"UTF8");} catch (UnsupportedEncodingException e) {}
+		parts.add(Utils.shortenUrl("http://www.wolframalpha.com/input/?i="+query));
+		if (resultMap != null) {
+			for (Entry<String, String> part : resultMap.entrySet()) {
+				parts.add(Colors.BOLD+part.getKey()+Colors.NORMAL+": "+part.getValue());
 			}
+		}
 			
-			StringBuilder sb = new StringBuilder();
-			for (String part : parts) {
-				if (sb.length() != 0) sb.append(" | ");
-				sb.append(part);
-			}
+		StringBuilder sb = new StringBuilder();
+		for (String part : parts) {
+			if (sb.length() != 0) sb.append(" | ");
+			sb.append(part);
+		}
 			
-			return StringTools.limitLength(sb.toString());
-		} catch (Exception e) {e.printStackTrace();}
-		
-		return null;
+		return StringTools.limitLength(sb);
 	}
+	
+	
 	
 	public String name() {return "wolfram";}
 	public void onEnable(File dir) {
@@ -81,8 +118,37 @@ public class ModuleWolframAlpha extends Module {
 		public void doCommand(Parameters params, CommandCallback callback) {
 			String result = getResult(params.channel, params.input);
 			if (result == null) return;
-			result = Utils.mungeAllNicks(params.channel,0,result,params.sender.getNick());
+			result = Utils.mungeAllNicks(params.channel,0,result,params.sender);
 			callback.append(result);
 		}
+	}
+	
+	public class Function extends OneArgFunction {
+		@Override
+		public LuaValue call(LuaValue arg) {
+			String apiKey = Data.config.getString("wolfram-apikey");
+			if (apiKey.isEmpty())
+				return NIL;
+			Map<String,String> result = getResultMap(apiKey,arg.checkjstring(),"//queryresult/pod");
+			LuaValue[] values = new LuaValue[result.size()<<1];
+			int i = 0;
+			for (Entry<String,String> item : result.entrySet()) {
+				values[i++] = valueOf(item.getKey());
+				values[i++] = valueOf(item.getValue());
+			}
+			return tableOf(values);
+		}
+	}
+
+	@Override
+	public void setupLua(LuaTable env) {
+		try {
+			Class.forName("pl.shockah.HTTPQuery");
+			Class.forName("pl.shockah.HTTPQuery$Method");
+			LogManager.getLoggingMXBean();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		env.rawset("wa", new Function());
 	}
 }

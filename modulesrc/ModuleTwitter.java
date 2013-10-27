@@ -1,6 +1,7 @@
 import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.URL;
 import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -12,23 +13,27 @@ import java.util.regex.Pattern;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
-import org.pircbotx.hooks.events.MessageEvent;
+import org.pircbotx.User;
+//import org.pircbotx.hooks.events.MessageEvent;
 
 import pl.shockah.HTTPQuery;
 import pl.shockah.StringTools;
 import pl.shockah.shocky.Data;
 import pl.shockah.shocky.Module;
-import pl.shockah.shocky.Shocky;
+//import pl.shockah.shocky.Shocky;
+import pl.shockah.shocky.URLDispatcher;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Parameters;
+import pl.shockah.shocky.interfaces.IAcceptURLs;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.binary.StringUtils;
 
-public class ModuleTwitter extends Module {
+public class ModuleTwitter extends Module implements IAcceptURLs {
 	private final static SimpleDateFormat sdf = new SimpleDateFormat("EEE MMM dd HH:mm:ss Z yyyy",Locale.US);
 	protected Command cmd;
 	
@@ -36,10 +41,11 @@ public class ModuleTwitter extends Module {
 		sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
 	}
 	
-	private final Pattern statusUrl = Pattern.compile("https?://(?:www.)?(?:[a-z]+?\\.)?twitter\\.com/(#!/)?[^/]+/status(es)?/([0-9]+)");
+	//private final Pattern statusUrl = Pattern.compile("https?://(?:www.)?(?:[a-z]+?\\.)?twitter\\.com/(#!/)?[^/]+/status(es)?/([0-9]+)");
+	private final Pattern statusUrl = Pattern.compile("/status(es)?/([0-9]+)");
 	
 	public String name() {return "twitter";}
-	public boolean isListener() {return true;}
+	public boolean isListener() {return false;}
 	public void onEnable(File dir) {
 		Data.config.setNotExists("twitter-dateformat","dd.MM.yyyy HH:mm:ss");
 		Data.config.setNotExists("twitter-consumerkey","");
@@ -47,7 +53,14 @@ public class ModuleTwitter extends Module {
 		Data.protectedKeys.add("twitter-consumerkey");
 		Data.protectedKeys.add("twitter-consumersecret");
 		Data.protectedKeys.add("twitter-accesstoken");
+		
 		Command.addCommands(this, cmd = new CmdTwitter());
+		URLDispatcher.addHandler(this);
+	}
+	
+	public void onDisable() {
+		Command.removeCommands(cmd);
+		URLDispatcher.removeHandler(this);
 	}
 	
 	public String getAccessToken(boolean useCache) {
@@ -118,7 +131,45 @@ public class ModuleTwitter extends Module {
 		return null;
 	}
 	
-	public void onMessage(MessageEvent<PircBotX> event) {
+	@Override
+	public boolean shouldAcceptURL(URL u) {
+		if (u == null)
+			return false;
+		if (!u.getProtocol().startsWith("http"))
+			return false;
+		return u.getHost().endsWith("twitter.com");
+	}
+	@Override
+	public void handleURL(PircBotX bot, Channel channel, User sender, URL u) {
+		if (bot == null || u == null || (channel == null && sender == null))
+			return;
+		if (channel != null && !isEnabled(channel.getName()))
+			return;
+		
+		Matcher m = statusUrl.matcher(u.getPath());
+		if (!m.find())
+			return;
+		
+		JSONObject json = (JSONObject)getJSON("https://api.twitter.com/1.1/statuses/show.json?"+HTTPQuery.parseArgs("trim_user","false","id",m.group(2)));
+		if (json == null)
+			return;
+		
+		try {
+			JSONObject user = json.getJSONObject("user");
+			String author = String.format("%s (@%s)",user.getString("name"),user.getString("screen_name"));
+			String tweet = StringTools.unescapeHTML(json.getString("text"));
+			Date date = sdf.parse(json.getString("created_at"));
+			String result = author+", "+Utils.timeAgo(date)+": "+tweet;
+			if (channel != null)
+				bot.sendMessage(channel, Utils.mungeAllNicks(channel,0,sender.getNick()+": "+result,sender));
+			else if (sender != null)
+				bot.sendMessage(sender, result);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	/*public void onMessage(MessageEvent<PircBotX> event) {
 		if (Data.isBlacklisted(event.getUser())) return;
 		
 		for (String url : Utils.getAllUrls(event.getMessage())) {
@@ -137,7 +188,7 @@ public class ModuleTwitter extends Module {
 				e.printStackTrace();
 			}
 		}
-	}
+	}*/
 	
 	public class CmdTwitter extends Command {
 		public String command() {return "twitter";}
@@ -152,10 +203,10 @@ public class ModuleTwitter extends Module {
 				return;
 			}
 			
-			String nick = params.tokens.nextToken();
+			String nick = params.nextParam();
 			int index = 1;
 			if (params.tokenCount == 2) {
-				String indexString = params.tokens.nextToken();
+				String indexString = params.nextParam();
 				try {
 					index = Integer.parseInt(indexString);
 				}
@@ -180,8 +231,10 @@ public class ModuleTwitter extends Module {
 				JSONObject user = json.getJSONObject("user");
 				String author = String.format("%s (@%s)",user.getString("name"),user.getString("screen_name"));
 				String tweet = StringTools.unescapeHTML(json.getString("text"));
+				tweet = Utils.mungeAllNicks(params.channel,0,tweet,params.sender);
 				Date date = sdf.parse(json.getString("created_at"));
-				callback.append(Utils.mungeAllNicks(params.channel,0,author+", "+Utils.timeAgo(date)+": "+tweet,params.sender.getNick()));
+				callback.append(author).append(", ").append(Utils.timeAgo(date)).append(": ");
+				callback.append(StringTools.formatLines(tweet));
 			} catch (Exception e) {
 				e.printStackTrace();
 			}

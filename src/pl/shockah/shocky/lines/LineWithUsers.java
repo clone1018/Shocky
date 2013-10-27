@@ -1,6 +1,7 @@
 package pl.shockah.shocky.lines;
 
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Date;
 
@@ -11,6 +12,11 @@ import pl.shockah.shocky.sql.Wildcard;
 
 public abstract class LineWithUsers extends Line {
 	public final String[] users;
+	
+	public LineWithUsers(ResultSet result, String[] users) throws SQLException {
+		super(result);
+		this.users = users;
+	}
 	
 	public LineWithUsers(String channel, String user) {this(new Date(),channel,new String[] {user});}
 	public LineWithUsers(long ms, String channel, String user) {this(new Date(ms),channel,new String[] {user});}

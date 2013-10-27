@@ -14,8 +14,9 @@ import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 
 import pl.shockah.shocky.cmds.CommandCallback;
+import pl.shockah.shocky.interfaces.IModule;
 
-public abstract class Module extends ListenerAdapter implements Comparable<Module> {
+public abstract class Module extends ListenerAdapter implements IModule, Comparable<Module> {
 	private static final List<Module> modules = Collections.synchronizedList(new ArrayList<Module>());
 	private static final List<ModuleLoader> loaders = Collections.synchronizedList(new ArrayList<ModuleLoader>());
 	private static final Map<String, ScriptModule> scriptingModules = Collections.synchronizedMap(new HashMap<String,ScriptModule>());
@@ -152,11 +153,13 @@ public abstract class Module extends ListenerAdapter implements Comparable<Modul
 			if (modules.get(i).name().equals(name)) return modules.get(i);
 		return null;
 	}
+	
 	public static ArrayList<Module> getModules() {
 		ArrayList<Module> ret = new ArrayList<Module>(modules);
 		Collections.sort(ret);
 		return ret;
 	}
+	
 	public static ArrayList<Module> getModules(boolean enabled) {
 		ArrayList<Module> ret = new ArrayList<Module>(modules.size());
 		for (int i = modules.size()-1; i >= 0; --i) {

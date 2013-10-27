@@ -17,9 +17,11 @@ public class ThreadConsoleInput extends Thread {
 			line = c.readLine();
 			if (line != null) {
 				CommandCallback callback = new CommandCallback();
-				Command cmd = Command.getCommand(null,null,null,Command.EType.Console,callback,line);
+				String[] args = line.split("\\s+", 2);
+				Command cmd = Command.getCommand(null,null,null,Command.EType.Console,callback,args[0]);
 				if (cmd != null) {
-					Parameters params = new Parameters(null,Command.EType.Console,null,null,line);
+					String s = (args.length == 1) ? "" : args[1];
+					Parameters params = new Parameters(null,Command.EType.Console,null,null,s);
 					try {
 						cmd.doCommand(params,callback);
 					} catch (AuthorizationException e) {

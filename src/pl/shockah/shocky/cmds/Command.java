@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
 
+import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 
@@ -66,12 +67,10 @@ public abstract class Command implements Comparable<Command> {
 			cmdSources.remove(commands[i]);
 		}
 	}
-	public static Command getCommand(PircBotX bot, User sender, String channel, Command.EType type, CommandCallback callback, String message) {
-		String[] args = message.split(" ");
-		if (args.length==0 || args[0].length()==0)
+	public static Command getCommand(PircBotX bot, User sender, Channel channel, Command.EType type, CommandCallback callback, String name) {
+		if (name == null || name.isEmpty())
 			return null;
-		String cmdName = args[0];
-		Map<String,Command> matchMap = getCommands(cmdName, channel);
+		Map<String,Command> matchMap = getCommands(name, channel);
 		if (matchMap.size()==1)
 			return matchMap.values().iterator().next();
 		else if (matchMap.size()>1)
@@ -88,10 +87,10 @@ public abstract class Command implements Comparable<Command> {
 		for (String s : cmds.keySet()) if (!aliases.contains(s)) map.put(s,cmds.get(s));
 		return Collections.unmodifiableSortedMap(map);
 	}
-	public static Map<String,Command> getCommands(String cmdName, String channel) {
+	public static Map<String,Command> getCommands(String cmdName, Channel channel) {
 		TreeMap<String,Command> matchMap = new TreeMap<String,Command>();
 		for (Entry<String, Command> cmd : cmds.entrySet()) {
-			if (channel != null && !cmd.getValue().isEnabled(channel))
+			if (channel != null && !cmd.getValue().isEnabled(channel.getName()))
 				continue;
 			if (cmd.getKey().equals(cmdName))
 				return Collections.singletonMap(cmd.getKey(), cmd.getValue());
@@ -100,7 +99,7 @@ public abstract class Command implements Comparable<Command> {
 		}
 		return matchMap;
 	}
-	public static boolean matches(Command command, PircBotX bot, EType type, String channel, String cmd) {
+	public static boolean matches(Command command, PircBotX bot, EType type, Channel channel, String cmd) {
 		if (type == EType.Channel) {
 			if (cmd.length()<=1)
 				return false;

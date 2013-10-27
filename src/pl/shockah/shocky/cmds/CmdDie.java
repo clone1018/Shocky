@@ -13,6 +13,6 @@ public class CmdDie extends Command {
 		
 		if (params.tokenCount == 0)
 			Shocky.die();
-		else Shocky.die(params.getParams(1));
+		else Shocky.die(params.getParams(0));
 	}
 }

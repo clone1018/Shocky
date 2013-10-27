@@ -1,4 +1,4 @@
-package pl.shockah.shocky;
+package pl.shockah.shocky.interfaces;
 
 import pl.shockah.shocky.sql.Factoid;
 

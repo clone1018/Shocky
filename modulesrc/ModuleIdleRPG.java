@@ -22,6 +22,7 @@ import org.luaj.vm2.lib.OneArgFunction;
 import org.luaj.vm2.lib.ZeroArgFunction;
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
+import org.pircbotx.ShockyBot;
 import org.pircbotx.User;
 import org.pircbotx.hooks.events.MessageEvent;
 
@@ -29,7 +30,6 @@ import pl.shockah.shocky.Data;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.Utils;
-import pl.shockah.shocky.Whois;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.interfaces.ILua;
 
@@ -147,7 +147,7 @@ public class ModuleIdleRPG extends Module implements ILua {
 		return json;
 	}
 
-	public static void send(MessageEvent<PircBotX> ev, String message) {
+	public static void send(MessageEvent<ShockyBot> ev, String message) {
 		Command.EType type = Command.EType.Channel;
 		String allowedChannel = Data.config.getString("idlerpg-channel");
 		if ((!allowedChannel.isEmpty())
@@ -167,7 +167,7 @@ public class ModuleIdleRPG extends Module implements ILua {
 		Shocky.send(session.bot, type, session.channel, session.user, message);
 	}
 
-	public static void announce(MessageEvent<PircBotX> ev, String message) {
+	public static void announce(MessageEvent<ShockyBot> ev, String message) {
 		Command.EType type = Command.EType.Channel;
 		String allowedChannel = Data.config.getString("idlerpg-channel");
 		if ((!allowedChannel.isEmpty())
@@ -189,7 +189,7 @@ public class ModuleIdleRPG extends Module implements ILua {
 		Shocky.send(session.bot, type, session.channel, session.user, message);
 	}
 
-	public void onMessage(MessageEvent<PircBotX> ev) {
+	public void onMessage(MessageEvent<ShockyBot> ev) {
 		if (Data.isBlacklisted(ev.getUser()))
 			return;
 
@@ -197,10 +197,9 @@ public class ModuleIdleRPG extends Module implements ILua {
 		if (!msg.startsWith(">"))
 			return;
 
-		String identify = Whois.getWhoisLogin(ev.getUser());
+		String identify = Shocky.getLogin(ev.getUser());
 		if (identify == null) {
-			send(ev, ev.getUser().getNick()
-					+ ": You need to be identified to NickServ to play IdleRPG.");
+			send(ev, Utils.mungeAllNicks(ev.getChannel(), 0, ev.getUser().getNick()+": You need to be identified to NickServ to play IdleRPG."));
 			return;
 		}
 		Session session = new Session(ev.getBot(), ev.getChannel(), ev.getUser(), identify);
@@ -260,7 +259,7 @@ public class ModuleIdleRPG extends Module implements ILua {
 					print.append(" | Full leaderboards: ").append(url);
 			}
 
-			send(ev, Utils.mungeAllNicks(ev.getChannel(), 0, print, ev.getUser().getNick()));
+			send(ev, Utils.mungeAllNicks(ev.getChannel(), 0, print, ev.getUser()));
 		}
 	}
 
@@ -286,12 +285,13 @@ public class ModuleIdleRPG extends Module implements ILua {
 
 		public static String printBar(double value, int length) {
 			double f = 1.0D / length;
-			StringBuilder sb = new StringBuilder(length + 2);
-			sb.append('[');
-			for (int i = 1; i <= length; ++i)
-				sb.append(value >= i * f ? '=' : ' ');
-			sb.append(']');
-			return sb.toString();
+			char[] c = new char[length + 2];
+			int i = 0;
+			c[i++]='[';
+			for (; i <= length; ++i)
+				c[i]=(value >= i * f) ? '=' : ' ';
+			c[i]=']';
+			return new String(c);
 		}
 
 		public Player(String name) {
@@ -421,11 +421,11 @@ public class ModuleIdleRPG extends Module implements ILua {
 
 		@Override
 		public LuaValue call() {
-			for (Player p : players.values())
-				p.update(null);
-
 			int maxPrint = Data.config.getInt("idlerpg-leaderboards-print");
 			ArrayList<Player> list = new ArrayList<Player>(players.values());
+			
+			for (Player p : list)
+				p.update(null);
 			Collections.sort(list, new ComparatorLevel(false));
 			
 			LuaTable t = new LuaTable();

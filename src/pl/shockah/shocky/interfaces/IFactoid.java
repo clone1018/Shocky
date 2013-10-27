@@ -1,18 +1,20 @@
 package pl.shockah.shocky.interfaces;
 
-import java.util.Map;
-
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 
+import pl.shockah.shocky.Cache;
 import pl.shockah.shocky.sql.Factoid;
 
-public interface IFactoid {
+public interface IFactoid extends IModule {
+	String runFactoid(Cache cache, PircBotX bot, Channel channel, User sender, String message);
 	
-	String runFactoid(Map<Integer,Object> cache, PircBotX bot, Channel channel, User sender, String message);
+	Factoid getFactoid(Cache cache, Channel channel, String factoid);
 	
-	Factoid getFactoid(Map<Integer,Object> cache, String channel, String factoid);
+	Factoid getFactoid(Cache cache, Channel channel, String factoid, boolean forgotten);
 	
-	Factoid[] getFactoids(Map<Integer,Object> cache, int max, String channel, String factoid);
+	Factoid[] getFactoids(Cache cache, int max, Channel channel, String factoid);
+	
+	Factoid[] getFactoids(Cache cache, int max, Channel channel, String factoid, boolean forgotten);
 }

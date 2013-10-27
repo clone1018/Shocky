@@ -4,9 +4,10 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.util.Map;
+import java.util.HashSet;
 import java.util.Random;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.pircbotx.Channel;
@@ -15,13 +16,12 @@ import org.pircbotx.User;
 import pl.shockah.HTTPQuery;
 import pl.shockah.Helper;
 import pl.shockah.StringTools;
+import pl.shockah.shocky.Cache;
 import pl.shockah.shocky.Data;
-import pl.shockah.shocky.IFactoidData;
 import pl.shockah.shocky.ScriptModule;
 import pl.shockah.shocky.cmds.Command;
-import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Parameters;
-import pl.shockah.shocky.cmds.Command.EType;
+import pl.shockah.shocky.interfaces.IFactoidData;
 import pl.shockah.shocky.sql.Factoid;
 
 public class ModulePHP extends ScriptModule implements IFactoidData {
@@ -48,30 +48,31 @@ public class ModulePHP extends ScriptModule implements IFactoidData {
 		return new File[]{savedData};
 	}
 	
-	public String parse(Map<Integer,Object> cache, PircBotX bot, EType type, Channel channel, User sender, Factoid factoid, String code, String message) {
+	public String parse(Cache cache, PircBotX bot, Channel channel, User sender, Factoid factoid, String code, String message) {
 		if (code == null) return "";
 		
-		StringBuilder sb = new StringBuilder("$channel=");
-		appendEscape(sb,channel.getName());
-		sb.append(";$bot=");
-		appendEscape(sb,bot.getNick());
-		sb.append(";$sender=");
-		appendEscape(sb,sender.getNick());
-		sb.append(';');
+		User[] users;
+		HashSet<Pair<String,String>> set = new HashSet<Pair<String,String>>();
+		if (channel == null)
+			users = new User[]{bot.getUserBot(),sender};
+		else {
+			users = channel.getUsers().toArray(new User[0]);
+			set.add(Pair.of("channel", channel.getName()));
+		}
+		set.add(Pair.of("bot", bot.getNick()));
+		set.add(Pair.of("sender", sender.getNick()));
+		set.add(Pair.of("host", sender.getHostmask()));
+		set.add(Pair.of("randnick", users[new Random().nextInt(users.length)].getNick()));
+		
+		StringBuilder sb = new StringBuilder();
+		buildInit(sb,set);
 		if (message != null) {
 			String[] args = message.replace("\\", "\\\\").split(" ");
 			String argsImp = StringTools.implode(args,1," ");
-			sb.append("$argc=").append((args.length-1)).append(";$args=");
+			sb.append("$args=");
 			appendEscape(sb,argsImp);
-			sb.append(";$ioru=empty($args)?$sender:$args");
-			//appendEscape(sb,(args.length == 1 ? sender.getNick() : argsImp));
-			sb.append(";$arg=explode(' ',$args);");
+			sb.append(";$ioru=empty($args)?$sender:$args;$arg=explode(' ',$args);$argc=count($arg);");
 		}
-		
-		User[] users = channel.getUsers().toArray(new User[0]);
-		sb.append("$randnick=");
-		appendEscape(sb,users[new Random().nextInt(users.length)].getNick());
-		sb.append(';');
 		
 		String data = getData(factoid);
 		if (data != null) {
@@ -110,6 +111,14 @@ public class ModulePHP extends ScriptModule implements IFactoidData {
 		return (ret != null)?ret.trim():null;
 	}
 	
+	private void buildInit(StringBuilder sb, Iterable<Pair<String,String>> set) {
+		for (Pair<String,String> pair : set) {
+			sb.append('$').append(pair.getLeft()).append('=');
+			appendEscape(sb,pair.getRight());
+			sb.append(';');
+		}
+	}
+	
 	public String readFile(File file) {
 		try {
 			FileInputStream fs = new FileInputStream(file);
@@ -117,7 +126,6 @@ public class ModulePHP extends ScriptModule implements IFactoidData {
 			char[] buffer = new char[(int)file.length()];
 			sr.read(buffer);
 			sr.close();
-			fs.close();
 			return new String(buffer);
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -130,9 +138,9 @@ public class ModulePHP extends ScriptModule implements IFactoidData {
 			FileOutputStream fs = new FileOutputStream(file);
 			OutputStreamWriter sr = new OutputStreamWriter(fs, Helper.utf8);
 			sr.append(str);
-			sr.flush();
+			//sr.flush();
 			sr.close();
-			fs.close();
+			//fs.close();
 			return true;
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -169,22 +177,10 @@ public class ModulePHP extends ScriptModule implements IFactoidData {
 		return false;
 	}
 	
-	public class CmdPHP extends Command {
+	public class CmdPHP extends ScriptCommand {
 		public String command() {return "php";}
 		public String help(Parameters params) {
 			return "\nphp {code} - runs PHP code";
-			}
-		
-		public void doCommand(Parameters params, CommandCallback callback) {
-			if (params.tokenCount < 1) {
-				callback.type = EType.Notice;
-				callback.append(help(params));
-				return;
-			}
-			
-			String output = parse(null,params.bot,params.type,params.channel,params.sender,null,params.input,null);
-			if (output != null && !output.isEmpty())
-				callback.append(StringTools.limitLength(StringTools.formatLines(output)));
 		}
 	}
 }

@@ -3,7 +3,7 @@ import java.util.HashMap;
 import java.util.Random;
 
 import org.pircbotx.Channel;
-import org.pircbotx.PircBotX;
+import org.pircbotx.ShockyBot;
 import org.pircbotx.hooks.events.MessageEvent;
 
 import pl.shockah.shocky.Data;
@@ -40,7 +40,7 @@ public class ModuleSamantha extends Module  {
 		nextAction.put(chan, System.currentTimeMillis()+Data.forChannel(chan).getInt("samantha-next"));
 	}
 
-	public void onMessage(MessageEvent<PircBotX> event) {
+	public void onMessage(MessageEvent<ShockyBot> event) {
 		if (!canPerformAction(event.getChannel()) || rnd.nextInt(Data.forChannel(event.getChannel()).getInt("samantha-chance")) > 0)
 			return;
 		
@@ -52,7 +52,7 @@ public class ModuleSamantha extends Module  {
 			performedAction(event.getChannel());
 	}
 	
-	public boolean doAss(MessageEvent<PircBotX> event, String... args) {
+	public boolean doAss(MessageEvent<ShockyBot> event, String... args) {
 		if (args.length < 3)
 			return false;
 		for (int i = 1; i < args.length - 1; i++) {
@@ -64,7 +64,7 @@ public class ModuleSamantha extends Module  {
 		return false;
 	}
 	
-	public boolean doNipples(MessageEvent<PircBotX> event, String... args) {
+	public boolean doNipples(MessageEvent<ShockyBot> event, String... args) {
 		if (args.length != 2)
 			return false;
 		if (args[0].equalsIgnoreCase("i'm")||args[0].equalsIgnoreCase("im")) {

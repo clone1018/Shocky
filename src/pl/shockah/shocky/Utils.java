@@ -24,14 +24,14 @@ public class Utils {
 	
 	public static final List<PasteService> services = new LinkedList<PasteService>();
 	
-	public static ArrayList<String> getAllUrls(String text) {
+	public static List<String> getAllUrls(String text) {
 		String[] spl = text.split(" ");
-		ArrayList<String> urls = new ArrayList<String>();
+		List<String> urls = new ArrayList<String>();
 		for (String s : spl) if (patternURL.matcher(s).find()) urls.add(s);
 		return urls;
 	}
 	public static String shortenAllUrls(String text) {
-		ArrayList<String> urls = getAllUrls(text);
+		List<String> urls = getAllUrls(text);
 		for (String url : urls) text = text.replace(url,shortenUrl(url));
 		return text;
 	}
@@ -73,18 +73,19 @@ public class Utils {
 		return link;
 	}
 	
-	public static String mungeAllNicks(Channel channel, int threshold, CharSequence message, String... dontMunge) {
-		if (channel == null) return message.toString();
+	public static String mungeAllNicks(Channel channel, int threshold, CharSequence message, User... dontMunge) {
 		String temp = message.toString();
+		if (channel == null)
+			return temp;
 		int total = 0;
 		getUsers: for (User user : channel.getUsers()) {
+			for (User dont : dontMunge)
+				if (user.equals(dont)) continue getUsers;
 			String nick = user.getNick();
-			for (String dont : dontMunge)
-				if (nick.equalsIgnoreCase(dont)) continue getUsers;
 			Pattern pattern = Pattern.compile(String.format("\\b%s\\b", Pattern.quote(nick)),Pattern.CASE_INSENSITIVE);
 			Matcher matcher = pattern.matcher(message);
 			if (matcher.find()) {
-				message = matcher.replaceAll(mungeNick(nick));
+				message = matcher.replaceAll(Matcher.quoteReplacement(mungeNick(nick)));
 				total++;
 			}
 		}
@@ -94,7 +95,7 @@ public class Utils {
 	}
 	public static String mungeNick(CharSequence str) {
 		char[] chars = new char[str.length()];
-		for (int i = 0; i < str.length(); i++) {
+		for (int i = 0; i < chars.length; ++i) {
 			char source = str.charAt(i);
 			int iof = mungeOriginal.indexOf(source);
 			if (iof == -1) {
@@ -106,49 +107,61 @@ public class Utils {
 		return new String(chars);
 	}
 	
-	public static String flip(CharSequence str) {
+	private static String mutate(String original, String replacement, CharSequence str) {
 		char[] chars = new char[str.length()];
-		for (int i = 0; i < str.length(); i++) {
+		for (int i = 0; i < chars.length; ++i) {
 			char source = str.charAt(i);
-			int iof1 = flipOriginal.indexOf(source);
-			int iof2 = flipReplace.indexOf(source);
+			int iof1 = original.indexOf(source);
+			int iof2 = replacement.indexOf(source);
 			if (iof1 == -1 && iof2 == -1) {
 				chars[i] = source;
 				continue;
 			}
 			if (iof1 != -1)
-				chars[i] = flipReplace.charAt(iof1);
+				chars[i] = replacement.charAt(iof1);
 			else if (iof2 != -1)
-				chars[i] = flipOriginal.charAt(iof2);
+				chars[i] = original.charAt(iof2);
 		}
 		return new String(chars);
 	}
 	
+	public static String flip(CharSequence str) {
+		return mutate(flipOriginal, flipReplace, str);
+	}
+	
 	public static String odd(CharSequence str) {
-		char[] chars = new char[str.length()];
-		for (int i = 0; i < str.length(); i++) {
-			char source = str.charAt(i);
-			int iof1 = oddOriginal.indexOf(source);
-			int iof2 = oddReplace.indexOf(source);
-			if (iof1 == -1 && iof2 == -1) {
-				chars[i] = source;
-				continue;
-			}
-			if (iof1 != -1)
-				chars[i] = oddReplace.charAt(iof1);
-			else if (iof2 != -1)
-				chars[i] = oddOriginal.charAt(iof2);
-		}
-		return new String(chars);
+		return mutate(oddOriginal, oddReplace, str);
 	}
 	
 	public static String timeAgo(Date date) {return timeAgo(date,new Date());}
 	public static String timeAgo(Date from, Date to) {
 		long dif = (to.getTime()-from.getTime())/1000;
 		String time = timeAgo(dif);
-		if (!time.contentEquals("now"))
+		if (time!="now")
 			return time+" ago";
 		return time;
+	}
+	
+	public static long parseInterval(String str) {
+		StringTokenizer strtok = new StringTokenizer(str);
+		long result = 0L;
+		try {
+			while (strtok.hasMoreTokens()) {
+				String tok = strtok.nextToken();
+				int cl = tok.length()-1;
+				long num = Long.parseLong(tok.substring(0, cl));
+				switch (tok.charAt(cl)) {
+					case 's':result+=num; break;
+					case 'm':result+=num*(60); break;
+					case 'h':result+=num*(60*60); break;
+					case 'd':result+=num*(24*60*60); break;
+					case 'w':result+=num*(7*24*60*60); break;
+				}
+			}
+		} catch (NumberFormatException e) {
+		}
+		System.out.println(result);
+		return result;
 	}
 	
 	public static String timeAgo(long dif) {

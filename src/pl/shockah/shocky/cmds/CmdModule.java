@@ -41,11 +41,11 @@ public class CmdModule extends Command {
 			callback.append(sb);
 			return;
 		} else if (params.tokenCount >= 1) {
-			String method = params.tokens.nextToken();
+			String method = params.nextParam();
 			if (method.equalsIgnoreCase("on") || method.equalsIgnoreCase("off")) {
 				boolean state = method.equalsIgnoreCase("on");
 				if (params.tokenCount >= 2) {
-					String moduleName = params.tokens.nextToken();
+					String moduleName = params.nextParam();
 					Module module = Module.getModule(moduleName);
 					boolean global = false;
 					if (module == null) {
@@ -56,7 +56,7 @@ public class CmdModule extends Command {
 					Config config;
 					
 					if (params.tokenCount >= 3) {
-						String globalString = params.tokens.nextToken();
+						String globalString = params.nextParam();
 						if (globalString.equalsIgnoreCase("global"))
 							global = true;
 					}
@@ -114,7 +114,7 @@ public class CmdModule extends Command {
 			} else if (params.tokenCount >= 2 && (method.equalsIgnoreCase("reload") || method.equalsIgnoreCase("unload"))) {
 				params.checkController();
 				boolean state = method.equalsIgnoreCase("reload");
-				String moduleName = params.tokens.nextToken();
+				String moduleName = params.nextParam();
 				Module module = Module.getModule(moduleName);
 				if (module == null) {
 					callback.append("No such module");

@@ -2,7 +2,6 @@ package pl.shockah.shocky;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.Map.Entry;
 
 import org.pircbotx.*;
 import org.pircbotx.exception.*;
@@ -10,15 +9,17 @@ import org.pircbotx.exception.*;
 import pl.shockah.Reflection;
 
 public class MultiChannel {
-	private static Map<PircBotX,List<String>> channelMap = new TreeMap<PircBotX,List<String>>(NickComparator.singleton);
+	private static List<PircBotX> botList = new LinkedList<PircBotX>();
 	protected static String channelPrefixes = null;
 	
 	public static Channel get(String name) {
 		name = name.toLowerCase();
-		for (Entry<PircBotX, List<String>> entry : channelMap.entrySet()) {
-			for (String channel : entry.getValue()) {
-				if (channel.equalsIgnoreCase(name))
-					return entry.getKey().getChannel(channel);
+		synchronized (botList) {
+			for (PircBotX entry : botList) {
+				for (Channel channel : entry.getChannels()) {
+					if (channel.getName().equalsIgnoreCase(name))
+						return channel;
+				}
 			}
 		}
 		return null;
@@ -26,16 +27,24 @@ public class MultiChannel {
 	
 	private static PircBotX createBot() {
 		PircBotX bot = Shocky.getBotManager().createBot(Data.config.getString("main-server"));
+		bot.setVersion(Data.config.getString("main-version"));
+		if (!connect(bot))
+			return null;
+		if (channelPrefixes == null)
+			channelPrefixes = Reflection.getPrivateValue(PircBotX.class,"channelPrefixes",bot);
+		botList.add(bot);
+		return bot;
+	}
+	
+	public static boolean connect(PircBotX bot) {
+		String server = Data.config.getString("main-server");
 		try {
-			bot.setVersion(Data.config.getString("main-version"));
-			String server = Data.config.getString("main-server");
 			bot.connect(server.contentEquals("localhost") ? null : server);
+			if (!bot.isConnected())
+				return false;
 			if (!Data.config.getString("main-nickservpass").isEmpty())
 				bot.identify(Data.config.getString("main-nickservpass"));
-			if (channelPrefixes == null)
-				channelPrefixes = Reflection.getPrivateValue(PircBotX.class,"channelPrefixes",bot);
-			channelMap.put(bot, new ArrayList<String>(Data.config.getInt("main-maxchannels")));
-			return bot;
+			return true;
 		} catch (NickAlreadyInUseException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -43,65 +52,107 @@ public class MultiChannel {
 		} catch (IrcException e) {
 			e.printStackTrace();
 		}
-		if (bot != null && bot.isConnected())
-			bot.disconnect();
-		return null;
+		return false;
 	}
 	
 	public static List<String> getBotChannels(PircBotX bot) throws Exception {
-		return Collections.unmodifiableList(channelMap.get(bot));
+		Set<Channel> set = bot.getChannels();
+		List<String> list = new ArrayList<String>(set.size());
+		for (Channel channel : set)
+			list.add(channel.getName());
+		return Collections.unmodifiableList(list);
 	}
 	
-	public static void lostChannel(PircBotX bot, String channel) throws Exception {
-		channelMap.get(bot).remove(channel);
+	public static void lostChannel(String channel) throws Exception {
 		Data.channels.remove(channel);
 	}
 	
 	public static void join(String... channels) throws Exception {
+		join(botList, channels);
+	}
+	
+	public synchronized static void join(List<? extends PircBotX> bots, String... channels) throws Exception {
 		if (channels == null || channels.length == 0)
 			return;
 		
-		LinkedList<String> currentChannels = new LinkedList<String>();
-		for (List<String> channelList : channelMap.values())
-			currentChannels.addAll(channelList);
+		List<Thread> joinThreads = new LinkedList<Thread>();
+		synchronized (botList) {
+			List<String> currentChannels = new LinkedList<String>();
+			for (PircBotX bot : botList)
+				currentChannels.addAll(getBotChannels(bot));
 		
-		List<String> joinList = new LinkedList<String>(Arrays.asList(channels));
-		joinList.removeAll(currentChannels);
-		if (joinList.size() == 0)
-			return;
-		
-		int i = 0;
-		for (String channel : joinList) {
-			channel = channel.toLowerCase();
-			if (!Data.channels.contains(channel))
-				Data.channels.add(channel);
+			List<String> joinList = new LinkedList<String>(Arrays.asList(channels));
+			joinList.removeAll(currentChannels);
+			if (joinList.size() == 0)
+				return;
 			
-			PircBotX bot = null;
-			for (Entry<PircBotX, List<String>> entry : channelMap.entrySet()) {
-				List<String> channelList = entry.getValue();
-				if (!channelList.contains(channel) && channelList.size() < Data.config.getInt("main-maxchannels")) {
-					bot = entry.getKey();
+			Iterator<String> joinIter = joinList.iterator();
+			for (PircBotX bot : bots) {
+				if (!joinIter.hasNext())
 					break;
+				List<String> channelList = new ArrayList<String>(getBotChannels(bot));
+				channelList.removeAll(joinList);
+				if (channelList.size() >= Data.config.getInt("main-maxchannels"))
+					continue;
+				joinThreads.add(joinChannels(bot, joinIter, channelList.size()));
+			}
+			
+			if (bots == botList) {
+				while (joinIter.hasNext()) {
+					Thread t = joinChannels(createBot(), joinIter, 0);
+					if (t == null)
+						break;
+					joinThreads.add(t);
+					Thread.sleep(3000);
 				}
 			}
-			if (bot == null)
-				bot = createBot();
-		
-			if (bot == null) break;
-			else {
-				if (bot.getChannels().contains(channel))
-					throw new Exception("Already in channel "+channel);
-				
-				if (bot.getChannelsNames().size() >= Data.config.getInt("main-maxchannels"))
-					throw new Exception("In an unexpected number of channels.");
-				
-				bot.joinChannel(channel);
-				channelMap.get(bot).add(channel);
-				i++;
-				if (i >= 10) {
-					Thread.sleep(3000);
-					i=0;
+		}
+		for (Thread t : joinThreads)
+			t.join();
+		System.out.format("Finished joining %d channel%s",channels.length,channels.length==1?"":"s").println();
+	}
+	
+	private static Thread joinChannels(PircBotX bot, Iterator<String> iter, int start) {
+		if (bot == null || iter == null || !iter.hasNext())
+			return null;
+		List<String> botChannel = new ArrayList<String>();
+		for (int i = start; iter.hasNext() && i < Data.config.getInt("main-maxchannels"); ++i) {
+			String channel = iter.next().toLowerCase();
+			synchronized (Data.channels) {
+				if (!Data.channels.contains(channel))
+					Data.channels.add(channel);
+			}
+			botChannel.add(channel);
+		}
+		Thread t = new JoinChannelsThread(bot,botChannel.toArray(new String[0]));
+		t.start();
+		return t;
+	}
+	
+	private static class JoinChannelsThread extends Thread {
+		private final PircBotX bot;
+		private final String[] channels;
+		public JoinChannelsThread(PircBotX bot, String[] channels) {
+			super();
+			this.setDaemon(true);
+			this.bot = bot;
+			this.channels = channels;
+		}
+
+		@Override
+		public void run() {
+		for (int i = 0; i < channels.length; ++i) {
+				String channel = channels[i];
+				if (bot.channelExists(channel))
+					continue;
+				if (i > 0 && (i % 10 == 0)) {
+					try {
+						Thread.sleep(3000);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
 				}
+				bot.joinChannel(channel);
 			}
 		}
 	}
@@ -115,17 +166,12 @@ public class MultiChannel {
 		if (!Data.channels.removeAll(argsList))
 			return;
 		
-		for (Entry<PircBotX, List<String>> entry : channelMap.entrySet()) {
-			PircBotX bot = entry.getKey();
-			List<String> channelList = entry.getValue();
-			List<String> partList = new LinkedList<String>(channelList);
-			partList.retainAll(argsList);
-			if (channelList.removeAll(partList)) {
-				for (String channel : partList) {
-					Channel channelObj = bot.getChannel(channel);
-					if (channelObj != null)
-						bot.partChannel(channelObj);
-				}
+		synchronized (botList) {
+			for (PircBotX bot : botList) {
+				List<String> partList = new LinkedList<String>(getBotChannels(bot));
+				partList.retainAll(argsList);
+				for (String channel : partList)
+					bot.partChannel(bot.getChannel(channel));
 			}
 		}
 	}

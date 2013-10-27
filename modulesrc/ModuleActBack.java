@@ -1,7 +1,7 @@
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import org.pircbotx.PircBotX;
+import org.pircbotx.ShockyBot;
 import org.pircbotx.hooks.events.ActionEvent;
 import pl.shockah.StringTools;
 import pl.shockah.shocky.Data;
@@ -11,7 +11,7 @@ public class ModuleActBack extends Module {
 	public String name() {return "actback";}
 	public boolean isListener() {return true;}
 	
-	public void onAction(ActionEvent<PircBotX> event) {
+	public void onAction(ActionEvent<ShockyBot> event) {
 		if (Data.isBlacklisted(event.getUser())) return;
 		String[] spl = event.getAction().split(" ");
 		List<String> list = Arrays.asList(spl);

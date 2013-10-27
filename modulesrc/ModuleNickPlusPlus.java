@@ -3,7 +3,7 @@ import java.io.File;
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.lib.OneArgFunction;
-import org.pircbotx.PircBotX;
+import org.pircbotx.ShockyBot;
 import org.pircbotx.hooks.events.MessageEvent;
 
 import pl.shockah.Config;
@@ -34,7 +34,7 @@ public class ModuleNickPlusPlus extends Module implements ILua {
 		config.save(new File(dir,"nickplusplus.cfg"));
 	}
 	
-	public void onMessage(MessageEvent<PircBotX> event) {
+	public void onMessage(MessageEvent<ShockyBot> event) {
 		if (Data.isBlacklisted(event.getUser())) return;
 		if (event.getMessage().matches("^("+Utils.patternNick.pattern()+")((\\+\\+)|(\\-\\-)|(\\=\\=))$")) {
 			String nick = event.getMessage().substring(0,event.getMessage().length()-2);

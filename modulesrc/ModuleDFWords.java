@@ -52,6 +52,7 @@ public class ModuleDFWords extends Module {
 			processFile(new File("modules/df/language_ELF.txt"));
 			processFile(new File("modules/df/language_GOBLIN.txt"));
 			processFile(new File("modules/df/language_HUMAN.txt"));
+			
 
 			Command.addCommands(this, cmd = new CmdDFWords());
 		} catch (IOException e) {
@@ -64,6 +65,7 @@ public class ModuleDFWords extends Module {
 		Command.removeCommands(cmd);
 		symbols = null;
 		words = null;
+		translations = null;
 	}
 
 	public void processFile(File file) throws IOException {
@@ -76,8 +78,7 @@ public class ModuleDFWords extends Module {
 		FileInputStream stream = new FileInputStream(file);
 		try {
 			FileChannel fc = stream.getChannel();
-			MappedByteBuffer bb = fc.map(FileChannel.MapMode.READ_ONLY, 0,
-					fc.size());
+			MappedByteBuffer bb = fc.map(FileChannel.MapMode.READ_ONLY, 0, fc.size());
 			content = Charset.defaultCharset().decode(bb).toString();
 		} finally {
 			stream.close();

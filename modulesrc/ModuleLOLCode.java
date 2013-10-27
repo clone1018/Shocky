@@ -1,17 +1,13 @@
 import java.io.*;
-import java.util.Map;
 
 import org.pircbotx.*;
 
 import com.lolcode.Runtime;
 import com.lolcode.parser.*;
 
-import pl.shockah.StringTools;
 import pl.shockah.shocky.*;
 import pl.shockah.shocky.cmds.Command;
-import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Parameters;
-import pl.shockah.shocky.cmds.Command.EType;
 import pl.shockah.shocky.sql.Factoid;
 
 public class ModuleLOLCode extends ScriptModule {
@@ -26,7 +22,7 @@ public class ModuleLOLCode extends ScriptModule {
 		Command.removeCommands(cmd);
 	}
 	
-	public String parse(Map<Integer,Object> cache, PircBotX bot, EType type, Channel channel, User sender, Factoid factoid, String code, String message) {
+	public String parse(Cache cache, PircBotX bot, Channel channel, User sender, Factoid factoid, String code, String message) {
 		if (code == null) return "";
 		String lines = code.replace(';', '\n').replace('>', '\t');
 		
@@ -48,22 +44,10 @@ public class ModuleLOLCode extends ScriptModule {
 		return s;
 	}
 	
-	public class CmdLOLCode extends Command {
+	public class CmdLOLCode extends ScriptCommand {
 		public String command() {return "lolcode";}
 		public String help(Parameters params) {
 			return "lolcode\nlolcode {code} - runs LOLCode code";
-		}
-		
-		public void doCommand(Parameters params, CommandCallback callback) {
-			if (params.tokenCount < 1) {
-				callback.type = EType.Notice;
-				callback.append(help(params));
-				return;
-			}
-			
-			String output = parse(null,params.bot,params.type,params.channel,params.sender,null,params.input,null);
-			if (output != null && !output.isEmpty())
-				callback.append(StringTools.limitLength(StringTools.formatLines(output)));
 		}
 	}
 	

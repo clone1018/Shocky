@@ -1,10 +1,11 @@
 package pl.shockah.shocky.lines;
 
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Date;
 
-import org.pircbotx.PircBotX;
+import org.pircbotx.ShockyBot;
 import org.pircbotx.hooks.events.ModeEvent;
 
 import pl.shockah.BinBuffer;
@@ -15,6 +16,11 @@ import pl.shockah.shocky.sql.Wildcard;
 public class LineMode extends LineWithUsers {
 	public final String text;
 	
+	public LineMode(ResultSet result) throws SQLException {
+		super(result,result.getString("users").split(";"));
+		this.text = result.getString("text");
+	}
+	
 	public LineMode(String channel, String sender, String text) {this(new Date(),channel,sender,text);}
 	public LineMode(long ms, String channel, String sender, String text) {this(new Date(ms),channel,sender,text);}
 	public LineMode(Date time, String channel, String users, String text) {
@@ -23,11 +29,11 @@ public class LineMode extends LineWithUsers {
 		
 	}
 	
-	public LineMode(ModeEvent<PircBotX> event) {
+	public LineMode(ModeEvent<ShockyBot> event) {
 		this(new Date(),event.getChannel().getName(),getUsers(event),event.getMode());
 	}
 	
-	private static String getUsers(ModeEvent<PircBotX> event) {
+	private static String getUsers(ModeEvent<ShockyBot> event) {
 		String[] tokens = event.getMode().split("\\s");
 		String[] users = new String[tokens.length];
 		int n = 0;

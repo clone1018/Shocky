@@ -5,7 +5,7 @@ import java.util.regex.Pattern;
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.lib.TwoArgFunction;
-import org.pircbotx.PircBotX;
+import org.pircbotx.ShockyBot;
 import org.pircbotx.User;
 import org.pircbotx.hooks.events.MessageEvent;
 
@@ -54,7 +54,7 @@ public class ModuleHighFive extends Module implements ILua {
 		config.save(new File(dir,"highfive.cfg"));
 	}
 	
-	public void onMessage(MessageEvent<PircBotX> event) {
+	public void onMessage(MessageEvent<ShockyBot> event) {
 		if (Data.isBlacklisted(event.getUser())) return;
 		String msg = event.getMessage();
 		if (!pattern.matcher(msg).find())

@@ -1,9 +1,10 @@
 package pl.shockah.shocky.lines;
 
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Date;
-import org.pircbotx.PircBotX;
+import org.pircbotx.ShockyBot;
 import org.pircbotx.hooks.events.KickEvent;
 
 import pl.shockah.BinBuffer;
@@ -13,9 +14,14 @@ import pl.shockah.shocky.sql.Wildcard;
 public class LineKick extends LineWithUsers {
 	public final String text;
 	
+	public LineKick(ResultSet result) throws SQLException {
+		super(result,result.getString("users").split(";"));
+		this.text = result.getString("text");
+	}
+	
 	public LineKick(String channel, String sender, String target, String text) {this(new Date(),channel,sender,target,text);}
 	public LineKick(long ms, String channel, String sender, String target, String text) {this(new Date(ms),channel,sender,target,text);}
-	public LineKick(KickEvent<PircBotX> event) {this(new Date(),event.getChannel().getName(),event.getSource().getNick(),event.getRecipient().getNick(),event.getReason());}
+	public LineKick(KickEvent<ShockyBot> event) {this(new Date(),event.getChannel().getName(),event.getSource().getNick(),event.getRecipient().getNick(),event.getReason());}
 	public LineKick(Date time, String channel, String sender, String target, String text) {
 		super(time,channel,new String[] {sender,target});
 		this.text = text;

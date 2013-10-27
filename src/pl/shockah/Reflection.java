@@ -5,7 +5,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 @SuppressWarnings("unchecked") public class Reflection {
-	public static Field getField(Class<?> cls, String fieldName) {
+	public static Field getPrivateField(Class<?> cls, String fieldName) {
 		try {
 			Field field = cls.getDeclaredField(fieldName);
 			field.setAccessible(true);
@@ -21,12 +21,12 @@ import java.lang.reflect.Method;
 	
 	public static <T> void setPrivateValue(Class<? super T> cls, String fieldName, T instance, Object value) {
 		try {
-			getField(cls,fieldName).set(instance,value);
+			getPrivateField(cls,fieldName).set(instance,value);
 		} catch (Exception e) {e.printStackTrace();}
 	}
 	public static <T> T getPrivateValue(Class<?> cls, String fieldName, Object instance) {
 		try {
-			return (T)getField(cls,fieldName).get(instance);
+			return (T)getPrivateField(cls,fieldName).get(instance);
 		} catch (Exception e) {e.printStackTrace();}
 		return null;
 	}
@@ -39,7 +39,7 @@ import java.lang.reflect.Method;
 		} catch (Exception e) {e.printStackTrace();}
 		return null;
 	}
-	public static <T> T invokePrivateMethod(Method method, Object instance, Object... arguments) {
+	public static <T> T invokeMethod(Method method, Object instance, Object... arguments) {
 		try {
 			return (T)method.invoke(instance,arguments);
 		} catch (Exception e) {e.printStackTrace();}

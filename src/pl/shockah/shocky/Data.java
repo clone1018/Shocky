@@ -121,7 +121,14 @@ public class Data {
 		FileLine.write(new File(dir,"channels.cfg"),channels);
 		FileLine.write(new File(dir,"blacklistNicks.cfg"),blacklistNicks);
 		
-		for (Module module : Module.getModules()) module.onDataSave(dir);
+		for (Module module : Module.getModules()) {
+			try {
+				module.onDataSave(dir);
+			} catch (Exception e) {
+				System.out.println(module.name());
+				e.printStackTrace();
+			}
+		}
 	}
 	
 	private static boolean moveDir(File from, File to) {

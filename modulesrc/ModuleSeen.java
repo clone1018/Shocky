@@ -1,6 +1,6 @@
 import java.io.File;
 import java.util.Date;
-import org.pircbotx.PircBotX;
+import org.pircbotx.ShockyBot;
 import org.pircbotx.hooks.events.MessageEvent;
 import pl.shockah.Config;
 import pl.shockah.shocky.Module;
@@ -27,7 +27,7 @@ public class ModuleSeen extends Module implements ISeen {
 		config.save(new File(dir,"seen.cfg"));
 	}
 	
-	public void onMessage(MessageEvent<PircBotX> event) {
+	public void onMessage(MessageEvent<ShockyBot> event) {
 		String key = event.getUser().getNick().toLowerCase();
 		config.set("t_"+key,System.currentTimeMillis());
 		config.set("c_"+key,event.getChannel().getName());
@@ -47,7 +47,7 @@ public class ModuleSeen extends Module implements ISeen {
 				return;
 			}
 			
-			String username = params.tokens.nextToken();
+			String username = params.nextParam();
 			String low = username.toLowerCase();
 			if (low.equals(params.bot.getNick().toLowerCase())) callback.append("Are your glasses not strong enough?");
 			else if (low.equals(params.sender.getNick().toLowerCase())) callback.append("Schizophrenia, eh?");

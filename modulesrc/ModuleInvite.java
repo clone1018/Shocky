@@ -6,6 +6,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.pircbotx.PircBotX;
+import org.pircbotx.ShockyBot;
 import org.pircbotx.User;
 import org.pircbotx.hooks.events.InviteEvent;
 import org.pircbotx.hooks.events.NoticeEvent;
@@ -17,14 +18,14 @@ import pl.shockah.shocky.MultiChannel;
 import pl.shockah.shocky.Shocky;
 
 public class ModuleInvite extends Module {
-	private static final Pattern chanExists = Pattern.compile("Information on \\x02(#\\w+)\\x02:");
-	private static final Pattern chanNotExists = Pattern.compile("Channel \\x02(#\\w+)\\x02 is not registered.");
+	private static final Pattern chanExists = Pattern.compile("Information on \\x02(#[\\w:]+)\\x02:");
+	private static final Pattern chanNotExists = Pattern.compile("Channel \\x02(#[\\w:]+)\\x02 is not registered.");
 	public Map<String,String> queue = new ConcurrentHashMap<String,String>();
 	
 	public String name() {return "invite";}
 	public boolean isListener() {return true;}
 	
-	public void onInvite(InviteEvent<PircBotX> event) {
+	public void onInvite(InviteEvent<ShockyBot> event) {
 		String username = event.getUser();
 		String channel = event.getChannel().toLowerCase();
 		User user = event.getBot().getUser(username);
@@ -34,7 +35,7 @@ public class ModuleInvite extends Module {
 		event.getBot().sendMessage("ChanServ", String.format("INFO %s",channel));
 	}
 	@Override
-	public void onNotice(NoticeEvent<PircBotX> event) throws Exception {
+	public void onNotice(NoticeEvent<ShockyBot> event) throws Exception {
 		if (queue.isEmpty())
 			return;
 		
@@ -68,7 +69,7 @@ public class ModuleInvite extends Module {
 		}
 	}
 	@Override
-	public void onServerResponse(ServerResponseEvent<PircBotX> event) throws Exception {
+	public void onServerResponse(ServerResponseEvent<ShockyBot> event) throws Exception {
 		if (event.getCode() == 401 && !queue.isEmpty()) {
 			String[] tokens = event.getResponse().split("\\s+");
 			if (!tokens[1].equals("ChanServ"))

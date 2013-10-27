@@ -2,12 +2,14 @@ import java.awt.event.ActionListener;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import javax.swing.Timer;
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
+import org.pircbotx.ShockyBot;
 import org.pircbotx.User;
 import org.pircbotx.hooks.events.ActionEvent;
 import org.pircbotx.hooks.events.MessageEvent;
@@ -15,7 +17,7 @@ import pl.shockah.shocky.Data;
 import pl.shockah.shocky.Module;
 
 public class ModuleAutoKick extends Module {
-	private Map<String,Map<String,CheckerStructure>> data = Collections.synchronizedMap(new TreeMap<String,Map<String,CheckerStructure>>());
+	private Map<Channel,Map<User,CheckerStructure>> data = Collections.synchronizedMap(new HashMap<Channel,Map<User,CheckerStructure>>());
 	
 	public String name() {return "autokick";}
 	public boolean isListener() {return true;}
@@ -24,26 +26,29 @@ public class ModuleAutoKick extends Module {
 		Data.config.setNotExists("autokick-delay",1000);
 	}
 	public void onDisable() {
-		for (String key1 : data.keySet()) {
-			Map<String,CheckerStructure> map = data.get(key1);
-			for (String key2 : map.keySet()) map.get(key2).resetTimers();
+		for (Channel key1 : data.keySet()) {
+			Map<User,CheckerStructure> map = data.get(key1);
+			for (User key2 : map.keySet())
+				map.get(key2).resetTimers();
 		}
 		data.clear();
 	}
 	
-	public void onMessage(MessageEvent<PircBotX> event) {
-		if (!event.getChannel().isOp(event.getBot().getUserBot())) return;
-		if (!data.containsKey(event.getChannel().getName())) data.put(event.getChannel().getName(),Collections.synchronizedMap(new TreeMap<String,ModuleAutoKick.CheckerStructure>()));
-		Map<String,CheckerStructure> map = data.get(event.getChannel().getName());
-		if (!map.containsKey(event.getUser().getNick().toLowerCase())) map.put(event.getUser().getNick().toLowerCase(),new CheckerStructure(event.getBot(),event.getChannel(),event.getUser()));
-		map.get(event.getUser().getNick().toLowerCase()).runTimer();
+	private void onEvent(PircBotX bot, Channel channel, User user) {
+		if (!channel.isOp(bot.getUserBot())) return;
+		if (!data.containsKey(channel))
+			data.put(channel,Collections.synchronizedMap(new TreeMap<User,ModuleAutoKick.CheckerStructure>()));
+		Map<User,CheckerStructure> map = data.get(channel);
+		if (!map.containsKey(user))
+			map.put(user,new CheckerStructure(bot,channel,user));
+		map.get(user).runTimer();
+	}
+	
+	public void onMessage(MessageEvent<ShockyBot> event) {
+		onEvent(event.getBot(), event.getChannel(), event.getUser());
 	}
 	public void onActionMessage(ActionEvent<PircBotX> event) {
-		if (!event.getChannel().isOp(event.getBot().getUserBot())) return;
-		if (!data.containsKey(event.getChannel().getName())) data.put(event.getChannel().getName(),Collections.synchronizedMap(new TreeMap<String,ModuleAutoKick.CheckerStructure>()));
-		Map<String,CheckerStructure> map = data.get(event.getChannel().getName());
-		if (!map.containsKey(event.getUser().getNick().toLowerCase())) map.put(event.getUser().getNick().toLowerCase(),new CheckerStructure(event.getBot(),event.getChannel(),event.getUser()));
-		map.get(event.getUser().getNick().toLowerCase()).runTimer();
+		onEvent(event.getBot(), event.getChannel(), event.getUser());
 	}
 	
 	public class CheckerStructure implements ActionListener {

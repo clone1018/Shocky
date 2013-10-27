@@ -8,6 +8,7 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -18,6 +19,7 @@ public class HTTPQuery {
 	public final URL url;
 	public final Method method;
 	protected HttpURLConnection c;
+	protected Charset charset = Helper.utf8;
 	
 	public static HTTPQuery create(String addr) {
 		return create(addr, Method.GET);
@@ -79,8 +81,16 @@ public class HTTPQuery {
 		return c.getRequestProperty(header);
 	}
 	
+	public Charset getCharset() {
+		return charset;
+	}
+
+	public void setCharset(Charset charset) {
+		this.charset = charset;
+	}
+
 	public void write(String s) {
-		write(s.getBytes());
+		write(s.getBytes(charset));
 	}
 	
 	public void write(byte[] bytes) {
@@ -96,7 +106,7 @@ public class HTTPQuery {
 		ArrayList<String> ret = new ArrayList<String>();
 		BufferedReader br = null;
 		try {
-			br = new BufferedReader(new InputStreamReader(c.getInputStream(),Helper.utf8));
+			br = new BufferedReader(new InputStreamReader(c.getInputStream(),charset));
 			String line;
 			while ((line = br.readLine()) != null)
 				ret.add(line);
@@ -113,12 +123,12 @@ public class HTTPQuery {
 		return ret;
 	}
 	public String readWhole() throws IOException {
-		char[] buffer = new char[1024];
+		char[] buffer = new char[256];
 		StringBuilder sb = new StringBuilder(buffer.length);
 		InputStreamReader is = null;
 		try {
-			is = new InputStreamReader(c.getInputStream(),Helper.utf8);
-			int count = 0;
+			is = new InputStreamReader(c.getInputStream(),charset);
+			int count;
 			while ((count=is.read(buffer))>0)
 				sb.append(buffer, 0, count);
 		} finally {
@@ -137,7 +147,9 @@ public class HTTPQuery {
 		for (Entry<String, String> pair : args.entrySet()) {
 			if (sb.length() != 0) sb.append('&');
 			try {
-				sb.append(URLEncoder.encode(pair.getKey()+'='+pair.getValue(),"UTF-8"));
+				sb.append(URLEncoder.encode(pair.getKey(),"UTF-8"));
+				sb.append('=');
+				sb.append(URLEncoder.encode(pair.getValue(),"UTF-8"));
 			} catch (Exception e) {e.printStackTrace();}
 		}
 		return sb.toString();

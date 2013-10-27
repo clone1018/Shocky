@@ -1,6 +1,7 @@
 package pl.shockah.shocky.lines;
 
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -31,6 +32,11 @@ public abstract class Line {
 	
 	public final Date time;
 	public final String channel;
+	
+	public Line(ResultSet result) throws SQLException {
+		this.time = new Date(result.getLong("stamp"));
+		this.channel = result.getString("channel");
+	}
 	
 	public Line(String channel) {this(new Date(),channel);}
 	public Line(long ms, String channel) {this(new Date(ms),channel);}

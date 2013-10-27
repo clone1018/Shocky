@@ -29,8 +29,8 @@ public class CmdController extends Command {
 		}
 		
 		if (params.tokenCount == 2) {
-			String method = params.tokens.nextToken().toLowerCase();
-			String username = params.tokens.nextToken();
+			String method = params.nextParam().toLowerCase();
+			String username = params.nextParam();
 			User user = Shocky.getUser(username);
 			if (!Data.controllers.contains(username) && user != null) {
 				if (Shocky.getLogin(user) == null) {

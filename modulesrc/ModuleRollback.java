@@ -7,7 +7,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.*;
 import org.pircbotx.Channel;
-import org.pircbotx.PircBotX;
+import org.pircbotx.ShockyBot;
 import org.pircbotx.hooks.events.*;
 import pl.shockah.*;
 import pl.shockah.shocky.Data;
@@ -18,6 +18,7 @@ import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Parameters;
 import pl.shockah.shocky.events.*;
 import pl.shockah.shocky.interfaces.IRollback;
+import pl.shockah.shocky.interfaces.ILinePredicate;
 import pl.shockah.shocky.lines.*;
 import pl.shockah.shocky.sql.*;
 import pl.shockah.shocky.sql.Criterion.Operation;
@@ -70,41 +71,41 @@ public class ModuleRollback extends Module implements IRollback {
 		Command.removeCommands(cmd);
 	}
 	
-	public void onMessage(MessageEvent<PircBotX> event) {
+	public void onMessage(MessageEvent<ShockyBot> event) {
 		addRollbackLine(event.getChannel().getName(),new LineMessage(event.getChannel().getName(),event.getUser().getNick(),event.getMessage()));
 	}
-	public void onMessageOut(MessageOutEvent<PircBotX> event) {
+	public void onMessageOut(MessageOutEvent<ShockyBot> event) {
 		addRollbackLine(event.getChannel().getName(),new LineMessage(event.getChannel().getName(),event.getBot().getNick(),event.getMessage()));
 	}
-	public void onAction(ActionEvent<PircBotX> event) {
+	public void onAction(ActionEvent<ShockyBot> event) {
 		addRollbackLine(event.getChannel().getName(),new LineAction(event.getChannel().getName(),event.getUser().getNick(),event.getMessage()));
 	}
-	public void onActionOut(ActionOutEvent<PircBotX> event) {
+	public void onActionOut(ActionOutEvent<ShockyBot> event) {
 		addRollbackLine(event.getChannel().getName(),new LineAction(event.getChannel().getName(),event.getBot().getNick(),event.getMessage()));
 	}
-	public void onTopic(TopicEvent<PircBotX> event) {
+	public void onTopic(TopicEvent<ShockyBot> event) {
 		if (!event.isChanged()) return;
 		addRollbackLine(event.getChannel().getName(),new LineOther(event.getChannel().getName(),"* "+event.getUser().getNick()+" has changed the topic to: "+event.getTopic()));
 	}
-	public void onJoin(JoinEvent<PircBotX> event) {
+	public void onJoin(JoinEvent<ShockyBot> event) {
 		addRollbackLine(event.getChannel().getName(),new LineEnterLeave(event.getChannel().getName(),event.getUser().getNick(),"("+event.getUser().getHostmask()+") has joined"));
 	}
-	public void onPart(PartEvent<PircBotX> event) {
+	public void onPart(PartEvent<ShockyBot> event) {
 		addRollbackLine(event.getChannel().getName(),new LineEnterLeave(event.getChannel().getName(),event.getUser().getNick(),"("+event.getUser().getHostmask()+") has left"));
 	}
-	public void onQuit(QuitEvent<PircBotX> event) {
+	public void onQuit(QuitEvent<ShockyBot> event) {
 		for (Channel channel : event.getUser().getChannels()) addRollbackLine(channel.getName(),new LineEnterLeave(channel.getName(),event.getUser().getNick(),"has quit ("+event.getReason()+")"));
 	}
-	public void onKick(KickEvent<PircBotX> event) {
+	public void onKick(KickEvent<ShockyBot> event) {
 		addRollbackLine(event.getChannel().getName(),new LineKick(event));
 	}
-	public void onNickChange(NickChangeEvent<PircBotX> event) {
+	public void onNickChange(NickChangeEvent<ShockyBot> event) {
 		for (Channel channel : event.getBot().getChannels(event.getUser())) addRollbackLine(channel.getName(),new LineOther(channel.getName(),"* "+event.getOldNick()+" is now known as "+event.getNewNick()));
 	}
-	public void onMode(ModeEvent<PircBotX> event) {
+	public void onMode(ModeEvent<ShockyBot> event) {
 		addRollbackLine(event.getChannel().getName(),new LineMode(event));
 	}
-	public void onUserMode(UserModeEvent<PircBotX> event) {
+	public void onUserMode(UserModeEvent<ShockyBot> event) {
 		String mode = event.getMode();
 		if (mode.charAt(0) == ' ') mode = "+"+mode.substring(1);
 		for (Channel channel : event.getBot().getChannels(event.getTarget())) addRollbackLine(channel.getName(),new LineOther(channel.getName(),"* "+event.getSource().getNick()+" sets mode "+mode+" "+event.getTarget().getNick()));
@@ -143,8 +144,42 @@ public class ModuleRollback extends Module implements IRollback {
 		return getRollbackLines(Line.class, channel, user, regex, cull, newest, lines, seconds);
 	}
 	
-	@SuppressWarnings("unchecked") public synchronized <T extends Line> ArrayList<T> getRollbackLines(Class<T> type, String channel, String user, String regex, String cull, boolean newest, int lines, int seconds) {
-		ArrayList<T> ret = new ArrayList<T>();
+	public Line getLine(ResultSet result) throws SQLException {
+		/*switch (result.getInt("type")) {
+			case TYPE_MESSAGE: return new LineMessage(result.getLong("stamp"),result.getString("channel"),result.getString("users"),result.getString("text"));
+			case TYPE_ACTION: return new LineAction(result.getLong("stamp"),result.getString("channel"),result.getString("users"),result.getString("text"));
+			case TYPE_ENTERLEAVE: return new LineEnterLeave(result.getLong("stamp"),result.getString("channel"),result.getString("users"),result.getString("text"));
+			case TYPE_KICK: return new LineKick(result.getLong("stamp"),result.getString("channel"),result.getString("users"),result.getString("text"));
+			case TYPE_MODE: return new LineMode(result.getLong("stamp"),result.getString("channel"),result.getString("users"),result.getString("text"));
+			default: return new LineOther(result.getLong("stamp"),result.getString("channel"),result.getString("text"));
+		}*/
+		switch (result.getInt("type")) {
+			case TYPE_MESSAGE: return new LineMessage(result);
+			case TYPE_ACTION: return new LineAction(result);
+			case TYPE_ENTERLEAVE: return new LineEnterLeave(result);
+			case TYPE_KICK: return new LineKick(result);
+			case TYPE_MODE: return new LineMode(result);
+			default: return new LineOther(result);
+		}
+	}
+	
+	private long getOldestTime(String channel) throws SQLException {
+		QuerySelect q = new QuerySelect(SQL.getTable("rollback"));
+		if (channel != null)
+			q.addCriterions(new CriterionString("channel",channel.toLowerCase()));
+		q.setLimitCount(1);
+		ResultSet j = SQL.select(q);
+		try {
+			if (j == null || !j.next())
+				throw new SQLException("Cannot find oldest timestamp for "+channel);
+			return j.getLong("stamp");
+		} finally {
+			if (j != null)
+				j.close();
+		}
+	}
+	
+	private <T extends Line> ResultSet getResults(Class<T> type, String channel, String user, String regex, String cull, boolean newest, int lines, int seconds) throws SQLException {
 		int intType = TYPE_OTHER;
 		if (type == LineMessage.class) intType = TYPE_MESSAGE;
 		else if (type == LineAction.class) intType = TYPE_ACTION;
@@ -153,70 +188,82 @@ public class ModuleRollback extends Module implements IRollback {
 		else if (type == LineMode.class) intType = TYPE_MODE;
 		else if (type == LineWithUsers.class) intType = TYPE_MESSAGEACTION;
 		
-		try {
-			QuerySelect q = new QuerySelect(SQL.getTable("rollback"));
-			if (channel != null) q.addCriterions(new CriterionString("channel",channel.toLowerCase()));
-			if (user != null) q.addCriterions(new CriterionString("users",Operation.REGEXP,"(^|;)"+user.toLowerCase()+"($|;)"));
-			if (lines != 0)
-				q.setLimitCount(Math.min(lines,3000));
+		QuerySelect q = new QuerySelect(SQL.getTable("rollback"));
+		if (channel != null) q.addCriterions(new CriterionString("channel",channel.toLowerCase()));
+		if (user != null) q.addCriterions(new CriterionString("users",Operation.REGEXP,"(^|;)"+user.toLowerCase()+"($|;)"));
+		if (lines != 0)
+			q.setLimitCount(Math.min(lines,3000));
+		else
+			q.setLimitCount(3000);
+		if (seconds != 0) {
+			CriterionNumber criterion;
+			long milliseconds = (seconds*1000);
+			if (newest)
+				criterion = new CriterionNumber("stamp",Operation.GreaterOrEqual,System.currentTimeMillis()-milliseconds);
 			else
-				q.setLimitCount(3000);
-			if (seconds != 0) {
-				if (!newest) {
-					QuerySelect q2 = new QuerySelect(SQL.getTable("rollback"));
-					if (channel != null) q2.addCriterions(new CriterionString("channel",channel.toLowerCase()));
-					q2.setLimitCount(1);
-					ResultSet j = SQL.select(q2);
-					if (j == null || j.getFetchSize() == 0) return ret;
-					q.addCriterions(new CriterionNumber("stamp",Operation.LesserOrEqual,j.getLong("stamp")+seconds));
-				} else q.addCriterions(new CriterionNumber("stamp",Operation.GreaterOrEqual,new Date().getTime()-(seconds*1000)));
-			}
-			if (regex != null && !regex.isEmpty()) q.addCriterions(new CriterionString("text",Operation.REGEXP,regex));
-			if (cull != null && !cull.isEmpty()) q.addCriterions(new CriterionString("text",cull,false));
-			if (type != Line.class) {
-				if (intType != TYPE_MESSAGEACTION)
-					q.addCriterions(new CriterionNumber("type",Operation.Equals,intType));
-				else {
-					//q.addCriterions(new CriterionNumber("type",Operation.Equals,TYPE_MESSAGE));
-					//q.addCriterions(new CriterionNumber("type",Operation.Equals,TYPE_ACTION).setOR());
-					q.addCriterions(msgAndActCriterion);
-				}
-			}
-			q.addOrder("stamp",!newest);
+				criterion = new CriterionNumber("stamp",Operation.LesserOrEqual,getOldestTime(channel)+milliseconds);
+			q.addCriterions(criterion);
+		}
+		if (regex != null && !regex.isEmpty())
+			q.addCriterions(new CriterionString("text",Operation.REGEXP,regex));
+		if (cull != null && !cull.isEmpty())
+			q.addCriterions(new CriterionString("text",cull,false));
+		if (type != Line.class) {
+			if (intType != TYPE_MESSAGEACTION)
+				q.addCriterions(new CriterionNumber("type",Operation.Equals,intType));
+			else
+				q.addCriterions(msgAndActCriterion);
+		}
+		q.addOrder("stamp",!newest);
 			
-			ResultSet result = SQL.select(q);
-			if (result == null)
-				return ret;
-			while(result.next()) {
-				switch (result.getInt("type")) {
-					case TYPE_MESSAGE: ret.add((T)new LineMessage(result.getLong("stamp"),result.getString("channel"),result.getString("users"),result.getString("text"))); break;
-					case TYPE_ACTION: ret.add((T)new LineAction(result.getLong("stamp"),result.getString("channel"),result.getString("users"),result.getString("text"))); break;
-					case TYPE_ENTERLEAVE: ret.add((T)new LineEnterLeave(result.getLong("stamp"),result.getString("channel"),result.getString("users"),result.getString("text"))); break;
-					case TYPE_KICK: ret.add((T)new LineKick(result.getLong("stamp"),result.getString("channel"),result.getString("users"),result.getString("text"))); break;
-					case TYPE_MODE: ret.add((T)new LineMode(result.getLong("stamp"),result.getString("channel"),result.getString("users"),result.getString("text"))); break;
-					default: ret.add((T)new LineOther(result.getLong("stamp"),result.getString("channel"),result.getString("text"))); break;
-				}
+		return SQL.select(q);
+	}
+
+	@SuppressWarnings("unchecked")
+	public synchronized <T extends Line> ArrayList<T> getRollbackLines(Class<T> type, String channel, String user, String regex, String cull, boolean newest, int lines, int seconds) {
+		ArrayList<T> ret = new ArrayList<T>();
+		ResultSet result = null;
+		try {
+			result = getResults(type, channel, user, regex, cull, newest, lines, seconds);
+			if (result != null) {
+				while(result.next())
+					ret.add((T)getLine(result));
+				Collections.reverse(ret);
 			}
-			/*if (j == null || j.length() == 0) return ret;
-			ArrayList<JSONObject> results = new ArrayList<JSONObject>();
-			if (j.getFetchSize() == 1 && j.has("___")) {
-				JSONArray ja = j.getJSONArray("___");
-				for (int i = 0; i < ja.length(); i++) results.add(ja.getJSONObject(i));
-			} else results.add(j);
-			
-			for (JSONObject result : results) {
-				switch (result.getInt("type")) {
-					case TYPE_MESSAGE: ret.add((T)new LineMessage(result.getLong("stamp"),result.getString("channel"),result.getString("user"),result.getString("txt"))); break;
-					case TYPE_ACTION: ret.add((T)new LineAction(result.getLong("stamp"),result.getString("channel"),result.getString("user"),result.getString("txt"))); break;
-					case TYPE_ENTERLEAVE: ret.add((T)new LineEnterLeave(result.getLong("stamp"),result.getString("channel"),result.getString("user"),result.getString("txt"))); break;
-					case TYPE_KICK: ret.add((T)new LineKick(result.getLong("stamp"),result.getString("channel"),result.getString("user"),result.getString("user2"),result.getString("txt"))); break;
-					default: ret.add((T)new LineOther(result.getLong("stamp"),result.getString("channel"),result.getString("txt"))); break;
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+				try {
+					if (result != null && !result.isClosed())
+						result.close();
+				} catch (SQLException e) {
 				}
-			}*/
-		} catch (Exception e) {e.printStackTrace();}
-		
-		Collections.reverse(ret);
+		}
 		return ret;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public synchronized <T extends Line> T getRollbackLine(ILinePredicate<T> predicate, Class<T> type, String channel, String user, String regex, String cull, boolean newest, int lines, int seconds) {
+		ResultSet result = null;
+		try {
+			result = getResults(type, channel, user, regex, cull, newest, lines, seconds);
+			if (result != null) {
+				while(result.next()) {
+					T line = (T) getLine(result);
+					if (predicate.accepts(line))
+						return line;
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+				try {
+					if (result != null && !result.isClosed())
+						result.close();
+				} catch (SQLException e) {
+				}
+		}
+		return null;
 	}
 	
 	public class CmdPastebin extends Command {
@@ -240,14 +287,16 @@ public class ModuleRollback extends Module implements IRollback {
 		
 		public void doCommand(Parameters params, CommandCallback callback) {
 			String[] args = params.input.split(" ");
-			String pbLink = "", regex = null;
+			String pbLink = null, regex = null;
 			callback.type = EType.Notice;
 			
-			for (int i = args.length-1; i > 0; i--) {
-				if (args[i].equals("|")) {
-					regex = StringTools.implode(params.input,i+1," ");
-					args = StringTools.implode(args,0,i-1," ").split(" ");
-					break;
+			if (args.length > 0) {
+				for (int i = args.length-1; i > 0; i--) {
+					if (args[i].equals("|")) {
+						regex = StringTools.implode(params.input,i+1," ");
+						args = StringTools.implode(args,0,i-1," ").split(" ");
+						break;
+					}
 				}
 			}
 			
@@ -295,7 +344,15 @@ public class ModuleRollback extends Module implements IRollback {
 					} while (m.find());
 					
 					list = getRollbackLines(aChannel,aUser,regex,null,additive,0,time);
-				} else list = getRollbackLines(aChannel,aUser,regex,null,aLines.charAt(0) != '-',Math.abs(Integer.parseInt(aLines)),0);
+				} else {
+					try {
+						int i = Integer.parseInt(aLines);
+						list = getRollbackLines(aChannel,aUser,regex,null,i >= 0,Math.abs(i),0);
+					} catch (NumberFormatException e) {
+						callback.append(help(params));
+						return;
+					}
+				}
 				
 				if (list.isEmpty()) {
 					callback.append("Nothing to upload");
@@ -307,7 +364,7 @@ public class ModuleRollback extends Module implements IRollback {
 				return;
 			}
 			
-			if (!pbLink.isEmpty()) {
+			if (pbLink != null) {
 				callback.type = EType.Channel;
 				callback.append(pbLink);
 			}

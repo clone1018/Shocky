@@ -12,7 +12,7 @@ public class CmdJoin extends Command {
 		params.checkController();
 		callback.type = EType.Notice;
 		if (params.tokenCount == 1) {
-			String channel = params.tokens.nextToken();
+			String channel = params.nextParam();
 			try {
 				MultiChannel.join(channel);
 			} catch (Exception e) {

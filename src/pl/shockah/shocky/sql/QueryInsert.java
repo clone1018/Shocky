@@ -39,8 +39,7 @@ public class QueryInsert extends Query {
 	
 	public PreparedStatement getSQLQuery(Connection con) {
 		StringBuilder sb = new StringBuilder("INSERT INTO ");
-		sb.append(table);
-		sb.append(" (");
+		sb.append(table).append('(');
 		
 		int i = 0;
 		for (; i < keys.length; i++) {
@@ -48,7 +47,7 @@ public class QueryInsert extends Query {
 			if (i > 0) sb.append(',');
 			sb.append(keys[i]);
 		}
-		sb.append(" ) VALUES(");
+		sb.append(") VALUES(");
 		for (; i>=1;i--) {
 			sb.append('?');
 			if (i > 1) sb.append(',');

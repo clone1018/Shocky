@@ -2,8 +2,9 @@ import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Arrays;
-import java.util.Map;
+import java.util.Collections;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -23,12 +24,11 @@ import org.pircbotx.User;
 import com.sun.script.javascript.RhinoScriptEngine;
 
 import pl.shockah.StringTools;
+import pl.shockah.shocky.Cache;
 import pl.shockah.shocky.ScriptModule;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
-import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Parameters;
-import pl.shockah.shocky.cmds.Command.EType;
 import pl.shockah.shocky.sql.Factoid;
 import pl.shockah.shocky.threads.SandboxThreadFactory;
 import pl.shockah.shocky.threads.SandboxThreadGroup;
@@ -46,7 +46,7 @@ public class ModuleJavaScript extends ScriptModule {
 		
 		try {
 			Class.forName("ModuleJavaScript$Sandbox");
-			Class.forName("ModuleJavaScript$JSRunner");
+			eval(new RhinoScriptEngine(), "0");
 		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
 		}
@@ -55,7 +55,7 @@ public class ModuleJavaScript extends ScriptModule {
 		Command.removeCommands(cmd);
 	}
 
-	public synchronized String parse(Map<Integer,Object> cache, final PircBotX bot, EType type, Channel channel, User sender, Factoid factoid, String code, String message) {
+	public synchronized String parse(Cache cache, final PircBotX bot, Channel channel, User sender, Factoid factoid, String code, String message) {
 		if (code == null) return "";
 		
 		RhinoScriptEngine engine = new RhinoScriptEngine();
@@ -68,14 +68,23 @@ public class ModuleJavaScript extends ScriptModule {
 			engine.put("ioru",(args.length-1 == 0 ? sender.getNick() : argsImp));
 			engine.put("arg",Arrays.copyOfRange(args, 1, args.length));
 		}
-		
-		engine.put("channel", channel.getName());
+		Set<User> users;
+		if (channel == null)
+			users = Collections.emptySet();
+		else {
+			engine.put("channel", channel.getName());
+			users = channel.getUsers();
+		}
 		engine.put("bot", bot.getNick());
 		engine.put("sender", sender.getNick());
-		
-		Sandbox sandbox = new Sandbox(channel.getUsers().toArray(new User[0]));
+		engine.put("host", sender.getHostmask());
+		Sandbox sandbox = new Sandbox(users);
 		engine.put("bot", sandbox);
-
+		
+		return eval(engine, code);
+	}
+	
+	public String eval(ScriptEngine engine, String code) {
 		JSRunner r = new JSRunner(engine, code);
 
 		final ExecutorService service = Executors.newSingleThreadExecutor(sandboxFactory);
@@ -101,35 +110,28 @@ public class ModuleJavaScript extends ScriptModule {
 		return output;
 	}
 
-	public class CmdJavascript extends Command {
+	public class CmdJavascript extends ScriptCommand {
 		public String command() {return "javascript";}
 		public String help(Parameters params) {
 			return "javascript/js\njavascript {code} - runs JavaScript code";
 		}
-
-		public void doCommand(Parameters params, CommandCallback callback) {
-			if (params.tokenCount < 1) {
-				callback.type = EType.Notice;
-				callback.append(help(params));
-				return;
-			}
-			
-			String output = parse(null,params.bot,params.type,params.channel,params.sender,null,params.input,null);
-			if (output != null && !output.isEmpty())
-				callback.append(StringTools.limitLength(StringTools.formatLines(output)));
-		}
 	}
 	
 	public class Sandbox {
-		private Random rnd = new Random();
-		private final User[] users;
+		private final Random rnd = new Random();
+		private final Set<User> users;
+		private User[] userArray;
 		
-		public Sandbox(User[] users) {
+		public Sandbox(Set<User> users) {
 			this.users = users;
 		}
 		
 		public String randnick() {
-			return users[rnd.nextInt(users.length)].getNick();
+			if (users.isEmpty())
+				return null;
+			if (userArray == null)
+				userArray = users.toArray(new User[users.size()]);
+			return userArray[rnd.nextInt(userArray.length)].getNick();
 		}
 		
 		public String format(String format, Object... args) {

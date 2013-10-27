@@ -19,7 +19,7 @@ public class Parameters {
 	public final EType type;
 	
 	public final String input;
-	public StringTokenizer tokens;
+	private StringTokenizer tokens;
 	public final int tokenCount;
 	
 	public Parameters(PircBotX bot, EType type, Channel channel, User sender, String input) {
@@ -28,10 +28,25 @@ public class Parameters {
 		this.channel = channel;
 		this.sender = sender;
 		
+		this.input = input;
 		this.tokens = new StringTokenizer(input);
-		this.input = getParams(1);
-		this.tokens = new StringTokenizer(this.input);
 		this.tokenCount = this.tokens.countTokens();
+	}
+	
+	public void resetParams() {
+		this.tokens = new StringTokenizer(this.input);
+	}
+	
+	public String nextParam() {
+		return this.tokens.nextToken();
+	}
+	
+	public boolean hasMoreParams() {
+		return this.tokens.hasMoreTokens();
+	}
+	
+	public int countParams() {
+		return this.tokens.countTokens();
 	}
 	
 	public String getParams(int start) {

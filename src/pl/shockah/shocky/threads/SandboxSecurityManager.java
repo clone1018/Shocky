@@ -59,6 +59,7 @@ public class SandboxSecurityManager extends SecurityManager
 		disallowed.add(new RuntimePermission("setSecurityManager"));
 		disallowed.add(new RuntimePermission("shutdownHooks"));
 		disallowed.add(new RuntimePermission("accessClassInPackage.sun.reflect"));
+		disallowed.add(new RuntimePermission("accessClassInPackage.sun.misc"));
 		
 		disallowed.add(SecurityConstants.GET_CLASSLOADER_PERMISSION);
 		disallowed.add(SecurityConstants.STOP_THREAD_PERMISSION);

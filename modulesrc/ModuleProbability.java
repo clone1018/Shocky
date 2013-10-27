@@ -34,7 +34,7 @@ public class ModuleProbability extends Module {
 				return;
 			}
 			
-			String username = params.tokens.nextToken();
+			String username = params.nextParam();
 			User user = params.bot.getUser(username);
 			if (user == null) {
 				callback.type = EType.Notice;

@@ -27,8 +27,8 @@ public class CmdBlacklist extends Command {
 		}
 		
 		if (params.tokenCount == 2) {
-			String method = params.tokens.nextToken().toLowerCase();
-			String target = params.tokens.nextToken().toLowerCase();
+			String method = params.nextParam().toLowerCase();
+			String target = params.nextParam().toLowerCase();
 			if (method.equals("add")) {
 				if (Data.blacklistNicks.contains(target)) {
 					callback.append(target).append(" is already in blacklist");
