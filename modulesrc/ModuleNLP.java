@@ -7,10 +7,12 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Random;
 
+import org.luaj.vm2.LuaFunction;
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
+import org.luaj.vm2.Varargs;
 import org.luaj.vm2.lib.OneArgFunction;
-import org.luaj.vm2.lib.ThreeArgFunction;
+import org.luaj.vm2.lib.VarArgFunction;
 
 //import opennlp.tools.namefind.NameFinderME;
 //import opennlp.tools.namefind.TokenNameFinderModel;
@@ -198,13 +200,17 @@ public class ModuleNLP extends Module implements ILua {
 		return null;
 	}*/
 	
-	public class POSReplaceFunction extends ThreeArgFunction {
-
+	public class POSReplaceFunction extends VarArgFunction {
+		
 		@Override
-		public LuaValue call(LuaValue arg1, LuaValue arg2, LuaValue arg3) {
-			String sentence = arg1.checkjstring();
-			float chance = arg2.checknumber().tofloat();
-			LuaTable table = arg3.checktable();
+		public Varargs invoke(Varargs args) {
+			if (args.narg()==3)
+				return asTable(args.checkjstring(1), args.checknumber(2).tofloat(), args.checktable(3));
+			else
+				return asFunction(args.checkjstring(1), args.checkclosure(2));
+		}
+
+		public LuaValue asTable(String sentence, float chance, LuaTable table) {
 			String[][] replacements = new String[table.getn().toint()][];
 			LuaValue v;
 			for ( int i=0; !(v = table.rawget(++i)).isnil(); ) {
@@ -213,6 +219,10 @@ public class ModuleNLP extends Module implements ILua {
 			}
 			
 			return valueOf(posReplace(sentence, chance, replacements));
+		}
+		
+		public LuaValue asFunction(String sentence, LuaFunction func) {
+			return valueOf(posReplace(sentence, func));
 		}
 	}
 	
@@ -279,6 +289,44 @@ public class ModuleNLP extends Module implements ILua {
 					start=span.getEnd();
 					++replaces;
 				}
+			}
+			sb.append(sentence.substring(start));
+			++runs;
+		}
+		return sb.toString();
+	}
+	
+	public String posReplace(String sentence, LuaFunction function) {
+		Span[] spans = tokenize(sentence);
+		String[] tokens = Span.spansToStrings(spans, sentence);
+		String[] tags = getPOSTags(tokens);
+		StringBuilder sb = null;
+		
+		int replaces = 0;
+		int runs = 0;
+		while (replaces == 0 && runs < 100) {
+			int start = 0;
+			sb = new StringBuilder(sentence.length());
+			for (int i = 0; i < tokens.length && i < tags.length; ++i) {
+				String tag = tags[i];
+				String token = tokens[i];
+				if (token.contentEquals("'") || token.contentEquals(">"))
+					continue;
+				Varargs result = function.invoke(LuaValue.varargsOf(LuaValue.valueOf(tag),LuaValue.valueOf(token)));
+				if (!result.toboolean(1))
+					continue;
+				String word = result.checkjstring(1);
+				Span span = spans[i];
+				if (token.charAt(0)=='<' && token.charAt(token.length()-1)=='>')
+					span = new Span(span.getStart()+1,span.getEnd()-1);
+				else if (token.charAt(0)=='\'' && token.charAt(token.length()-1)!='\'' && (i+1 < tokens.length) && tokens[i+1].contentEquals("'"))
+					span = new Span(span.getStart()+1,span.getEnd());
+				else if (token.charAt(0)=='<' && token.charAt(token.length()-1)!='>' && (i+1 < tokens.length) && tokens[i+1].contentEquals(">"))
+					span = new Span(span.getStart()+1,span.getEnd());
+				sb.append(sentence.substring(start, span.getStart()));
+				sb.append(word);
+				start=span.getEnd();
+				++replaces;
 			}
 			sb.append(sentence.substring(start));
 			++runs;

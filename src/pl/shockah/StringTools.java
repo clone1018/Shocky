@@ -2,6 +2,7 @@ package pl.shockah;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import java.util.Collection;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.commons.lang3.StringEscapeUtils;
@@ -139,17 +140,25 @@ public class StringTools {
     	return str.toString();
     }
 	
-	public static String implode(Object[] spl, String separator) {return implode(spl,0,spl.length-1,separator);}
-	public static String implode(Object[] spl, int a, String separator) {return implode(spl,a,spl.length-1,separator);}
-	public static String implode(Object[] spl, int a, int b, String separator) {
+	public static String implode(Object[] spl, CharSequence separator) {return implode(spl,0,spl.length-1,separator);}
+	public static String implode(Object[] spl, int a, CharSequence separator) {return implode(spl,a,spl.length-1,separator);}
+	public static String implode(Object[] spl, int a, int b, CharSequence separator) {
 		StringBuffer sb = new StringBuffer();
 		while (a <= b) {
+			if (a >= spl.length)
+				break;
 			Object s = spl[a++];
 			if (s == null) continue;
 			if (sb.length() != 0) sb.append(separator);
 			sb.append(s);
 		}
 		return sb.toString();
+	}
+	
+	public static String implode(Collection<?> spl, CharSequence separator) {return implode(spl,0,spl.size()-1,separator);}
+	public static String implode(Collection<?> spl, int a, CharSequence separator) {return implode(spl,a,spl.size()-1,separator);}
+	public static String implode(Collection<?> spl, int a, int b, CharSequence separator) {
+		return implode(spl.toArray(), a, b, separator);
 	}
 	
 	public static String implode(String spl, String separator) {return implode(spl,0,separator);}

@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
@@ -282,6 +283,10 @@ public class ModuleIdleRPG extends Module implements ILua {
 			xpTable.put(level, value);
 			return value;
 		}
+		
+		public int getXPForNextLevel() {
+			return getXPForLevel(this.level + 1);
+		}
 
 		public static String printBar(double value, int length) {
 			double f = 1.0D / length;
@@ -306,7 +311,7 @@ public class ModuleIdleRPG extends Module implements ILua {
 			long diff = time - this.lastUpdate;
 			this.lastUpdate = time;
 
-			int xp2l = getXPForLevel(this.level + 1);
+			int xp2l = getXPForNextLevel();
 			this.xp = (int) (this.xp + diff);
 			if ((session != null) && (session.player == this)
 					&& (this.xp >= xp2l)) {
@@ -325,7 +330,7 @@ public class ModuleIdleRPG extends Module implements ILua {
 				sb.append(" / ").append(session.user.getNick());
 			sb.append(", level ").append(this.level);
 
-			int xp2l = getXPForLevel(this.level + 1);
+			int xp2l = getXPForNextLevel();
 			if (printXP) {
 				if ((this.level != 1) && (this.xp == 0)) {
 					sb.append(", LEVEL UP!");
@@ -403,7 +408,7 @@ public class ModuleIdleRPG extends Module implements ILua {
 		LuaTable t = new LuaTable();
 		t.rawset("name", player.name);
 		t.rawset("xp", player.xp);
-		t.rawset("need", Player.getXPForLevel(player.level + 1));
+		t.rawset("need", player.getXPForNextLevel());
 		t.rawset("level", player.level);
 		t.rawset("lastUpdate", player.lastUpdate);
 		return t;
@@ -422,7 +427,7 @@ public class ModuleIdleRPG extends Module implements ILua {
 		@Override
 		public LuaValue call() {
 			int maxPrint = Data.config.getInt("idlerpg-leaderboards-print");
-			ArrayList<Player> list = new ArrayList<Player>(players.values());
+			List<Player> list = new ArrayList<Player>(players.values());
 			
 			for (Player p : list)
 				p.update(null);

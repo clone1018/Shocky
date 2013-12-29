@@ -1,5 +1,9 @@
-import java.util.Stack;
+import java.util.Deque;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -9,6 +13,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
+import org.pircbotx.Channel;
 import org.pircbotx.Colors;
 import org.pircbotx.ShockyBot;
 import org.pircbotx.hooks.events.MessageEvent;
@@ -25,6 +30,7 @@ import pl.shockah.shocky.lines.LineWithUsers;
 
 public class ModuleRegexReplace extends Module {
 
+	public static final Pattern sedPattern = Pattern.compile("^([sm])/(.*?(?<!\\\\))/(?:(.*?(?<!\\\\))/)?([a-z]*)");
 	public static String[] groupColors = new String[] { Colors.BLUE + ",02",Colors.RED + ",05", Colors.GREEN + ",03", Colors.MAGENTA + ",06",Colors.CYAN + ",10" };
 
 	@Override
@@ -35,36 +41,43 @@ public class ModuleRegexReplace extends Module {
 	public void onMessage(MessageEvent<ShockyBot> event) throws Exception {
 		if (Data.isBlacklisted(event.getUser()))
 			return;
+		String output = run(event.getChannel(), event.getMessage());
+		if (output != null)
+			Shocky.sendChannel(event.getBot(), event.getChannel(), output);
+	}
+	
+	public String run(Channel channel, String s) throws InterruptedException, ExecutionException {
 		IRollback module = (IRollback) Module.getModule("rollback");
 		if (module == null)
-			return;
-		String s = event.getMessage().trim();
-		if (!s.startsWith("s/") && !s.startsWith("m/"))
-			return;
-		String[] args = s.split("(?<!\\\\)/", -1);
-		boolean replace = args[0].contentEquals("s");
-		if (!replace && event.getChannel().getMode().contains("c"))
-			return;
+			return null;
+		int start = 0;
+		List<Regex> list = new LinkedList<Regex>();
+		Matcher m = sedPattern.matcher(s);
+		while(start < s.length()) {
+			while(start < s.length() && Character.isWhitespace(s.charAt(start)))
+				++start;
+			m.region(start, s.length());
+			if (!m.find())
+				break;
+			
+			String pattern = m.group(2);
+			String replacement = m.group(3);
+			String params = m.group(4);
+			if (pattern.isEmpty())
+				return null;
+			boolean replace = m.group(1).contentEquals("s");
+			if (replace && replacement==null)
+				return null;
+			if (!replace && channel.getMode().contains("c"))
+				return null;
 
-		int flagPos = 2;
-		if (replace)
-			flagPos = 3;
-
-		if (args.length != flagPos + 1)
-			return;
-		if (args[1].isEmpty())
-			return;
-
-		String[] params = args[flagPos].split(" ", -1);
-		String user = null;
-
-		int flags = 0;
-		boolean single = true;
-		if (params.length > 0) {
-			for (char c : params[0].toCharArray()) {
-				switch (c) {
-				case 'd':flags |= Pattern.UNIX_LINES;break;
+			int flags = 0;
+			boolean single = true;
+			
+			for (int i = 0;i < params.length();++i) {
+				switch (params.charAt(i)) {
 				case 'g':single = false;break;
+				case 'd':flags |= Pattern.UNIX_LINES;break;
 				case 'i':flags |= Pattern.CASE_INSENSITIVE;break;
 				case 'm':flags |= Pattern.MULTILINE;break;
 				case 's':flags |= Pattern.DOTALL;break;
@@ -72,47 +85,61 @@ public class ModuleRegexReplace extends Module {
 				case 'x':flags |= Pattern.COMMENTS;break;
 				}
 			}
-
-			if (params.length > 1)
-				user = params[1];
+		
+			try {
+				list.add(new Regex(Pattern.compile(pattern, flags), single, replace ? replacement : null));
+			} catch (PatternSyntaxException e) {
+				return StringTools.deleteWhitespace(e.getMessage());
+			}
+			
+			start = m.end()+1;
 		}
-		Pattern pattern;
-		try {
-			pattern = Pattern.compile(args[1], flags);
-		} catch (PatternSyntaxException e) {
-			Shocky.sendChannel(event.getBot(), event.getChannel(), StringTools.deleteWhitespace(e.getMessage()));
-			return;
-		}
+		
+		if (list.isEmpty())
+			return null;
+		
+		String user = null;
+		if (start < s.length())
+			user = s.substring(start);
 		
 		final ExecutorService service = Executors.newFixedThreadPool(1);
 		try {
-			Future<String> run = service.submit(new Run(module, pattern, event.getChannel().getName(), user, s, single, replace ? args[2] : null));
-			String output = run.get(10, TimeUnit.SECONDS);
-			if (output != null)
-				Shocky.sendChannel(event.getBot(), event.getChannel(), output);
+			Future<String> run = service.submit(new Run(module, channel.getName(), user, s, list));
+			return run.get(10, TimeUnit.SECONDS);
 		} catch (TimeoutException e) {
+			return null;
 		} finally {
 			service.shutdown();
+		}
+	}
+	
+	private static class Regex {
+		public final Pattern pattern;
+		public final boolean single;
+		public final String replacement;
+		public Regex(Pattern pattern, boolean single, String replacement) {
+			this.pattern = pattern;
+			this.single = single;
+			this.replacement = replacement;
 		}
 	}
 
 	private static class Run implements Callable<String>, ILinePredicate<LineWithUsers> {
 		private final IRollback module;
-		private final Matcher matcher;
 		private final String channel;
 		private final String user;
 		private final String message;
-		private final boolean single;
-		private final String replacement;
+		private final Iterable<Regex> regex;
+		
+		private Regex current;
+		private Matcher matcher;
 
-		public Run(IRollback module, Pattern pattern, String channel, String user, String message, boolean single, String replacement) {
+		public Run(IRollback module, String channel, String user, String message, Iterable<Regex> regex) {
 			this.module = module;
-			this.matcher = pattern.matcher("");
 			this.channel = channel;
 			this.user = user;
 			this.message = message;
-			this.single = single;
-			this.replacement = replacement;
+			this.regex = regex;
 		}
 
 		@Override
@@ -124,58 +151,73 @@ public class ModuleRegexReplace extends Module {
 				text = ((LineAction) line).text;
 			else
 				return false;
-			if (replacement == null)
+			if (current.replacement == null)
 				text = Colors.removeFormattingAndColors(text);
 			return matcher.reset(text).find();
 		}
 
 		@Override
 		public String call() throws Exception {
-			LineWithUsers line = module.getRollbackLine(this, LineWithUsers.class, channel, user, null, message, true, 10, 0);
-			if (line == null)
-				return null;
+			LineWithUsers line = null;
+			boolean useLine = true;
 			StringBuffer sb = new StringBuffer();
-			do {
-				if (replacement != null)
-					matcher.appendReplacement(sb, replacement);
-				else {
-					String capture = matcher.group();
-					char[] chars = capture.toCharArray();
-					StringBuilder sb2 = new StringBuilder();
-					Stack<Integer> color = new Stack<Integer>();
-					int last = -1;
-					for (int o = 0; o <= chars.length; o++) {
-						for (int p = 0; p <= matcher.groupCount(); p++) {
-							int s = matcher.start(p) - matcher.start();
-							int e = matcher.end(p) - matcher.start();
-							if (o == s)
-								color.push(p);
-							else if (o == e)
-								color.pop();
-						}
-
-						if (color.isEmpty() && last != -1) {
-							last = -1;
-							sb2.append(Colors.NORMAL);
-						} else if (!color.isEmpty() && last != color.peek()) {
-							last = color.peek();
-							sb2.append(groupColors[last% groupColors.length]);
-						}
-
-						if (o < chars.length)
-							sb2.append(chars[o]);
-					}
-					matcher.appendReplacement(sb, sb2.toString());
+			Iterator<Regex> iter = regex.iterator();
+			while(iter.hasNext()) {
+				current = iter.next();
+				matcher = current.pattern.matcher(sb);
+				if (useLine) {
+					line = module.getRollbackLine(this, LineWithUsers.class, channel, user, null, message, true, 10, 0);
+					if (line == null)
+						return null;
+					useLine = false;
+				} else {
+					sb = new StringBuffer();
+					if (!matcher.find())
+						return null;
 				}
-				if (single)
-					break;
-			} while (matcher.find());
-			matcher.appendTail(sb);
+				do {
+					matcher.appendReplacement(sb, (current.replacement != null) ? current.replacement : coloredGroups());
+					if (current.single)
+						break;
+				} while (matcher.find());
+				matcher.appendTail(sb);
+			}
 			if (line instanceof LineAction) {
 				sb.insert(0, "\001ACTION ");
 				sb.append('\001');
 			}
 			return StringTools.limitLength(sb);
+		}
+		
+		private String coloredGroups() {
+			String capture = matcher.group();
+			if (capture.isEmpty())
+				return capture;
+			StringBuilder sb = new StringBuilder();
+			Deque<Integer> color = new LinkedList<Integer>();
+			int last = -1;
+			for (int o = 0; o <= capture.length(); ++o) {
+				for (int p = 0; p <= matcher.groupCount(); ++p) {
+					int s = matcher.start(p) - matcher.start();
+					int e = matcher.end(p) - matcher.start();
+					if (o == s)
+						color.push(p);
+					else if (o == e)
+						color.pop();
+				}
+
+				if (color.isEmpty() && last != -1) {
+					last = -1;
+					sb.append(Colors.NORMAL);
+				} else if (!color.isEmpty() && last != color.peek()) {
+					last = color.peek();
+					sb.append(groupColors[last%groupColors.length]);
+				}
+
+				if (o < capture.length())
+					sb.append(capture.charAt(o));
+			}
+			return sb.toString();
 		}
 	}
 }

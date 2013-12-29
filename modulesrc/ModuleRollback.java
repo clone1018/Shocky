@@ -115,7 +115,7 @@ public class ModuleRollback extends Module implements IRollback {
 		if (channel == null || !channel.startsWith("#")) return;
 		channel = channel.toLowerCase();
 		
-		PreparedStatement p;
+		PreparedStatement p = null;
 		String key = line.getClass().getName();
 		try {
 			if (SQL.statements.containsKey(key) && !SQL.statements.get(key).isClosed()) {
@@ -136,6 +136,8 @@ public class ModuleRollback extends Module implements IRollback {
 				p.clearParameters();
 			}
 		} catch (SQLException e) {
+			if (p != null)
+				try {p.close();} catch (SQLException e1) {}
 			e.printStackTrace();
 		}
 	}
@@ -254,14 +256,14 @@ public class ModuleRollback extends Module implements IRollback {
 						return line;
 				}
 			}
-		} catch (Exception e) {
+		} catch (SQLException e) {
 			e.printStackTrace();
 		} finally {
-				try {
-					if (result != null && !result.isClosed())
-						result.close();
-				} catch (SQLException e) {
-				}
+			try {
+				if (result != null && !result.isClosed())
+					result.close();
+			} catch (SQLException e) {
+			}
 		}
 		return null;
 	}

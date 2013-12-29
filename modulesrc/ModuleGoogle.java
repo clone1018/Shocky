@@ -1,7 +1,13 @@
 import java.io.File;
+import java.io.IOException;
 import java.net.URLEncoder;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
+import org.luaj.vm2.LuaTable;
+import org.luaj.vm2.LuaValue;
+import org.luaj.vm2.lib.OneArgFunction;
+
 import pl.shockah.HTTPQuery;
 import pl.shockah.StringTools;
 import pl.shockah.shocky.Module;
@@ -9,8 +15,9 @@ import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Parameters;
 import pl.shockah.shocky.cmds.Command.EType;
+import pl.shockah.shocky.interfaces.ILua;
 
-public class ModuleGoogle extends Module {
+public class ModuleGoogle extends Module implements ILua {
 	protected Command cmd1;
 	protected Command cmd2;
 
@@ -18,15 +25,24 @@ public class ModuleGoogle extends Module {
 	public String name() {return "google";}
 	@Override
 	public void onEnable(File dir) {
-		Command.addCommands(this, cmd1 = new CmdGoogle());
-		Command.addCommands(this, cmd2 = new CmdGoogleImg());
+		Command.addCommands(this, cmd1 = new CmdGoogle(), cmd2 = new CmdGoogleImg());
 		Command.addCommand(this, "g", cmd1);
 	}
 	
 	@Override
 	public void onDisable() {
-		Command.removeCommands(cmd1);
-		Command.removeCommands(cmd2);
+		Command.removeCommands(cmd1,cmd2);
+	}
+	
+	public JSONArray getJSON(boolean images, String search) throws IOException, JSONException {
+		HTTPQuery q = HTTPQuery.create("http://ajax.googleapis.com/ajax/services/search/"+(images?"images":"web")+"?v=1.0&safe=off&q=" + URLEncoder.encode(search, "UTF8"));
+		try {
+			q.connect(true, false);
+			JSONObject json = new JSONObject(q.readWhole());
+			return json.getJSONObject("responseData").getJSONArray("results");
+		} finally {
+			q.close();
+		}
 	}
 	
 	public void doSearch(Command cmd, Parameters params, CommandCallback callback) {
@@ -36,20 +52,8 @@ public class ModuleGoogle extends Module {
 			return;
 		}
 		
-		HTTPQuery q;
 		try {
-			q = HTTPQuery.create("http://ajax.googleapis.com/ajax/services/search/"+(cmd instanceof CmdGoogleImg?"images":"web")+"?v=1.0&safe=off&q=" + URLEncoder.encode(params.input, "UTF8"));
-		} catch (Exception e) {
-			e.printStackTrace();
-			return;
-		}
-		
-		try {
-			q.connect(true, false);
-			String line = q.readWhole();
-			q.close();
-			JSONObject json = new JSONObject(line);
-			JSONArray results = json.getJSONObject("responseData").getJSONArray("results");
+			JSONArray results = getJSON(cmd instanceof CmdGoogleImg, params.input);
 			if (results.length() == 0) {
 				callback.append("No results.");
 				return;
@@ -66,7 +70,9 @@ public class ModuleGoogle extends Module {
 				callback.append(content);
 			else
 				callback.append("No description available.");
-		} catch (Exception e) {e.printStackTrace();}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 	
 	public class CmdGoogle extends Command {
@@ -95,5 +101,42 @@ public class ModuleGoogle extends Module {
 		public void doCommand(Parameters params, CommandCallback callback) {
 			doSearch(this, params, callback);
 		}
+	}
+	
+	public class Function extends OneArgFunction {
+		private final boolean images;
+		public Function(boolean images) {
+			this.images = images;
+		}
+		
+		@Override
+		public LuaValue call(LuaValue arg) {
+			try {
+				JSONArray results = getJSON(images, arg.checkjstring());
+				LuaValue[] values = new LuaValue[results.length()];
+				for (int i = 0;i < values.length;++i)
+					values[i] = getResultTable(results.getJSONObject(i));
+				return listOf(values);
+			} catch (JSONException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			return NIL;
+		}
+		
+		private LuaValue getResultTable(JSONObject result) throws JSONException {
+			LuaTable t = new LuaTable();
+			t.rawset("url", result.getString("unescapedUrl"));
+			t.rawset("title", result.getString("titleNoFormatting"));
+			t.rawset("desc", StringTools.stripHTMLTags(result.getString("content")));
+			return t;
+		}
+	}
+
+	@Override
+	public void setupLua(LuaTable env) {
+		env.rawset("gs", new Function(false));
+		env.rawset("gis", new Function(true));
 	}
 }

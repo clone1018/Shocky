@@ -12,6 +12,7 @@ import org.pircbotx.User;
 
 import com.sun.script.javascript.RhinoScriptEngine;
 
+import pl.shockah.Delegate;
 import pl.shockah.Helper;
 import pl.shockah.StringTools;
 import pl.shockah.ZeroInputStream;
@@ -118,13 +119,14 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 		env.rawset("pcall", LuaValue.NIL);
 		env.rawset("xpcall", LuaValue.NIL);
 
-		env.set("cmd", new CmdData());
+		env.rawset("cmd", new CmdData());
 		
 		for (Module module : Module.getModules()) {
 			if (module instanceof ILua)
 				((ILua)module).setupLua(env);
 		}
 
+		DataInputStream is = null;
 		try {
 			Class.forName("org.luaj.vm2.lib.LuaState");
 			Class.forName("ModuleLua$CmdFunction");
@@ -132,16 +134,18 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			if (!scripts.exists())
 				scripts.mkdirs();
 			if (binary.exists()) {
-				FileInputStream fs = new FileInputStream(binary);
-				DataInputStream is = new DataInputStream(fs);
+				is = new DataInputStream(new FileInputStream(binary));
 				env.set("irc", readValue(is));
-				is.close();
-				fs.close();
 			} else {
 				env.set("irc", new LuaTable());
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
+		} finally {
+			try {
+			if (is != null)
+				is.close();
+			} catch (IOException e) {}
 		}
 
 		LuaThread.setGlobals(env);
@@ -495,11 +499,6 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 		public synchronized static LuaValue create(String cmd) {
 			if (cmd == null || cmd.isEmpty())
 				return NIL;
-
-			/*LuaValue v = parent.getfenv().get("state");
-			if (!(v instanceof LuaState))
-				return NIL;
-			LuaState state = (LuaState) v;*/
 			LuaState state = LuaState.getState();
 			if (state == null)
 				return NIL;
@@ -519,10 +518,6 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 
 		@Override
 		public LuaValue call(LuaValue arg) {
-			/*LuaValue obj = env.get("state");
-			if (!(obj instanceof LuaState))
-				return NIL;
-			LuaState state = (LuaState) obj;*/
 			LuaState state = LuaState.getState();
 			if (state == null)
 				return NIL;
@@ -542,8 +537,11 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 
 	private static class ChannelData extends LuaValue {
 		public final Channel channel;
-		public final LuaFunction isOp;
-		public final LuaFunction isVoiced;
+		public LuaFunction isOp;
+		public LuaFunction isVoiced;
+		
+		private static final Delegate<Channel,Boolean> opMethod = Delegate.create(Channel.class, "isOp", User.class);
+		private static final Delegate<Channel,Boolean> voiceMethod = Delegate.create(Channel.class, "hasVoice", User.class);
 
 		public static LuaValue getChannelData(LuaState state, Channel channel) {
 			if (state == null || channel == null)
@@ -555,28 +553,8 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			return data;
 		}
 
-		private ChannelData(final Channel channel) {
+		private ChannelData(Channel channel) {
 			this.channel = channel;
-
-			isOp = new OneArgFunction() {
-				@Override
-				public LuaValue call(LuaValue arg) {
-					User user = channel.getBot().getUser(arg.checkjstring());
-					if (user == null)
-						return NIL;
-					return valueOf(channel.isOp(user));
-				}
-			};
-
-			isVoiced = new OneArgFunction() {
-				@Override
-				public LuaValue call(LuaValue arg) {
-					User user = channel.getBot().getUser(arg.checkjstring());
-					if (user == null)
-						return NIL;
-					return valueOf(channel.hasVoice(user));
-				}
-			};
 		}
 
 		@Override
@@ -596,10 +574,16 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 				return valueOf(channel.getTopic());
 			else if (name.equals("name"))
 				return valueOf(channel.getName());
-			else if (name.equals("isop"))
+			else if (name.equals("isop")) {
+				if (isOp == null)
+					isOp = new ChannelFunction(channel, opMethod);
 				return isOp;
-			else if (name.equals("isvoiced"))
+			}
+			else if (name.equals("isvoiced")) {
+				if (isVoiced == null)
+					isVoiced = new ChannelFunction(channel, voiceMethod);
 				return isVoiced;
+			}
 			else if (name.equals("users"))
 				return listOfUsers(channel.getUsers());
 			else if (name.equals("ops"))
@@ -609,7 +593,7 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			return super.get(key);
 		}
 
-		private static LuaValue listOfUsers(Set<User> users) {
+		private static LuaValue listOfUsers(Collection<User> users) {
 			LuaValue[] values = new LuaValue[users.size()];
 			int i = 0;
 			for (User user : users)
@@ -617,72 +601,24 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			return listOf(values);
 		}
 	}
-
-	public static class PCall extends VarArgFunction {
-
-		private static final String[] LIBV_KEYS = { "pcall", // (f, arg1, ...)
-																// -> status,
-																// result1, ...
-				"xpcall", // (f, err) -> result1, ...
-		};
-
-		public LuaValue init() {
-			bind(env, PCall.class, LIBV_KEYS, 1);
-			return env;
+	
+	private static class ChannelFunction extends OneArgFunction {
+		public final Channel channel;
+		public final Delegate<Channel,Boolean> method;
+		public ChannelFunction(Channel channel, Delegate<Channel,Boolean> method) {
+			this.channel = channel;
+			this.method = method;
 		}
 
-		public Varargs invoke(Varargs args) {
-			switch (opcode) {
-			case 0: {
-				init();
-				break;
-			}
-			case 1: // "pcall", // (f, arg1, ...) -> status, result1, ...
-			{
-				LuaValue func = args.checkvalue(1);
-				LuaThread.onCall(this);
-				try {
-					return pcall(func, args.subargs(2), null);
-				} finally {
-					LuaThread.onReturn();
-				}
-			}
-			case 2: // "xpcall", // (f, err) -> result1, ...
-			{
-				LuaThread.onCall(this);
-				try {
-					return pcall(args.arg1(), NONE, args.checkvalue(2));
-				} finally {
-					LuaThread.onReturn();
-				}
-			}
-			}
-			return NONE;
-		}
-
-		public static Varargs pcall(LuaValue func, Varargs args, LuaValue errfunc) {
-			try {
-				for (int i = LuaThread.getCallstackDepth(); i > 0; i--) {
-					LuaFunction func2 = LuaThread.getCallstackFunction(i);
-					if (func == func2)
-						return NONE;
-				}
-				System.out.println(func);
-				LuaThread thread = LuaThread.getRunning();
-				LuaValue olderr = thread.err;
-				try {
-					thread.err = errfunc;
-					return varargsOf(LuaValue.TRUE, func.invoke(args));
-				} finally {
-					thread.err = olderr;
-				}
-			} catch (LuaError le) {
-				String m = le.getMessage();
-				return varargsOf(FALSE, m != null ? valueOf(m) : NIL);
-			} catch (Exception e) {
-				String m = e.getMessage();
-				return varargsOf(FALSE, valueOf(m != null ? m : e.toString()));
-			}
+		@Override
+		public LuaValue call(LuaValue arg) {
+			User user = channel.getBot().getUser(arg.checkjstring());
+			if (user == null)
+				return NIL;
+			Boolean ret = method.invokeArgs(channel, user);
+			if (ret != null)
+				return valueOf(ret.booleanValue());
+			return NIL;
 		}
 	}
 }

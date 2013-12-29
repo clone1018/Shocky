@@ -1,9 +1,16 @@
 package org.pircbotx;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
+import pl.shockah.shocky.interfaces.ILogger;
+
 public class ShockyBot extends PircBotX {
+	
+	private static final List<ILogger> loggers = new ArrayList<ILogger>();
 
 	public ShockyBot() {
 		super();
@@ -48,5 +55,35 @@ public class ShockyBot extends PircBotX {
 	
 	public String getChannelPrefixes() {
 		return channelPrefixes;
+	}
+	
+	public static void addLogger(ILogger logger)
+	{
+		synchronized(loggers) {
+			loggers.add(logger);
+		}
+	}
+	
+	public static void removeLogger(ILogger logger)
+	{
+		synchronized(loggers) {
+			loggers.remove(logger);
+		}
+	}
+
+	@Override
+	public void log(String line) {
+		super.log(line);
+		synchronized(loggers) {
+			if (loggers.isEmpty())
+				return;
+			for (int i = loggers.size() - 1; i >= 0; --i) {
+				try {
+					loggers.get(i).log(line);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
 	}
 }

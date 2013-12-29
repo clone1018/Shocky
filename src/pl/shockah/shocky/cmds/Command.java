@@ -34,37 +34,47 @@ public abstract class Command implements Comparable<Command> {
 	}
 	
 	public static void addCommand(Object source, String name, Command command) {
-		cmdSources.put(command, source);
-		cmds.put(name,command);
-		aliases.add(name);
+		synchronized(cmds) {
+			cmdSources.put(command, source);
+			cmds.put(name,command);
+			aliases.add(name);
+		}
 	}
 	public static void addCommands(Object source, Command... commands) {
-		for (int i = 0; i < commands.length; i++) {
-			cmdSources.put(commands[i], source);
-			cmds.put(commands[i].command(),commands[i]);
+		synchronized(cmds) {
+			for (int i = 0; i < commands.length; i++) {
+				cmdSources.put(commands[i], source);
+				cmds.put(commands[i].command(),commands[i]);
+			}
 		}
 	}
 	public static void addCommands(Object source, Map<String,Command> commands) {
-		for (Entry<String, Command> command : commands.entrySet()) {
-			cmdSources.put(command.getValue(), source);
-			cmds.put(command.getKey(), command.getValue());
+		synchronized(cmds) {
+			for (Entry<String, Command> command : commands.entrySet()) {
+				cmdSources.put(command.getValue(), source);
+				cmds.put(command.getKey(), command.getValue());
+			}
 		}
 	}
 	public static void removeCommands(String... commands) {
-		for (int i = 0; i < commands.length; i++) {
-			Command cmd = cmds.remove(commands[i]);
-			if (cmd != null) {
-				cmdSources.remove(cmd);
-				aliases.remove(commands[i]);
+		synchronized(cmds) {
+			for (int i = 0; i < commands.length; i++) {
+				Command cmd = cmds.remove(commands[i]);
+				if (cmd != null) {
+					cmdSources.remove(cmd);
+					aliases.remove(commands[i]);
+				}
 			}
 		}
 	}
 	public static void removeCommands(Command... commands) {
-		for (int i = 0; i < commands.length; i++) {
-			boolean more = true;
-			while (more)
-				more = cmds.values().remove(commands[i]);
-			cmdSources.remove(commands[i]);
+		synchronized(cmds) {
+			for (int i = 0; i < commands.length; i++) {
+				boolean more = true;
+				while (more)
+					more = cmds.values().remove(commands[i]);
+				cmdSources.remove(commands[i]);
+			}
 		}
 	}
 	public static Command getCommand(PircBotX bot, User sender, Channel channel, Command.EType type, CommandCallback callback, String name) {
@@ -75,7 +85,7 @@ public abstract class Command implements Comparable<Command> {
 			return matchMap.values().iterator().next();
 		else if (matchMap.size()>1)
 		{
-			String[] keys = matchMap.keySet().toArray(new String[0]);
+			Object[] keys = matchMap.keySet().toArray();
 			String s = String.format("Did you mean: %s or %s",StringTools.implode(keys, 0, keys.length-2, ", "), keys[keys.length-1]);
 			callback.type = EType.Notice;
 			callback.append(s);
@@ -84,18 +94,25 @@ public abstract class Command implements Comparable<Command> {
 	}
 	public static Map<String,Command> getCommands() {
 		TreeMap<String,Command> map = new TreeMap<String,Command>();
-		for (String s : cmds.keySet()) if (!aliases.contains(s)) map.put(s,cmds.get(s));
+		synchronized(cmds) {
+			for (String s : cmds.keySet()) {
+				if (!aliases.contains(s))
+					map.put(s,cmds.get(s));
+			}
+		}
 		return Collections.unmodifiableSortedMap(map);
 	}
 	public static Map<String,Command> getCommands(String cmdName, Channel channel) {
 		TreeMap<String,Command> matchMap = new TreeMap<String,Command>();
-		for (Entry<String, Command> cmd : cmds.entrySet()) {
-			if (channel != null && !cmd.getValue().isEnabled(channel.getName()))
-				continue;
-			if (cmd.getKey().equals(cmdName))
-				return Collections.singletonMap(cmd.getKey(), cmd.getValue());
-			if (cmd.getKey().startsWith(cmdName))
-				matchMap.put(cmd.getKey(), cmd.getValue());
+		synchronized(cmds) {
+			for (Entry<String, Command> cmd : cmds.entrySet()) {
+				if (channel != null && !cmd.getValue().isEnabled(channel.getName()))
+					continue;
+				if (cmd.getKey().equals(cmdName))
+					return Collections.singletonMap(cmd.getKey(), cmd.getValue());
+				if (cmd.getKey().startsWith(cmdName))
+					matchMap.put(cmd.getKey(), cmd.getValue());
+			}
 		}
 		return matchMap;
 	}

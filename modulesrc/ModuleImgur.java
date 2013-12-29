@@ -18,7 +18,6 @@ import pl.shockah.StringTools;
 import pl.shockah.shocky.Data;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Shocky;
-import pl.shockah.shocky.URLDispatcher;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.interfaces.IAcceptURLs;
 
@@ -34,14 +33,8 @@ public class ModuleImgur extends Module implements IAcceptURLs {
 		Data.config.setNotExists("imgur-otherbot",false);
 		Data.config.setNotExists("imgur-clientid","");
 		Data.protectedKeys.add("imgur-clientid");
-		
-		URLDispatcher.addHandler(this);
 	}
 
-	@Override
-	public void onDisable() {
-		URLDispatcher.removeHandler(this);
-	}
 	public String getImageInfo(Channel channel, Request r, String id) {
 		return getImageInfo(channel, r, id, null);
 	}

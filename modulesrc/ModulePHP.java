@@ -69,9 +69,9 @@ public class ModulePHP extends ScriptModule implements IFactoidData {
 		if (message != null) {
 			String[] args = message.replace("\\", "\\\\").split(" ");
 			String argsImp = StringTools.implode(args,1," ");
-			sb.append("$args=");
+			sb.append("$argc=").append((args.length-1)).append(";$args=");
 			appendEscape(sb,argsImp);
-			sb.append(";$ioru=empty($args)?$sender:$args;$arg=explode(' ',$args);$argc=count($arg);");
+			sb.append(";$ioru=empty($args)?$sender:$args;$arg=empty($args)?array():explode(' ',$args);");
 		}
 		
 		String data = getData(factoid);

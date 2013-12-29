@@ -1,37 +1,61 @@
+import java.io.File;
+import java.net.URL;
 import java.net.URLEncoder;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.pircbotx.Channel;
 import org.pircbotx.Colors;
 import org.pircbotx.PircBotX;
-import org.pircbotx.hooks.events.MessageEvent;
+import org.pircbotx.User;
 
 import pl.shockah.HTTPQuery;
+import pl.shockah.StringTools;
 import pl.shockah.shocky.Data;
 import pl.shockah.shocky.Module;
-import pl.shockah.shocky.Shocky;
 import pl.shockah.shocky.Utils;
+import pl.shockah.shocky.interfaces.IAcceptURLs;
 
 
-public class ModuleSpotify extends Module {
+public class ModuleSpotify extends Module implements IAcceptURLs {
 	
-	private Pattern target = Pattern.compile("https?://(?:(?:(?:www\\.)?open\\.spotify\\.com/track/([a-zA-Z0-9]+)))");
+	private Pattern target = Pattern.compile("^/track/([a-zA-Z0-9]+)$");
 
-	public void onMessage(MessageEvent<PircBotX> event) {
-		if (Data.isBlacklisted(event.getUser())) return;
+	@Override
+	public void onEnable(File dir) {
+		Data.config.setNotExists("spotify-otherbot",false);
+	}
+
+	@Override
+	public boolean shouldAcceptURL(URL u) {
+		if (u == null)
+			return false;
+		if (!u.getProtocol().startsWith("http"))
+			return false;
+		return u.getHost().endsWith("open.spotify.com");
+	}
+	
+	@Override
+	public void handleURL(PircBotX bot, Channel channel, User sender, URL u) {
+		if (bot == null || u == null || (channel == null && sender == null))
+			return;
+		if (channel != null && (!isEnabled(channel.getName()) || Data.forChannel(channel).getBoolean("spotify-otherbot")))
+			return;
 		
-		if (!Data.forChannel(event.getChannel()).getBoolean("spotify-otherbot")) {
-			Matcher m = this.target.matcher(event.getMessage());
-			while (m.find()) {
-				String id = m.group(1);
-				if (id == null) id = m.group(2);
-				String result = this.info(id);
-				if (result == null) return;
-				Shocky.sendChannel(event.getBot(),event.getChannel(),event.getUser().getNick()+": "+result);
-			}
-		}
+		Matcher m = this.target.matcher(u.getPath());
+		if (!m.find())
+			return;
+		
+		String result = info(m.group(1));
+		if (result == null)
+			return;
+		
+		if (channel != null)
+			bot.sendMessage(channel, sender.getNick()+": "+result);
+		else if (sender != null)
+			bot.sendMessage(sender, result);
 	}
 	
 	public String info(String id) {
@@ -49,16 +73,15 @@ public class ModuleSpotify extends Module {
 			JSONArray artistsArray = jItem.getJSONArray("artists");
 			int length = artistsArray.length();
 			String[] artists = new String[length];
-			for(int i = 0; i < length; i++) {
+			for(int i = 0; i < length; i++)
 				artists[i] = artistsArray.getJSONObject(i).getString("name");
-			}
 			int duration = (int)jItem.getDouble("length");
 			
 			StringBuilder sb = new StringBuilder();
-			sb.append(Colors.BOLD + track + Colors.NORMAL);
-			sb.append(" | length ").append(Colors.BOLD + Utils.timeAgo(duration) + Colors.NORMAL);
-			sb.append(" | released ").append(Colors.BOLD + released + Colors.NORMAL);
-			sb.append(" | by ").append(Colors.BOLD + ModuleSpotify.join(artists, ", "));
+			sb.append(Colors.BOLD).append(track).append(Colors.NORMAL);
+			sb.append(" | length ").append(Colors.BOLD).append(Utils.timeAgo(duration)).append(Colors.NORMAL);
+			sb.append(" | released ").append(Colors.BOLD).append(released).append(Colors.NORMAL);
+			sb.append(" | by ").append(Colors.BOLD).append(StringTools.implode(artists, ", "));
 			return sb.toString();
 		} catch (Exception e) {e.printStackTrace();}
 		return null;
@@ -68,13 +91,4 @@ public class ModuleSpotify extends Module {
 	public String name() {
 		return "spotify";
 	}
-	
-	public static String join(String r[],String d) {
-	        if (r.length == 0) return "";
-	        StringBuilder sb = new StringBuilder();
-	        int i;
-	        for(i=0;i<r.length-1;i++) sb.append(r[i]+d);
-	        return sb.toString()+r[i];
-	}
-
 }

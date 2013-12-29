@@ -1,8 +1,6 @@
 package pl.shockah.shocky;
 
 import java.io.File;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -14,6 +12,7 @@ import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 
 import pl.shockah.shocky.cmds.CommandCallback;
+import pl.shockah.shocky.interfaces.IAcceptURLs;
 import pl.shockah.shocky.interfaces.IModule;
 
 public abstract class Module extends ListenerAdapter implements IModule, Comparable<Module> {
@@ -113,6 +112,8 @@ public abstract class Module extends ListenerAdapter implements IModule, Compara
 			this.onEnable(Data.lastSave);
 			if (this.isListener())
 				Shocky.getBotManager().getListenerManager().addListener(this);
+			if (this instanceof IAcceptURLs)
+				URLDispatcher.addHandler((IAcceptURLs)this);
 			this.enabled = true;
 			return true;
 		}
@@ -126,6 +127,8 @@ public abstract class Module extends ListenerAdapter implements IModule, Compara
 		} else {
 			if (!this.enabled)
 				return false;
+			if (this instanceof IAcceptURLs)
+				URLDispatcher.removeHandler((IAcceptURLs)this);
 			if (this.isListener())
 				Shocky.getBotManager().getListenerManager().removeListener(this);
 			this.onDataSave(Data.lastSave);
@@ -201,20 +204,5 @@ public abstract class Module extends ListenerAdapter implements IModule, Compara
 	
 	public final int compareTo(Module module) {
 		return name().compareTo(module.name());
-	}
-	
-	@SuppressWarnings("unchecked")
-	public <R> R invokeMethod(String name, Object... args) {
-		Class<?>[] argTypes = new Class[args.length];
-		for (int i = 0; i < args.length; i++)
-			argTypes[i] = args[i].getClass();
-		try {
-			Method method = this.getClass().getDeclaredMethod(name, argTypes);
-			if ((method.getModifiers() & Modifier.PUBLIC) == 0)
-				method.setAccessible(true);
-			return (R)method.invoke(this, args);
-		} catch (Exception e) {
-			return null;
-		}
 	}
 }

@@ -30,13 +30,19 @@ public class CmdModule extends Command {
 		if (params.tokenCount == 0) {
 			ArrayList<Module> modules = Module.getModules();
 			StringBuilder sb = new StringBuilder();
+			int i = 0;
 			for (Module module : modules) {
-				if (sb.length() != 0) sb.append(", ");
+				if (i != 0) sb.append(", ");
 				boolean inchan = !module.isEnabled(params.channel.getName());
 				boolean global = !module.isEnabled(null);
 				sb.append(global ? Colors.RED : (inchan ? Colors.OLIVE : Colors.DARK_GREEN));
 				sb.append(module.name());
 				sb.append(Colors.NORMAL);
+				if (++i == 30)
+				{
+					sb.append('\n');
+					i = 0;
+				}
 			}
 			callback.append(sb);
 			return;

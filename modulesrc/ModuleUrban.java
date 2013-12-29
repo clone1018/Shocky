@@ -1,6 +1,13 @@
 import java.io.File;
+import java.io.IOException;
 import java.net.URLEncoder;
+
+import org.json.JSONException;
 import org.json.JSONObject;
+import org.luaj.vm2.LuaTable;
+import org.luaj.vm2.LuaValue;
+import org.luaj.vm2.Varargs;
+import org.luaj.vm2.lib.VarArgFunction;
 import org.pircbotx.Colors;
 import pl.shockah.HTTPQuery;
 import pl.shockah.StringTools;
@@ -9,8 +16,9 @@ import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Parameters;
+import pl.shockah.shocky.interfaces.ILua;
 
-public class ModuleUrban extends Module {
+public class ModuleUrban extends Module implements ILua {
 	protected Command cmd;
 
 	@Override
@@ -23,6 +31,18 @@ public class ModuleUrban extends Module {
 	@Override
 	public void onDisable() {
 		Command.removeCommands(cmd);
+	}
+	
+	public JSONObject getJSON(String input) throws IOException, JSONException {
+		HTTPQuery q = HTTPQuery.create("http://api.urbandictionary.com/v0/define?term=" + URLEncoder.encode(input, "UTF8"));
+		q.connect(true, false);
+		String line = q.readWhole();
+		q.close();
+		JSONObject json = new JSONObject(line);
+		String resulttype = json.getString("result_type");
+		if (resulttype.contentEquals("no_results"))
+			return null;
+		return json.getJSONArray("list").getJSONObject(0);
 	}
 	
 	public class CmdUrban extends Command {
@@ -41,24 +61,19 @@ public class ModuleUrban extends Module {
 				return;
 			}
 			
-			HTTPQuery q;
-			StringBuilder result = new StringBuilder();
 			try {
-				q = HTTPQuery.create("http://api.urbandictionary.com/v0/define?term=" + URLEncoder.encode(params.input, "UTF8"));
-				q.connect(true, false);
-				String line = q.readWhole();
-				q.close();
-				JSONObject json = new JSONObject(line);
-				String resulttype = json.getString("result_type");
-				if (resulttype.contentEquals("no_results")) {
+				JSONObject entry = getJSON(params.input);
+				if (entry == null) {
 					callback.append("No results.");
 					return;
 				}
-				JSONObject entry = json.getJSONArray("list").getJSONObject(0);
+				
 				String word = entry.getString("word");
 				String definition = entry.getString("definition");
 				String example = entry.getString("example");
 				String permalink = entry.getString("permalink");
+				
+				StringBuilder result = new StringBuilder();
 				result.append(Utils.shortenUrl(permalink));
 				result.append(" ");
 				result.append(Colors.BOLD);
@@ -74,5 +89,32 @@ public class ModuleUrban extends Module {
 				callback.append(output);
 			} catch (Exception e) {e.printStackTrace();}
 		}
+	}
+	
+	public class Function extends VarArgFunction {
+		@Override
+		public Varargs invoke(Varargs arg) {
+			try {
+				JSONObject entry = getJSON(arg.arg1().checkjstring());
+				if (entry != null) {
+					LuaValue[] a = new LuaValue[] {
+						valueOf(entry.getString("definition")),
+						valueOf(entry.getString("example")),
+						valueOf(entry.getString("permalink"))
+					};
+					return varargsOf(a);
+				}
+			} catch (JSONException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			return NONE;
+		}
+	}
+
+	@Override
+	public void setupLua(LuaTable env) {
+		env.rawset("urban", new Function());
 	}
 }

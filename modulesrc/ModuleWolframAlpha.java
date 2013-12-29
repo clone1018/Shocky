@@ -20,6 +20,7 @@ import org.luaj.vm2.lib.OneArgFunction;
 import org.pircbotx.Channel;
 import org.pircbotx.Colors;
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
 import pl.shockah.HTTPQuery;
@@ -43,13 +44,18 @@ public class ModuleWolframAlpha extends Module implements ILua {
 			query = URLEncoder.encode(query,"UTF8");
 			DocumentBuilder builder = factory.newDocumentBuilder();
 			HTTPQuery q = HTTPQuery.create("http://api.wolframalpha.com/v2/query?appid="+apiKey+"&format=Plaintext&input="+query);
-			q.connect(true,false);
-			Document doc = builder.parse(q.getConnection().getInputStream());
-			q.close();
+			Document doc;
+			try {
+				q.connect(true,false);
+				doc = builder.parse(q.getConnection().getInputStream());
+			} finally {
+				q.close();
+			}
 			
-			if (Boolean.parseBoolean(doc.getDocumentElement().getAttribute("error"))) return null;
-			boolean success = Boolean.parseBoolean(doc.getDocumentElement().getAttribute("success"));
-			if (!success)
+			Element docElement = doc.getDocumentElement();
+			boolean error = Boolean.parseBoolean(docElement.getAttribute("error"));
+			boolean success = Boolean.parseBoolean(docElement.getAttribute("success"));
+			if (error || !success)
 				return null;
 			
 			Map<String,String> parts = new LinkedHashMap<String,String>();
@@ -92,8 +98,6 @@ public class ModuleWolframAlpha extends Module implements ILua {
 			
 		return StringTools.limitLength(sb);
 	}
-	
-	
 	
 	public String name() {return "wolfram";}
 	public void onEnable(File dir) {

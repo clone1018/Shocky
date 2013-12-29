@@ -18,7 +18,6 @@ import pl.shockah.StringTools;
 import pl.shockah.shocky.Data;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Shocky;
-import pl.shockah.shocky.URLDispatcher;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
@@ -28,7 +27,6 @@ import pl.shockah.shocky.interfaces.IAcceptURLs;
 public class ModuleYoutube extends Module implements IAcceptURLs {
 	protected Command cmd;
 	private ArrayList<Pattern> patternsAction = new ArrayList<Pattern>(), patternsMessage = new ArrayList<Pattern>();
-	//private Pattern patternURL = Pattern.compile("https?://(?:(?:(?:www\\.)?youtube\\.com/watch\\?.*?v=([a-zA-Z0-9_\\-]+))|(?:(?:www\\.)?youtu\\.be/([a-zA-Z0-9_\\-]+)))");
 	
 	public static String getVideoInfo(String vID) {
 		HTTPQuery q = null;
@@ -109,7 +107,6 @@ public class ModuleYoutube extends Module implements IAcceptURLs {
 		Command.addCommands(this, cmd = new CmdYoutube());
 		Command.addCommand(this, "yt", cmd);
 		Command.addCommand(this, "y", cmd);
-		URLDispatcher.addHandler(this);
 		
 		patternsAction.add(Pattern.compile("^.*?(?:(?:playing)|(?:listening (?:to)?)):? (.+)$"));
 		patternsMessage.add(Pattern.compile("^np: (.*)$"));
@@ -119,7 +116,6 @@ public class ModuleYoutube extends Module implements IAcceptURLs {
 		patternsMessage.clear();
 		
 		Command.removeCommands(cmd);
-		URLDispatcher.removeHandler(this);
 	}
 	
 	@Override

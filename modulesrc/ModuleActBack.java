@@ -18,7 +18,7 @@ public class ModuleActBack extends Module {
 		if (spl.length >= 2 && list.contains(event.getBot().getNick())) {
 			ArrayList<String> alist = new ArrayList<String>(Arrays.asList(spl));
 			if (spl.length == 2) alist.add("back"); else alist.add(2,"back");
-			event.getBot().sendAction(event.getChannel(),(StringTools.implode(alist.toArray(new String[alist.size()])," ").replace(event.getBot().getNick(),event.getUser().getNick())));
+			event.getBot().sendAction(event.getChannel(),(StringTools.implode(alist," ").replace(event.getBot().getNick(),event.getUser().getNick())));
 		}
 	}
 }

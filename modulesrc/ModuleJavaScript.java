@@ -13,8 +13,8 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import javax.script.CompiledScript;
 import javax.script.ScriptContext;
-import javax.script.ScriptEngine;
 import javax.script.ScriptException;
 
 import org.pircbotx.Channel;
@@ -23,6 +23,7 @@ import org.pircbotx.User;
 
 import com.sun.script.javascript.RhinoScriptEngine;
 
+import pl.shockah.Reflection;
 import pl.shockah.StringTools;
 import pl.shockah.shocky.Cache;
 import pl.shockah.shocky.ScriptModule;
@@ -32,6 +33,12 @@ import pl.shockah.shocky.cmds.Parameters;
 import pl.shockah.shocky.sql.Factoid;
 import pl.shockah.shocky.threads.SandboxThreadFactory;
 import pl.shockah.shocky.threads.SandboxThreadGroup;
+import sun.org.mozilla.javascript.internal.ClassShutter;
+import sun.org.mozilla.javascript.internal.Context;
+import sun.org.mozilla.javascript.internal.ContextFactory;
+import sun.org.mozilla.javascript.internal.NativeJavaObject;
+import sun.org.mozilla.javascript.internal.Scriptable;
+import sun.org.mozilla.javascript.internal.WrapFactory;
 
 public class ModuleJavaScript extends ScriptModule {
 	protected Command cmd;
@@ -43,9 +50,11 @@ public class ModuleJavaScript extends ScriptModule {
 	public void onEnable(File dir) {
 		Command.addCommands(this, cmd = new CmdJavascript());
 		Command.addCommand(this, "js",cmd);
-		
+		Reflection.setPrivateValue(ContextFactory.class, "hasCustomGlobal", null, false);
+		ContextFactory.initGlobal(new SandboxContextFactory());
 		try {
 			Class.forName("ModuleJavaScript$Sandbox");
+			Class.forName("ModuleJavaScript$SandboxNativeJavaObject");
 			eval(new RhinoScriptEngine(), "0");
 		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
@@ -59,7 +68,6 @@ public class ModuleJavaScript extends ScriptModule {
 		if (code == null) return "";
 		
 		RhinoScriptEngine engine = new RhinoScriptEngine();
-		
 		if (message != null) {
 			String[] args = message.split(" ");
 			String argsImp = StringTools.implode(args,1," "); if (argsImp == null) argsImp = "";
@@ -84,8 +92,14 @@ public class ModuleJavaScript extends ScriptModule {
 		return eval(engine, code);
 	}
 	
-	public String eval(ScriptEngine engine, String code) {
-		JSRunner r = new JSRunner(engine, code);
+	public String eval(RhinoScriptEngine engine, String code) {
+		CompiledScript cs;
+		try {
+			cs = engine.compile(code);
+		} catch (ScriptException e) {
+			return e.getMessage();
+		}
+		JSRunner r = new JSRunner(cs);
 
 		final ExecutorService service = Executors.newSingleThreadExecutor(sandboxFactory);
 		TimeUnit unit = TimeUnit.SECONDS;
@@ -104,8 +118,8 @@ public class ModuleJavaScript extends ScriptModule {
 		finally {
 		    service.shutdown();
 		}
-		if (output == null || output.isEmpty())
-			return null;
+		if (output == null)
+			output = "";
 
 		return output;
 	}
@@ -161,24 +175,22 @@ public class ModuleJavaScript extends ScriptModule {
 	
 	public class JSRunner implements Callable<String> {
 		
-		private final ScriptEngine engine;
-		private final String code;
+		private final CompiledScript cs;
 		
-		public JSRunner(ScriptEngine e, String c) {
-			engine = e;
-			code = c;
+		public JSRunner(CompiledScript cs) {
+			this.cs = cs;
 		}
 
 		@Override
 		public String call() throws Exception {
 				StringWriter sw = new StringWriter();
 				PrintWriter pw = new PrintWriter(sw);
-				ScriptContext context = engine.getContext();
+				ScriptContext context = cs.getEngine().getContext();
 				context.setWriter(pw);
 				context.setErrorWriter(pw);
 				
 				try {
-					Object out = engine.eval(code);
+					Object out = cs.eval();
 					if (sw.getBuffer().length() != 0)
 						return sw.toString();
 					if (out != null)
@@ -189,6 +201,42 @@ public class ModuleJavaScript extends ScriptModule {
 				}
 				return null;
 		}
-		
+	}
+	
+	public static class SandboxContextFactory extends ContextFactory implements ClassShutter {
+		protected Context makeContext() {
+			Context c = super.makeContext();
+			c.setClassShutter(this);
+			c.setWrapFactory(new SandboxWrapFactory());
+			return c;
+		}
+
+		@Override
+		public boolean visibleToScripts(String s) {
+			return s.startsWith("adapter");
+		}
+	}
+	
+	public static class SandboxNativeJavaObject extends NativeJavaObject {
+		private static final long serialVersionUID = -3702781847096599291L;
+
+		public SandboxNativeJavaObject(Scriptable scope, Object javaObject, @SuppressWarnings("rawtypes") Class staticType) {
+			super(scope, javaObject, staticType);
+		}
+	 
+		@Override
+		public Object get(String name, Scriptable start) {
+			if (name.equals("getClass"))
+				return NOT_FOUND;
+	 
+			return super.get(name, start);
+		}
+	}
+	
+	public static class SandboxWrapFactory extends WrapFactory {
+		@Override
+		public Scriptable wrapAsJavaObject(Context cx, Scriptable scope, Object javaObject, @SuppressWarnings("rawtypes") Class staticType) {
+			return new SandboxNativeJavaObject(scope, javaObject, staticType);
+		}
 	}
 }

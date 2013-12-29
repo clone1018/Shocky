@@ -29,7 +29,6 @@ import pl.shockah.shocky.interfaces.IFactoid;
 import pl.shockah.shocky.interfaces.IFactoidData;
 import pl.shockah.shocky.interfaces.ILua;
 import pl.shockah.shocky.interfaces.IRollback;
-import pl.shockah.shocky.lines.Line;
 import pl.shockah.shocky.lines.LineMessage;
 import pl.shockah.shocky.sql.CriterionNumber;
 import pl.shockah.shocky.sql.Factoid;
@@ -488,7 +487,7 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 
 	public String runFactoid(Cache cache, PircBotX bot, Channel channel, User sender, String message) {
 		message = StringTools.trimWhitespace(message);
-		LinkedList<String> checkRecursive = new LinkedList<String>();
+		Set<String> checkRecursive = new HashSet<String>();
 		while (true) {
 			String factoid = message.split(" ")[0].toLowerCase();
 			Object key = factoid;
@@ -667,10 +666,9 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 					}
 					List<LineMessage> lines = module.getRollbackLines(LineMessage.class, channel.getName(), user != null ? user.getNick() : null, null, message, true, 1, 0);
 					if (lines.size() == 1) {
-						Line line = lines.get(0);
 						StringBuilder msg = new StringBuilder(args[0]);
 						msg.append(' ');
-						msg.append(((LineMessage) line).text);
+						msg.append(lines.get(0).text);
 						message = msg.toString();
 					}
 				}
