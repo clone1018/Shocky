@@ -2,11 +2,14 @@ package pl.shockah;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 
 public class Delegate<I,R> {
 	private final Method method;
+	private final boolean isStatic;
 	private Delegate(Method method) {
 		this.method = method;
+		this.isStatic = (method.getModifiers() & Modifier.STATIC) != 0;
 	}
 	
 	public static <I,R> Delegate<I,R> create(Class<I> clazz, String name, Class<?>... parameterTypes) {
@@ -18,7 +21,9 @@ public class Delegate<I,R> {
 	}
 	
 	@SuppressWarnings("unchecked")
-	public R invokeStatic() {
+	public R invoke() throws IllegalArgumentException {
+		if (!isStatic)
+			throw new RuntimeException("Method is not static.");
 		try {
 			return (R) method.invoke(null);
 		} catch (IllegalArgumentException e) {
@@ -32,21 +37,9 @@ public class Delegate<I,R> {
 	}
 	
 	@SuppressWarnings("unchecked")
-	public R invoke(I instance) {
-		try {
-			return (R) method.invoke(instance);
-		} catch (IllegalArgumentException e) {
-			throw e;
-		} catch (IllegalAccessException e) {
-			e.printStackTrace();
-		} catch (InvocationTargetException e) {
-			e.printStackTrace();
-		}
-		return null;
-	}
-	
-	@SuppressWarnings("unchecked")
-	public R invokeStaticArgs(Object... args) {
+	public R invoke(Object... args) throws IllegalArgumentException {
+		if (!isStatic)
+			throw new RuntimeException("Method is not static.");
 		try {
 			return (R) method.invoke(null, args);
 		} catch (IllegalArgumentException e) {
@@ -59,17 +52,45 @@ public class Delegate<I,R> {
 		return null;
 	}
 	
-	@SuppressWarnings("unchecked")
-	public R invokeArgs(I instance, Object... args) {
-		try {
-			return (R) method.invoke(instance, args);
-		} catch (IllegalArgumentException e) {
-			throw e;
-		} catch (IllegalAccessException e) {
-			e.printStackTrace();
-		} catch (InvocationTargetException e) {
-			e.printStackTrace();
+	public Instance instance(I instance) {
+		if (isStatic)
+			throw new RuntimeException("Method is static.");
+		return new Instance(instance);
+	}
+	
+	public class Instance {
+		private final I instance;
+		
+		private Instance(I instance) {
+			this.instance = instance;
 		}
-		return null;
+		
+		@SuppressWarnings("unchecked")
+		public R invoke() throws IllegalArgumentException {
+			try {
+				return (R) method.invoke(instance);
+			} catch (IllegalArgumentException e) {
+				throw e;
+			} catch (IllegalAccessException e) {
+				e.printStackTrace();
+			} catch (InvocationTargetException e) {
+				e.printStackTrace();
+			}
+			return null;
+		}
+		
+		@SuppressWarnings("unchecked")
+		public R invoke(Object... args) throws IllegalArgumentException {
+			try {
+				return (R) method.invoke(instance, args);
+			} catch (IllegalArgumentException e) {
+				throw e;
+			} catch (IllegalAccessException e) {
+				e.printStackTrace();
+			} catch (InvocationTargetException e) {
+				e.printStackTrace();
+			}
+			return null;
+		}
 	}
 }

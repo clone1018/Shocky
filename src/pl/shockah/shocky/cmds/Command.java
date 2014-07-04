@@ -28,7 +28,7 @@ public abstract class Command implements Comparable<Command> {
 	static {
 		Command cmdCtrl = new CmdController();
 		addCommands(null,cmdCtrl,new CmdBlacklist(),new CmdRaw(),new CmdDie(),new CmdSave(),new CmdGet(),new CmdSet(),new CmdModule());
-		addCommands(null,new CmdHelp(),new CmdJoin(),new CmdPart(),new CmdClean());
+		addCommands(null,new CmdHelp(),new CmdJoin(),new CmdPart(),new CmdClean(),new CmdWeb());
 		
 		addCommand(null,"ctrl",cmdCtrl);
 	}

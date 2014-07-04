@@ -90,12 +90,13 @@ public class JSONLib extends VarArgFunction {
 	public static Varargs json(Varargs args) {
 		try {
 			String content = args.checkjstring(1);
+			if (content.isEmpty())
+				return varargsOf(NIL, valueOf("empty input"));
 			if (content.charAt(0)=='[')
 				return getJSONArray(new JSONArray(content));
-			else
-				return getJSONTable(new JSONObject(content));
-		} catch (Exception e) {
-			throw new LuaError(e);
+			return getJSONTable(new JSONObject(content));
+		} catch (JSONException e) {
+			return varargsOf(NIL, valueOf(e.getMessage()));
 		}
 	}
 

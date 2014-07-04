@@ -206,7 +206,7 @@ public class BrainfuckEngine {
 			break;
 		case Token.OUTPUT:
 			// Output the byte at the current index in a character.
-			outWriter.write((char) data[dataPointer]);
+			outWriter.write((byte) data[dataPointer]);
 			break;
 		case Token.INPUT:
 			// accept one byte of input, storing its value in the byte at the data pointer.

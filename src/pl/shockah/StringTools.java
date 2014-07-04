@@ -3,6 +3,8 @@ package pl.shockah;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.commons.lang3.StringEscapeUtils;
@@ -89,7 +91,7 @@ public class StringTools {
 		return output;
 	}
 	
-    public static String trimWhitespace(CharSequence str) {
+    public static CharSequence trimWhitespace(CharSequence str) {
     	int len = str.length();
     	int st = 0;
 
@@ -99,7 +101,7 @@ public class StringTools {
     	while ((st < len) && Character.isWhitespace(str.charAt(len - 1))) {
     	    len--;
     	}
-    	return (((st > 0) || (len < str.length())) ? str.subSequence(st, len) : str).toString();
+    	return (((st > 0) || (len < str.length())) ? str.subSequence(st, len) : str);
     }
 	
     public static String deleteWhitespace(CharSequence str) {
@@ -118,17 +120,18 @@ public class StringTools {
     }
     
     public static String formatLines(CharSequence str) {
+    	str = StringTools.trimWhitespace(str);
+    	if (str.length() == 0)
+    		return "";
     	StringBuffer sb = new StringBuffer(str.length());
     	Matcher m = controlCharPattern.matcher(str);
     	while(m.find()) {
     		String newline = m.group(2);
     		String tab = m.group(3);
-    		if (!m.hitEnd()) {
-    			if (newline != null)
-    				m.appendReplacement(sb, " | ");
-    			else if (tab != null)
-    				m.appendReplacement(sb, ",");
-    		}
+    		if (newline != null)
+    			m.appendReplacement(sb, " | ");
+    		else if (tab != null)
+    			m.appendReplacement(sb, ",");
     	}
     	m.appendTail(sb);
 		return sb.toString();
@@ -180,5 +183,51 @@ public class StringTools {
 			return spl.substring(ap);
 		}
 		return null;
+	}
+	
+	public static String[] split( CharSequence spl )
+	{
+		List<String> list = new LinkedList<String>();
+		int start = 0;
+		int end = 0;
+		while (start < spl.length())
+		{
+			char c = spl.charAt(start);
+			if (c == '"')
+			{
+				++start;
+				end = start;
+				while (end < spl.length())
+				{
+					if (spl.charAt(end) != '"' || spl.charAt(end - 1) == '\\')
+						++end;
+					else
+						break;
+				}
+
+				list.add(spl.subSequence( start, end - start ).toString());
+				start = end + 2;
+			}
+			else if (c != ' ')
+			{
+				end = start;
+				while (end < spl.length())
+				{
+					if (spl.charAt(end) != ' ')
+						++end;
+					else
+						break;
+				}
+
+				list.add(spl.subSequence( start, end - start ).toString());
+				start = end + 1;
+			}
+			else
+			{
+				++start;
+			}
+		}
+
+		return list.toArray(new String[0]);
 	}
 }

@@ -22,24 +22,25 @@ public class ShockyUser extends User {
 	}
 
 	public String getAccount() {
-		if (account != null) return account;
-		if (recheckDelay > System.currentTimeMillis()) {
-				recheckDelay = System.currentTimeMillis()+1000;
+		synchronized(this) {
+			if (account != null)
+				return account;
+			if (recheckDelay > System.currentTimeMillis())
 				return null;
-		}
 		
-		PircBotX bot = getBot();
-		if (bot != null && bot.getServerInfo() != null && bot.getServerInfo().isWhoX())
-			account = getAccountFromWHOX();
-		else {
-			Whois whois = new Whois(this);
-			while (!whois.finished())
-				Helper.sleep(10);
-			account = whois.account;
-		}
+			PircBotX bot = getBot();
+			if (bot != null && bot.getServerInfo() != null && bot.getServerInfo().isWhoX())
+				account = getAccountFromWHOX();
+			else {
+				Whois whois = new Whois(this);
+				while (!whois.finished())
+					Helper.sleep(10);
+				account = whois.account;
+			}
 		
-		if (account == null)
-			recheckDelay = System.currentTimeMillis()+1000;
+			if (account == null)
+				recheckDelay = System.currentTimeMillis()+60000;
+		}
 		return account;
 	}
 	

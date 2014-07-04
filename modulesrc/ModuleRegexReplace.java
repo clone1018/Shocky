@@ -100,7 +100,7 @@ public class ModuleRegexReplace extends Module {
 		
 		String user = null;
 		if (start < s.length())
-			user = s.substring(start);
+			user = s.substring(start).trim();
 		
 		final ExecutorService service = Executors.newFixedThreadPool(1);
 		try {

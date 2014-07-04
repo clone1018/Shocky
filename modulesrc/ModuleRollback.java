@@ -6,13 +6,16 @@ import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.*;
+
 import org.pircbotx.Channel;
 import org.pircbotx.ShockyBot;
 import org.pircbotx.hooks.events.*;
+
 import pl.shockah.*;
 import pl.shockah.shocky.Data;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Utils;
+import pl.shockah.shocky.WebServer;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Parameters;
@@ -43,11 +46,14 @@ public class ModuleRollback extends Module implements IRollback {
 			+ " OR " +
 			new CriterionNumber("type",Operation.Equals,TYPE_ACTION));
 	
-	public static void appendLines(StringBuilder sb, ArrayList<Line> lines) {
+	public static void appendLines(StringBuilder sb, ArrayList<Line> lines, boolean encode) {
 		try {
 			for (int i = 0; i < lines.size(); i++) {
-				if (i != 0) sb.append("\n");
-				sb.append(URLEncoder.encode(toString(lines.get(i)),"UTF8"));
+				if (i != 0) sb.append('\n');
+				String line = toString(lines.get(i));
+				if (encode)
+					line = URLEncoder.encode(line,"UTF8");
+				sb.append(line);
 			}
 		} catch (Exception e) {e.printStackTrace();}
 	}
@@ -375,7 +381,7 @@ public class ModuleRollback extends Module implements IRollback {
 		public String getLink(ArrayList<Line> lines, boolean withChannel) {
 			StringBuilder sb = new StringBuilder();
 			Line.setWithChannels(withChannel);
-			appendLines(sb,lines);
+			appendLines(sb,lines,!WebServer.exists());
 			Line.setWithChannels(false);
 			
 			String link = Utils.paste(sb);

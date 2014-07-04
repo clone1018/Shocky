@@ -1,6 +1,8 @@
 import java.io.File;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.util.Iterator;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,27 +40,40 @@ public class ModuleSpotify extends Module implements IAcceptURLs {
 	}
 	
 	@Override
-	public void handleURL(PircBotX bot, Channel channel, User sender, URL u) {
-		if (bot == null || u == null || (channel == null && sender == null))
+	public void handleURL(PircBotX bot, Channel channel, User sender, List<URL> urls) {
+		if (bot == null || urls == null || urls.isEmpty() || (channel == null && sender == null))
 			return;
 		if (channel != null && (!isEnabled(channel.getName()) || Data.forChannel(channel).getBoolean("spotify-otherbot")))
 			return;
 		
-		Matcher m = this.target.matcher(u.getPath());
-		if (!m.find())
-			return;
+		StringBuilder sb = new StringBuilder();
+		Iterator<URL> iter = urls.iterator();
+		while (iter.hasNext()) {
+			URL u = iter.next();
+			Matcher m = this.target.matcher(u.getPath());
+			if (!m.find())
+				continue;
 		
-		String result = info(m.group(1));
-		if (result == null)
+			String id = m.group(1);
+			CharSequence s = info(id);
+			if (s == null)
+				continue;
+			if (urls.size() > 1)
+				sb.append(id).append(": ");
+			sb.append(s);
+			if (iter.hasNext())
+				sb.append('\n');
+		}
+		if (sb.length() == 0)
 			return;
-		
+		String s = StringTools.limitLength(StringTools.formatLines(sb));
 		if (channel != null)
-			bot.sendMessage(channel, sender.getNick()+": "+result);
+			bot.sendMessage(channel, sender.getNick()+": "+s);
 		else if (sender != null)
-			bot.sendMessage(sender, result);
+			bot.sendMessage(sender, s);
 	}
 	
-	public String info(String id) {
+	public CharSequence info(String id) {
 		HTTPQuery q = null;
 		
 		try {
@@ -78,11 +93,11 @@ public class ModuleSpotify extends Module implements IAcceptURLs {
 			int duration = (int)jItem.getDouble("length");
 			
 			StringBuilder sb = new StringBuilder();
-			sb.append(Colors.BOLD).append(track).append(Colors.NORMAL);
-			sb.append(" | length ").append(Colors.BOLD).append(Utils.timeAgo(duration)).append(Colors.NORMAL);
-			sb.append(" | released ").append(Colors.BOLD).append(released).append(Colors.NORMAL);
-			sb.append(" | by ").append(Colors.BOLD).append(StringTools.implode(artists, ", "));
-			return sb.toString();
+			sb.append(Colors.BOLD).append(track).append(Colors.BOLD);
+			sb.append(" | length ").append(Colors.BOLD).append(Utils.timeAgo(duration)).append(Colors.BOLD);
+			sb.append(" | released ").append(Colors.BOLD).append(released).append(Colors.BOLD);
+			sb.append(" | by ").append(Colors.BOLD).append(StringTools.implode(artists, ", ")).append(Colors.BOLD);
+			return sb;
 		} catch (Exception e) {e.printStackTrace();}
 		return null;
 	}

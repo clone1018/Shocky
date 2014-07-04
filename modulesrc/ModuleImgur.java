@@ -4,6 +4,8 @@ import java.net.URL;
 import java.text.DateFormat;
 import java.text.NumberFormat;
 import java.util.Date;
+import java.util.Iterator;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -25,6 +27,7 @@ import pl.shockah.shocky.interfaces.IAcceptURLs;
 public class ModuleImgur extends Module implements IAcceptURLs {
 	public static enum Request {NONE, IMAGE, ALBUM, GALLERY, GALLERYIMAGE, GALLERYALBUM}
 	public static final Pattern urlPattern = Pattern.compile("(?:/(a|gallery))?/(.+)");
+	public static final Pattern redditLink = Pattern.compile("^/r/[\\w]+/comments/([0-9a-z]+)/");
 	@Override
 	public String name() {return "imgur";}
 	
@@ -35,10 +38,10 @@ public class ModuleImgur extends Module implements IAcceptURLs {
 		Data.protectedKeys.add("imgur-clientid");
 	}
 
-	public String getImageInfo(Channel channel, Request r, String id) {
+	public CharSequence getImageInfo(Channel channel, Request r, String id) {
 		return getImageInfo(channel, r, id, null);
 	}
-	public String getImageInfo(Channel channel, Request r, String id, String sub) {
+	public CharSequence getImageInfo(Channel channel, Request r, String id, String sub) {
 		Config cfg = (channel != null) ? Data.forChannel(channel) : Data.config;
 		String cid = cfg.getString("imgur-clientid");
 		if (cid.isEmpty())
@@ -94,10 +97,16 @@ public class ModuleImgur extends Module implements IAcceptURLs {
 			if (j.has("ups") && j.has("downs"))
 				sb.append(nf.format(j.getLong("ups"))).append("U ").
 				append(nf.format(j.getLong("downs"))).append("D\n");
-			if (j.has("reddit_comments"))
-				sb.append(Utils.shortenUrl("http://www.reddit.com"+j.getString("reddit_comments")));
+			if (j.has("reddit_comments")) {
+				String reddit = j.getString("reddit_comments");
+				Matcher m = redditLink.matcher(reddit);
+				if (m.find())
+					sb.append("http://redd.it/").append(m.group(1));
+				else
+					sb.append(Utils.shortenUrl("http://www.reddit.com"+reddit));
+			}
 			
-			return sb.toString();
+			return sb;
 		} catch (FileNotFoundException e) {
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -122,40 +131,52 @@ public class ModuleImgur extends Module implements IAcceptURLs {
 	}
 
 	@Override
-	public void handleURL(PircBotX bot, Channel channel, User sender, URL u) {
-		if (bot == null || u == null || (channel == null && sender == null))
+	public void handleURL(PircBotX bot, Channel channel, User sender, List<URL> urls) {
+		if (bot == null || urls == null || urls.isEmpty() || (channel == null && sender == null))
 			return;
 		if (channel != null && (!isEnabled(channel.getName()) || Data.forChannel(channel).getBoolean("imgur-otherbot")))
 			return;
-		boolean iServer = u.getHost().contentEquals("i.imgur.com");
-		Matcher m = urlPattern.matcher(u.getPath());
-		if (!m.find())
-			return;
-		String type = m.group(1);
-		String id = m.group(2);
-		if (id.indexOf(',')>=0)
-			return;
-		int i = id.indexOf('.');
-		if (i >= 0) {
-			if (!iServer)
-				return;
-			id = id.substring(0, i);
-		}else {
-			if (iServer)
-				return;
+		StringBuilder sb = new StringBuilder();
+		Iterator<URL> iter = urls.iterator();
+		while (iter.hasNext()) {
+			URL u = iter.next();
+			boolean iServer = u.getHost().contentEquals("i.imgur.com");
+			Matcher m = urlPattern.matcher(u.getPath());
+			if (!m.find())
+				continue;
+			String type = m.group(1);
+			String id = m.group(2);
+			if (id.indexOf(',')>=0)
+				continue;
+			int i = id.indexOf('.');
+			if (i >= 0) {
+				if (!iServer)
+					continue;
+				id = id.substring(0, i);
+			}else {
+				if (iServer)
+					continue;
+			}
+			Request r = Request.IMAGE;
+			if (type != null)
+			{
+				if (type.equalsIgnoreCase("a"))
+					r = Request.ALBUM;
+				else if (type.equalsIgnoreCase("gallery"))
+					r = Request.GALLERY;
+			}
+			CharSequence s = getImageInfo(channel,r,id);
+			if (s == null)
+				continue;
+			if (urls.size() > 1)
+				sb.append(id).append(": ");
+			sb.append(s);
+			if (iter.hasNext())
+				sb.append('\n');
 		}
-		Request r = Request.IMAGE;
-		if (type != null)
-		{
-			if (type.equalsIgnoreCase("a"))
-				r = Request.ALBUM;
-			else if (type.equalsIgnoreCase("gallery"))
-				r = Request.GALLERY;
-		}
-		String s = getImageInfo(channel,r,id);
-		if (s == null)
+		if (sb.length() == 0)
 			return;
-		s = StringTools.limitLength(StringTools.formatLines(s));
+		String s = StringTools.limitLength(StringTools.formatLines(sb));
 		if (channel != null)
 			Shocky.sendChannel(bot, channel, s);
 		else if (sender != null)

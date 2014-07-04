@@ -200,7 +200,7 @@ public class ModuleIdleRPG extends Module implements ILua {
 
 		String identify = Shocky.getLogin(ev.getUser());
 		if (identify == null) {
-			send(ev, Utils.mungeAllNicks(ev.getChannel(), 0, ev.getUser().getNick()+": You need to be identified to NickServ to play IdleRPG."));
+			send(ev, ev.getUser().getNick()+": You need to be identified to NickServ to play IdleRPG.");
 			return;
 		}
 		Session session = new Session(ev.getBot(), ev.getChannel(), ev.getUser(), identify);

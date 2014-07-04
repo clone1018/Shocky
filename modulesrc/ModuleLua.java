@@ -14,7 +14,6 @@ import com.sun.script.javascript.RhinoScriptEngine;
 
 import pl.shockah.Delegate;
 import pl.shockah.Helper;
-import pl.shockah.StringTools;
 import pl.shockah.ZeroInputStream;
 import pl.shockah.shocky.Cache;
 import pl.shockah.shocky.Data;
@@ -114,6 +113,7 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 
 		env.load(new BotLib());
 		env.load(new JSONLib());
+		env.load(new BitLib());
 		
 		env.rawset("print", LuaValue.NIL);
 		env.rawset("pcall", LuaValue.NIL);
@@ -127,21 +127,22 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 		}
 
 		DataInputStream is = null;
+		LuaValue table = new LuaTable();
 		try {
 			Class.forName("org.luaj.vm2.lib.LuaState");
 			Class.forName("ModuleLua$CmdFunction");
+			Class.forName("pl.shockah.Delegate$Instance");
 			new RhinoScriptEngine().eval("0");
 			if (!scripts.exists())
 				scripts.mkdirs();
 			if (binary.exists()) {
 				is = new DataInputStream(new FileInputStream(binary));
-				env.set("irc", readValue(is));
-			} else {
-				env.set("irc", new LuaTable());
+				table = readValue(is);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {
+			env.rawset("irc", table);
 			try {
 			if (is != null)
 				is.close();
@@ -287,6 +288,30 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 		}
 		return Integer.MAX_VALUE;
 	}
+	
+	private LuaValue valueOf(Object obj) {
+		if (obj == null) {
+			return LuaValue.NIL;
+		} else if (obj.getClass().isArray()) {
+			Object[] a = (Object[])obj;
+			LuaTable t = new LuaTable();
+			for (int i = 0; i < a.length; ++i)
+				t.rawset(i+1, valueOf(a[i]));
+			return t;
+		} else if (obj instanceof String) {
+			return LuaValue.valueOf((String)obj);
+		} else if (obj instanceof Double) {
+			return LuaValue.valueOf((Double)obj);
+		} else if (obj instanceof Integer) {
+			return LuaValue.valueOf((Integer)obj);
+		} else if (obj instanceof Boolean) {
+			return LuaValue.valueOf((Boolean)obj);
+		} else if (obj instanceof LuaValue) {
+			return (LuaValue)obj;
+		} else {
+			return null;
+		} 
+	}
 
 	@Override
 	public String parse(Cache cache, PircBotX bot, Channel channel, User sender, Factoid factoid, String code, String message) {
@@ -294,31 +319,14 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			return "";
 		String output = null;
 
-		LuaTable subTable = new LuaTable();
-		subTable.setmetatable(envMeta);
-
-		if (message != null) {
-			String[] args = message.split(" ");
-			String argsImp = StringTools.implode(args, 1, " ");
-			if (argsImp == null)
-				argsImp = "";
-			subTable.set("argc", (args.length - 1));
-			subTable.set("args", argsImp);
-			subTable.set("ioru", (args.length - 1 == 0 ? sender.getNick()
-					: argsImp));
-			LuaTable arg = new LuaTable();
-			for (int i = 1; i < args.length; i++)
-				arg.set(i, args[i]);
-			subTable.set("arg", arg);
-		}
-		
 		LuaState state = new LuaState(bot, channel, sender, cache);
 
-		if (channel != null)
-			subTable.set("channel", ChannelData.getChannelData(state, channel));
-		subTable.set("bot", bot.getNick());
-		subTable.set("sender", sender.getNick());
-		subTable.set("host", sender.getHostmask());
+		LuaTable subTable = new LuaTable();
+		subTable.setmetatable(envMeta);
+		Map<String,Object> params = getParams(bot, channel, sender, message);
+		params.put("channel", ChannelData.getChannelData(state, channel));
+		for (Map.Entry<String,Object> pair : params.entrySet())
+			subTable.rawset(pair.getKey(),valueOf(pair.getValue()));
 
 		LuaClosure func = null;
 		Object obj = state.get(luaHash, code);
@@ -604,10 +612,10 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 	
 	private static class ChannelFunction extends OneArgFunction {
 		public final Channel channel;
-		public final Delegate<Channel,Boolean> method;
+		public final Delegate<Channel,Boolean>.Instance method;
 		public ChannelFunction(Channel channel, Delegate<Channel,Boolean> method) {
 			this.channel = channel;
-			this.method = method;
+			this.method = method.instance(channel);
 		}
 
 		@Override
@@ -615,7 +623,7 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			User user = channel.getBot().getUser(arg.checkjstring());
 			if (user == null)
 				return NIL;
-			Boolean ret = method.invokeArgs(channel, user);
+			Boolean ret = method.invoke(user);
 			if (ret != null)
 				return valueOf(ret.booleanValue());
 			return NIL;

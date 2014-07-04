@@ -1,10 +1,20 @@
 package pl.shockah.shocky;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 import org.pircbotx.Channel;
 import org.pircbotx.User;
+
+import com.sun.net.httpserver.HttpContext;
+
 import pl.shockah.*;
 import pl.shockah.shocky.paste.*;
 
@@ -23,6 +33,7 @@ public class Utils {
 		flipReplace =	"¡)(˙⇂ᄅƐㄣϛ9Ɫ6><¿∀ℇƆ◖ƎℲפſ丬˥WԀΌᴚ⊥∩ΛMλ][‾ɐqɔpǝɟɓɥıɾʞlɯudbɹʇnʌʍʎ}{',„┻";
 	
 	public static final List<PasteService> services = new LinkedList<PasteService>();
+	public static final Map<String,HttpContext> urls = new HashMap<String,HttpContext>();
 	
 	public static List<String> getAllUrls(String text) {
 		String[] spl = text.split(" ");
@@ -36,6 +47,27 @@ public class Utils {
 		return text;
 	}
 	public static String shortenUrl(String url) {
+		if (WebServer.exists())
+		{
+			InetSocketAddress host = WebServer.address();
+			StringBuilder sb = new StringBuilder("http://");
+			sb.append(host.getHostName());
+			if (url.startsWith(sb.toString()))
+				return url;
+			if (host.getPort()!=80)
+				sb.append(':').append(host.getPort());
+			HttpContext context;
+			synchronized (urls) {
+				if (urls.containsKey(url))
+					context = urls.get(url);
+				else {
+					context = WebServer.addRedirect(url);
+					urls.put(url, context);
+				}
+			}
+			sb.append(context.getPath());
+			return sb.toString();
+		}
 		String login = Data.config.getString("main-bitlyuser");
 		String key = Data.config.getString("main-bitlyapikey");
 		if (login==null || key==null)
@@ -64,6 +96,33 @@ public class Utils {
 	}
 	
 	public static String paste(CharSequence data) {
+		if (WebServer.exists() && data.length() < 5242880)
+		{
+			File file;
+			try {
+				file = File.createTempFile("shocky_paste", ".txt");
+				file.deleteOnExit();
+				FileOutputStream os = new FileOutputStream(file);
+				BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(os,Helper.utf8));
+				bw.append(data);
+				bw.close();
+				os.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+				file = null;
+			}
+			
+			if (file != null) {
+				InetSocketAddress host = WebServer.address();
+				StringBuilder sb = new StringBuilder("http://");
+				sb.append(host.getHostName());
+				if (host.getPort()!=80)
+					sb.append(':').append(host.getPort());
+				HttpContext context = WebServer.addPaste(file);
+				sb.append(context.getPath());
+				return sb.toString();
+			}
+		}
 		String link = null;
 		for (PasteService service : services) {
 			link = service.paste(data);

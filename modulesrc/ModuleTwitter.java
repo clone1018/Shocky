@@ -5,6 +5,8 @@ import java.net.URL;
 import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
@@ -134,34 +136,43 @@ public class ModuleTwitter extends Module implements IAcceptURLs {
 		return u.getHost().endsWith("twitter.com");
 	}
 	@Override
-	public void handleURL(PircBotX bot, Channel channel, User sender, URL u) {
-		if (bot == null || u == null || (channel == null && sender == null))
+	public void handleURL(PircBotX bot, Channel channel, User sender, List<URL> urls) {
+		if (bot == null || urls == null || urls.isEmpty() || (channel == null && sender == null))
 			return;
 		if (channel != null && !isEnabled(channel.getName()))
 			return;
 		
-		Matcher m = statusUrl.matcher(u.getPath());
-		if (!m.find())
-			return;
+		StringBuilder sb = new StringBuilder();
+		Iterator<URL> iter = urls.iterator();
+		while (iter.hasNext()) {
+			URL u = iter.next();
+			Matcher m = statusUrl.matcher(u.getPath());
+			if (!m.find())
+				continue;
 		
-		JSONObject json = (JSONObject)getJSON("https://api.twitter.com/1.1/statuses/show.json?"+HTTPQuery.parseArgs("trim_user","false","id",m.group(2)));
-		if (json == null)
-			return;
+			JSONObject json = (JSONObject)getJSON("https://api.twitter.com/1.1/statuses/show.json?"+HTTPQuery.parseArgs("trim_user","false","id",m.group(2)));
+			if (json == null)
+				continue;
 		
-		try {
-			JSONObject user = json.getJSONObject("user");
-			String author = String.format("%s (@%s)",user.getString("name"),user.getString("screen_name"));
-			String tweet = StringTools.unescapeHTML(json.getString("text"));
-			Date date = sdf.parse(json.getString("created_at"));
-			String result = author+", "+Utils.timeAgo(date)+": "+tweet;
-			result = StringTools.formatLines(result);
-			if (channel != null)
-				bot.sendMessage(channel, Utils.mungeAllNicks(channel,0,sender.getNick()+": "+result,sender));
-			else if (sender != null)
-				bot.sendMessage(sender, result);
-		} catch (Exception e) {
-			e.printStackTrace();
+			try {
+				JSONObject user = json.getJSONObject("user");
+				String author = String.format("%s (@%s)",user.getString("name"),user.getString("screen_name"));
+				String tweet = StringTools.unescapeHTML(json.getString("text"));
+				Date date = sdf.parse(json.getString("created_at"));
+				sb.append(author).append(", ").append(Utils.timeAgo(date)).append(": ").append(tweet);
+				if (iter.hasNext())
+					sb.append('\n');
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
+		if (sb.length() == 0)
+			return;
+		String result = StringTools.formatLines(sb);
+		if (channel != null)
+			bot.sendMessage(channel, Utils.mungeAllNicks(channel,0,sender.getNick()+": "+result,sender));
+		else if (sender != null)
+			bot.sendMessage(sender, result);
 	}
 	
 	public class CmdTwitter extends Command {

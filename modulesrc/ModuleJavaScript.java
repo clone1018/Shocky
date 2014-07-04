@@ -1,8 +1,8 @@
 import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -24,7 +24,6 @@ import org.pircbotx.User;
 import com.sun.script.javascript.RhinoScriptEngine;
 
 import pl.shockah.Reflection;
-import pl.shockah.StringTools;
 import pl.shockah.shocky.Cache;
 import pl.shockah.shocky.ScriptModule;
 import pl.shockah.shocky.Utils;
@@ -68,26 +67,17 @@ public class ModuleJavaScript extends ScriptModule {
 		if (code == null) return "";
 		
 		RhinoScriptEngine engine = new RhinoScriptEngine();
-		if (message != null) {
-			String[] args = message.split(" ");
-			String argsImp = StringTools.implode(args,1," "); if (argsImp == null) argsImp = "";
-			engine.put("argc",(args.length-1));
-			engine.put("args",argsImp);
-			engine.put("ioru",(args.length-1 == 0 ? sender.getNick() : argsImp));
-			engine.put("arg",Arrays.copyOfRange(args, 1, args.length));
-		}
+		Map<String,Object> params = getParams(bot, channel, sender, message);
+		
 		Set<User> users;
 		if (channel == null)
 			users = Collections.emptySet();
-		else {
-			engine.put("channel", channel.getName());
+		else
 			users = channel.getUsers();
-		}
-		engine.put("bot", bot.getNick());
-		engine.put("sender", sender.getNick());
-		engine.put("host", sender.getHostmask());
-		Sandbox sandbox = new Sandbox(users);
-		engine.put("bot", sandbox);
+		params.put("bot", new Sandbox(users));
+		
+		for (Map.Entry<String,Object> pair : params.entrySet())
+			engine.put(pair.getKey(),pair.getValue());
 		
 		return eval(engine, code);
 	}
@@ -226,9 +216,9 @@ public class ModuleJavaScript extends ScriptModule {
 	 
 		@Override
 		public Object get(String name, Scriptable start) {
-			if (name.equals("getClass"))
+			if (name.equals("getClass") || name.equals("class"))
 				return NOT_FOUND;
-	 
+
 			return super.get(name, start);
 		}
 	}

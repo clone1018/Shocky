@@ -13,6 +13,8 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.TimeZone;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -47,32 +49,35 @@ public class ModuleRSS extends Module {
 	
 	protected Command cmd;
 	protected List<Feed> feeds = Collections.synchronizedList(new LinkedList<Feed>());
-	private Thread updater;
+	private Timer timer;
 	
 	public String name() {return "rss";}
 	public void onEnable(File dir) {
 		Command.addCommands(this, cmd = new CmdRSS());
+		synchronized (feeds) {
+			feeds.clear();
 		
-		ArrayList<String> lines = FileLine.read(new File(dir,"rss.cfg"));
-		int n = 4;
-		for (int i = 0; i < lines.size(); i += n) {
-			try {
-				URL url = new URL(lines.get(i));
-				long time = Long.parseLong(lines.get(i+1));
-				Date date = time <= 0 ? null : new Date(time);
-				long interval;
-				String[] channels;
+			ArrayList<String> lines = FileLine.read(new File(dir,"rss.cfg"));
+			int n = 4;
+			for (int i = 0; i < lines.size(); i += n) {
 				try {
-					interval = Long.parseLong(lines.get(i+2));
-					channels = lines.get(i+3).split(" ");
-				} catch (NumberFormatException e) {
-					n = 3;
-					interval = (5*60*1000);
-					channels = lines.get(i+2).split(" ");
+					URL url = new URL(lines.get(i));
+					long time = Long.parseLong(lines.get(i+1));
+					Date date = time <= 0 ? null : new Date(time);
+					long interval;
+					String[] channels;
+					try {
+						interval = Long.parseLong(lines.get(i+2));
+						channels = lines.get(i+3).split(" ");
+					} catch (NumberFormatException e) {
+						n = 3;
+						interval = (5*60*1000);
+						channels = lines.get(i+2).split(" ");
+					}
+					feeds.add(new Feed(url,interval,date,channels));
+				} catch (MalformedURLException e) {
+					continue;
 				}
-				feeds.add(new Feed(url,interval,date,channels));
-			} catch (MalformedURLException e) {
-				continue;
 			}
 		}
 		startUpdater();
@@ -83,64 +88,38 @@ public class ModuleRSS extends Module {
 	}
 	public void onDataSave(File dir) {
 		ArrayList<String> lines = new ArrayList<String>();
-		for (Feed feed : feeds) {
-			lines.add(feed.getURL().toString());
-			lines.add(Long.toString((feed.getDate()!=null)?feed.getDate().getTime():0L));
-			lines.add(Long.toString(feed.getInterval()));
-			lines.add(StringTools.implode(feed.channels.toArray(new String[feed.channels.size()])," "));
+		synchronized (feeds) {
+			for (Feed feed : feeds) {
+				lines.add(feed.getURL().toString());
+				lines.add(Long.toString((feed.getDate()!=null)?feed.getDate().getTime():0L));
+				lines.add(Long.toString(feed.getInterval()));
+				lines.add(StringTools.implode(feed.channels.toArray(new String[feed.channels.size()])," "));
+			}
 		}
 		FileLine.write(new File(dir,"rss.cfg"),lines);
 	}
 	
 	public void stopUpdater() {
-		if (updater == null)
+		if (timer == null)
 			return;
-		while (updater.isAlive()) {
-			updater.interrupt();
-			try {
-				updater.join();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
+		timer.cancel();
+		timer = null;
 	}
 	
 	public void startUpdater() {
-		if (updater != null && updater.isAlive())
+		if (timer != null)
 			stopUpdater();
-		updater = new Thread(new FeedUpdater(),"rss");
-		updater.setDaemon(true);
-		updater.start();
-	}
-	
-	private class FeedUpdater implements Runnable {
-		@Override
-		public void run() {
-			Feed f = null;
-			try {
-				while(true) {
-					if (feeds.isEmpty())
-						return;
-					if (feeds.size() > 1)
-						Collections.sort(feeds);
-					f = feeds.iterator().next();
-					long sleep = f.getNext()-System.currentTimeMillis();
-					if (sleep > 0)
-						Thread.sleep(sleep);
-					f.update();
-				}
-			} catch (InterruptedException e) {
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
+		timer = new Timer(true);
+		synchronized (feeds) {
+			for (Feed feed : feeds)
+				timer.scheduleAtFixedRate(feed, 0, feed.getInterval());
 		}
 	}
 	
-	protected class Feed implements Runnable, Comparable<Feed> {
+	protected class Feed extends TimerTask {
 		private final URL url;
 		private final long interval;
 		private Date lastDate;
-		private long nextRun = System.currentTimeMillis();
 		public ArrayList<String> channels = new ArrayList<String>();
 		
 		public Feed(URL url, long interval, Date date, String... channels) {
@@ -148,7 +127,6 @@ public class ModuleRSS extends Module {
 			this.interval = interval;
 			this.channels.addAll(Arrays.asList(channels));
 			lastDate = date;
-			if (lastDate == null) update();
 		}
 		public boolean equals(Object o) {
 			if (o == null) return false;
@@ -159,14 +137,6 @@ public class ModuleRSS extends Module {
 		public URL getURL() {return url;}
 		public long getInterval() {return interval;}
 		public Date getDate() {return lastDate;}
-		public long getNext() {return nextRun;}
-		
-		public void update() {
-			System.out.print("Updating feed: ");
-			System.out.println(url);
-			nextRun = System.currentTimeMillis()+interval;
-			new Thread(this,url.getHost()).start();
-		}
 		
 		public Date parseAtomDate(String s) {
 			Date d = parseDate(atomFormats,s.substring(0,19));
@@ -279,15 +249,8 @@ public class ModuleRSS extends Module {
 				}
 			} catch(Exception e) {
 				e.printStackTrace();
+				lastDate = new Date();
 			}
-		}
-		@Override
-		public int compareTo(Feed o) {
-			if (nextRun > o.nextRun)
-				return 1;
-			if (nextRun < o.nextRun)
-				return -1;
-			return 0;
 		}
 	}
 	protected class FeedEntry implements Comparable<FeedEntry> {
@@ -305,10 +268,18 @@ public class ModuleRSS extends Module {
 		public String toString() {
 			if (needsShorten) {
 				needsShorten = false;
-				title = Utils.shortenAllUrls(StringTools.unescapeHTML(title));
+				if (title != null && !title.isEmpty())
+					title = Utils.shortenAllUrls(StringTools.unescapeHTML(title));
 				url = Utils.shortenUrl(url);
 			}
-			return channel+' '+Utils.timeAgo(date)+" | "+title+" | "+url;
+			StringBuilder sb = new StringBuilder();
+			if (channel != null && !channel.isEmpty())
+				sb.append(channel).append(' ');
+			sb.append(Utils.timeAgo(date)).append(" | ");
+			if (title != null && !title.isEmpty())
+				sb.append(title).append(" | ");
+			sb.append(url);
+			return sb.toString();
 		}
 
 		public int compareTo(FeedEntry entry) {
@@ -322,7 +293,7 @@ public class ModuleRSS extends Module {
 			StringBuilder sb = new StringBuilder();
 			if (params.type == EType.Channel) {
 				sb.append("rss [channel] - list feeds\n");
-				sb.append("[r:op] rss add [channel] {url} - add a new feed\n");
+				sb.append("[r:op] rss add [interval] [channel] {url} - add a new feed\n");
 				sb.append("[r:op] rss remove [channel] {url} - remove a feed");
 			} else {
 				sb.append("rss {channel} - list feeds\n");
@@ -388,36 +359,36 @@ public class ModuleRSS extends Module {
 			}
 			if (action != null) params.checkOp();
 			
-			if (action == null) {
-				StringBuffer sb = new StringBuffer();
-				for (Feed feed : feeds) {
-					if (!feed.channels.contains(c.getName())) continue;
-					if (sb.length() != 0) sb.append("\n");
-					sb.append(feed.getURL()).append(' ').append(Utils.timeAgo(feed.getInterval()/1000));
-				}
-				callback.append(sb);
-			} else if (action.equals("add")) {
-				for (Feed feed : feeds) {
-					if (feed.getURL().equals(url)) {
-						if (feed.channels.contains(c.getName())) {
-							callback.append("Feed already on channel's list");
-						} else {
-							feed.channels.add(c.getName());
-							callback.append("Added");
-						}
-						return;
+			synchronized (feeds) {
+				if (action == null) {
+					StringBuffer sb = new StringBuffer();
+					for (Feed feed : feeds) {
+						if (!feed.channels.contains(c.getName())) continue;
+						if (sb.length() != 0) sb.append("\n");
+						sb.append(feed.getURL()).append(' ').append(Utils.timeAgo(feed.getInterval()/1000));
 					}
-				}
-				if (interval < 300)
-					interval = 300;
-				interval*=1000;
-				feeds.add(new Feed(url,interval,null,c.getName()));
-				callback.append("Added");
-				startUpdater();
-			} else if (action.equals("remove")) {
-				Iterator<Feed> iter = feeds.iterator();
-				boolean modified = false;
-				try {
+					callback.append(sb);
+				} else if (action.equals("add")) {
+					for (Feed feed : feeds) {
+						if (feed.getURL().equals(url)) {
+							if (feed.channels.contains(c.getName())) {
+								callback.append("Feed already on channel's list");
+							} else {
+								feed.channels.add(c.getName());
+								callback.append("Added");
+							}
+							return;
+						}
+					}
+					if (interval < 300)
+						interval = 300;
+					interval*=1000;
+					Feed feed = new Feed(url,interval,null,c.getName());
+					feeds.add(feed);
+					timer.scheduleAtFixedRate(feed, 0, interval);
+					callback.append("Added");
+				} else if (action.equals("remove")) {
+					Iterator<Feed> iter = feeds.iterator();
 					while (iter.hasNext()) {
 						Feed feed = iter.next();
 						if (feed.getURL().equals(url)) {
@@ -425,7 +396,7 @@ public class ModuleRSS extends Module {
 								feed.channels.remove(feed.channels.indexOf(c.getName()));
 								if (feed.channels.isEmpty()) {
 									iter.remove();
-									modified = true;
+									feed.cancel();
 								}
 								callback.append("Removed");
 							} else callback.append("Feed isn't on channel's list");
@@ -433,9 +404,6 @@ public class ModuleRSS extends Module {
 						}
 					}
 					callback.append("Feed isn't on channel's list");
-				} finally {
-					if (modified)
-						startUpdater();
 				}
 			}
 		}

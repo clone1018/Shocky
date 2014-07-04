@@ -7,7 +7,6 @@ import org.faabtech.brainfuck.BrainfuckEngine;
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
-import pl.shockah.StringTools;
 import pl.shockah.ZeroInputStream;
 import pl.shockah.shocky.Cache;
 import pl.shockah.shocky.ScriptModule;
@@ -37,11 +36,8 @@ public class ModuleBrainfuck extends ScriptModule {
 			InputStream is;
 			if (message == null)
 				is = new ZeroInputStream();
-			else {
-				String[] args = message.split(" ");
-				String argsImp = StringTools.implode(args,1," "); if (argsImp == null) argsImp = "";
-				is = new ByteArrayInputStream(argsImp.getBytes());
-			}
+			else
+				is = new ByteArrayInputStream(message.getBytes());
 			BrainfuckEngine bfe = new BrainfuckEngine(code.length(),os,is);
 			bfe.interpret(code);
 			return os.toString("UTF-8");

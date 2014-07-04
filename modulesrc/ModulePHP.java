@@ -4,10 +4,10 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.util.HashSet;
-import java.util.Random;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.pircbotx.Channel;
@@ -15,7 +15,6 @@ import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 import pl.shockah.HTTPQuery;
 import pl.shockah.Helper;
-import pl.shockah.StringTools;
 import pl.shockah.shocky.Cache;
 import pl.shockah.shocky.Data;
 import pl.shockah.shocky.ScriptModule;
@@ -36,6 +35,23 @@ public class ModulePHP extends ScriptModule implements IFactoidData {
 		if (!savedData.exists())
 			savedData.mkdirs();
 		
+		if (!Data.config.exists("php-version") || Data.config.getInt("php-version") < 2) {
+			Data.config.set("php-version", 2);
+			Pattern pattern = Pattern.compile("^(.+?)_(-?[0-9]+)$");
+			for (File f : savedData.listFiles()) {
+				Matcher m = pattern.matcher(f.getName());
+				if (!m.find())
+					continue;
+				int hash;
+				try {
+					hash = Integer.parseInt(m.group(2));
+				} catch(Throwable t) {
+					continue;
+				}
+				f.renameTo(new File(f.getParentFile(),String.format("%s_%08X",m.group(1),hash)));
+			}
+		}
+		
 		Data.config.setNotExists("php-url","http://localhost/shocky/shocky.php");
 		Command.addCommands(this, cmd = new CmdPHP());
 		Data.protectedKeys.add("php-url");
@@ -51,29 +67,8 @@ public class ModulePHP extends ScriptModule implements IFactoidData {
 	public String parse(Cache cache, PircBotX bot, Channel channel, User sender, Factoid factoid, String code, String message) {
 		if (code == null) return "";
 		
-		User[] users;
-		HashSet<Pair<String,String>> set = new HashSet<Pair<String,String>>();
-		if (channel == null)
-			users = new User[]{bot.getUserBot(),sender};
-		else {
-			users = channel.getUsers().toArray(new User[0]);
-			set.add(Pair.of("channel", channel.getName()));
-		}
-		set.add(Pair.of("bot", bot.getNick()));
-		set.add(Pair.of("sender", sender.getNick()));
-		set.add(Pair.of("host", sender.getHostmask()));
-		set.add(Pair.of("randnick", users[new Random().nextInt(users.length)].getNick()));
-		
 		StringBuilder sb = new StringBuilder();
-		buildInit(sb,set);
-		if (message != null) {
-			String[] args = message.replace("\\", "\\\\").split(" ");
-			String argsImp = StringTools.implode(args,1," ");
-			sb.append("$argc=").append((args.length-1)).append(";$args=");
-			appendEscape(sb,argsImp);
-			sb.append(";$ioru=empty($args)?$sender:$args;$arg=empty($args)?array():explode(' ',$args);");
-		}
-		
+		buildInit(sb,getParams(bot, channel, sender, message).entrySet());
 		String data = getData(factoid);
 		if (data != null) {
 			sb.append("$_STATE=json_decode(");
@@ -111,11 +106,30 @@ public class ModulePHP extends ScriptModule implements IFactoidData {
 		return (ret != null)?ret.trim():null;
 	}
 	
-	private void buildInit(StringBuilder sb, Iterable<Pair<String,String>> set) {
-		for (Pair<String,String> pair : set) {
-			sb.append('$').append(pair.getLeft()).append('=');
-			appendEscape(sb,pair.getRight());
+	private void buildInit(StringBuilder sb, Iterable<Map.Entry<String,Object>> set) {
+		for (Map.Entry<String,Object> pair : set) {
+			sb.append('$').append(pair.getKey()).append('=');
+			appendObject(sb, pair.getValue());
 			sb.append(';');
+		}
+	}
+	
+	private void appendObject(StringBuilder sb, Object obj) {
+		if (obj == null) {
+				sb.append("null");
+		} else if (obj.getClass().isArray()) {
+			Object[] a = (Object[])obj;
+			sb.append("array(");
+			for (int i = 0; i < a.length; ++i) {
+				if (i > 0)
+					sb.append(',');
+				appendObject(sb, a[i]);
+			}
+			sb.append(')');
+		} else if (obj instanceof String) {
+			appendEscape(sb,(String)obj);
+		} else if (obj instanceof Number) {
+			sb.append(obj.toString());
 		}
 	}
 	
@@ -150,7 +164,7 @@ public class ModulePHP extends ScriptModule implements IFactoidData {
 	
 	public File getFactoidSave(Factoid f) {
 		if (f != null)
-			return new File(savedData,String.format("%s_%d", f.channel== null? "global" : f.channel, f.name.hashCode()));
+			return new File(savedData,String.format("%s_%08X", f.channel== null? "global" : f.channel, f.name.hashCode()));
 		return null;
 	}
 	

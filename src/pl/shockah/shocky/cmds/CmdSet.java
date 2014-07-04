@@ -11,7 +11,7 @@ public class CmdSet extends Command {
 	
 	public void doCommand(Parameters params, CommandCallback callback) {
 		callback.type = EType.Notice;
-		if (params.tokenCount < 2) {
+		if (!params.hasMoreParams()) {
 			callback.append(help(params));
 			return;
 		}
@@ -20,6 +20,10 @@ public class CmdSet extends Command {
 		boolean global = false;
 		if (key.equals(".")) {
 			global = true;
+			if (!params.hasMoreParams()) {
+				callback.append(help(params));
+				return;
+			}
 			key = params.nextParam();
 		}
 		String value = params.getParams(0);

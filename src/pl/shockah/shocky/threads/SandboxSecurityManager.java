@@ -2,6 +2,7 @@ package pl.shockah.shocky.threads;
 
 import java.io.File;
 import java.io.FilePermission;
+import java.io.IOException;
 import java.security.Permission;
 import java.security.PermissionCollection;
 import java.security.Permissions;
@@ -22,6 +23,7 @@ public class SandboxSecurityManager extends SecurityManager
 	};
 	
 	private final File phpData = new File("data", "php").getAbsoluteFile();
+	private String tmpDir;
 	
 	public SandboxSecurityManager() {
 		this(new File[0]);
@@ -29,8 +31,15 @@ public class SandboxSecurityManager extends SecurityManager
 	
 	public SandboxSecurityManager(File... readonlyFiles) {
 		super();
-		this.readonlyFiles = readonlyFiles;
 		
+		try {
+			tmpDir = new File(System.getProperty("java.io.tmpdir")).getCanonicalPath();
+		} catch (IOException e) {
+			e.printStackTrace();
+			tmpDir = System.getProperty("java.io.tmpdir");
+		}
+		
+		this.readonlyFiles = readonlyFiles;
 		allowed.add(new FilePermission(System.getProperty("java.home").replace('\\','/')+"/lib/-","read"));
 		
 		//String cd = '/'+System.getProperty("user.dir").replace('\\','/');
@@ -81,6 +90,42 @@ public class SandboxSecurityManager extends SecurityManager
 			if (!allow)
 				throw new SecurityException("Not allowed: "+perm.toString());
 		}
+	}
+	
+	@Override
+	public void checkRead(String file) {
+		if ((getThreadGroup() instanceof SandboxThreadGroup) && isTempPaste(file))
+			return;
+		super.checkRead(file);
+	}
+	
+	@Override
+	public void checkWrite(String file) {
+		if ((getThreadGroup() instanceof SandboxThreadGroup) && isTempPaste(file))
+			return;
+		super.checkWrite(file);
+	}
+	
+	@Override
+	public void checkDelete(String file) {
+		if ((getThreadGroup() instanceof SandboxThreadGroup) && isTempPaste(file))
+			return;
+		super.checkWrite(file);
+	}
+	
+	public boolean isTempPaste(String file) {
+		File f = new File(file);
+		String path;
+		try {
+			path = f.getCanonicalPath();
+		} catch (IOException e) {
+			path = f.getPath();
+		}
+		
+		if (path.indexOf(tmpDir) != 0)
+			return false;
+		String name = f.getName();
+		return name.startsWith("shocky_paste") && name.endsWith(".txt");
 	}
 	
 	@Override

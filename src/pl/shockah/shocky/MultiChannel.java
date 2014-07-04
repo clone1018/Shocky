@@ -42,6 +42,9 @@ public class MultiChannel {
 			bot.connect(server.contentEquals("localhost") ? null : server);
 			if (!bot.isConnected())
 				return false;
+			
+			startWebServer(bot);
+			
 			if (!Data.config.getString("main-nickservpass").isEmpty())
 				bot.identify(Data.config.getString("main-nickservpass"));
 			return true;
@@ -53,6 +56,15 @@ public class MultiChannel {
 			e.printStackTrace();
 		}
 		return false;
+	}
+	
+	public static void startWebServer(PircBotX bot) {
+		try {
+			if (!WebServer.exists() && WebServer.start(bot.getInetAddress().getHostAddress(),8000))
+				System.out.println("--- Shocky web server is running! ---");
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	public static List<String> getBotChannels(PircBotX bot) throws Exception {

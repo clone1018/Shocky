@@ -32,6 +32,7 @@ import pl.shockah.shocky.interfaces.IRollback;
 import pl.shockah.shocky.lines.LineMessage;
 import pl.shockah.shocky.sql.CriterionNumber;
 import pl.shockah.shocky.sql.Factoid;
+import pl.shockah.shocky.sql.Factoid.Token;
 import pl.shockah.shocky.sql.QueryInsert;
 import pl.shockah.shocky.sql.QueryUpdate;
 import pl.shockah.shocky.sql.SQL;
@@ -73,89 +74,6 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 		SQL.raw("CREATE TABLE IF NOT EXISTS "
 				+ SQL.getTable("factoid")
 				+ " (id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,channel varchar(50) DEFAULT NULL,factoid text NOT NULL,author text NOT NULL,rawtext text NOT NULL,stamp int(10) unsigned NOT NULL,locked int(1) unsigned NOT NULL DEFAULT '0',forgotten int(1) unsigned NOT NULL DEFAULT '0',PRIMARY KEY (id),INDEX channel (channel)) ENGINE=InnoDB DEFAULT CHARSET=utf8;");
-		/*
-		 * old code for importing factoids in old format if (new
-		 * File("data","factoid.cfg").exists()) { Config config = new Config();
-		 * config.load(new File("data","factoid.cfg"));
-		 * 
-		 * ArrayList<String> cfgs = new ArrayList<String>(); cfgs.add(null);
-		 * cfgs.addAll(config.getKeysSubconfigs());
-		 * 
-		 * for (String subc : cfgs) { Config cfg = subc == null ? config :
-		 * config.getConfig(subc); ArrayList<String> factoids = new
-		 * ArrayList<String>(); for (String s : cfg.getKeys()) if
-		 * (s.startsWith("r_")) factoids.add(s); for (String s : factoids) { s =
-		 * s.substring(2); QueryInsert q = new
-		 * QueryInsert(SQL.getTable("factoid")); q.add("channel",subc == null ?
-		 * "" : subc); q.add("factoid",s);
-		 * q.add("author",cfg.getString("b_"+s));
-		 * q.add("rawtext",cfg.getString("r_"+s)); q.add("stamp",0);
-		 * SQL.insert(q); if (cfg.exists("l_"+s)) q.add("locked",1); } }
-		 * 
-		 * new File("data","factoid.cfg").delete(); }
-		 */
-
-		/*
-		 * old code for importing crow's factoids if (new
-		 * File("data","crowdb.txt").exists()) { ArrayList<String> odd = new
-		 * ArrayList<String>(); try { JSONArray base = new
-		 * JSONArray(FileLine.readString(new File("data","crowdb.txt"))); for
-		 * (int i = 0; i < base.length(); i++) { JSONObject j =
-		 * base.getJSONObject(i); String fFactoid = j.getString("name"); String
-		 * fRaw = j.getString("data"); String fAuthor =
-		 * j.getString("last_changed_by"); boolean fLocked = false; boolean
-		 * ignore = false;
-		 * 
-		 * if (fFactoid.equals("$ioru")) continue; if (fFactoid.equals("$user"))
-		 * continue;
-		 * 
-		 * fRaw.trim(); while (!fRaw.isEmpty() && fRaw.charAt(0) == '<') { if
-		 * (fRaw.startsWith("<reply>")) { fRaw = fRaw.substring(7).trim(); }
-		 * else if (fRaw.startsWith("<locked")) { fLocked = true; fRaw =
-		 * fRaw.substring(fRaw.indexOf('>')+1).trim(); } else if
-		 * (fRaw.startsWith("<forgotten>")) { ignore = true; break; } else if
-		 * (fRaw.startsWith("<command") || fRaw.startsWith("<pyexec")) {
-		 * odd.add(fFactoid+" | "+fAuthor+" | "+fRaw); ignore = true; break; }
-		 * else break; }
-		 * 
-		 * if (ignore) continue;
-		 * 
-		 * fRaw = fRaw.replace("$inp","%inp%"); fRaw =
-		 * fRaw.replace("$ioru","%ioru%"); fRaw =
-		 * fRaw.replace("$user","%user%"); fRaw =
-		 * fRaw.replace("$chan","%chan%");
-		 * 
-		 * Factoid f = getLatest(null,fFactoid,true); if (f == null) {
-		 * QueryInsert q = new QueryInsert(SQL.getTable("factoid"));
-		 * q.add("channel",""); q.add("factoid",fFactoid);
-		 * q.add("author",fAuthor); q.add("rawtext",fRaw); q.add("stamp",0); if
-		 * (fLocked) q.add("locked",1); SQL.insert(q); } } } catch (Exception e)
-		 * {e.printStackTrace();}
-		 * 
-		 * FileLine.write(new File("data","crowdbodd.txt"),odd); new
-		 * File("data","crowdb.txt").delete(); }
-		 */
-
-		/*
-		 * old code for importing crow's factoids if (new
-		 * File("data","crowdbodd.txt").exists()) { ArrayList<String> lines =
-		 * FileLine.read(new File("data","crowdbodd.txt")); ArrayList<String>
-		 * odd2 = new ArrayList<String>();
-		 * 
-		 * for (String s : lines) { String[] spl = s.split("|"); String fFactoid
-		 * = spl[0].trim(); String fAuthor = spl[1].trim(); String fRaw =
-		 * StringTools.implode(spl,2," ").trim(); if
-		 * (fRaw.startsWith("<command")) { odd2.add(s); continue; } else if
-		 * (fRaw.startsWith("<pyexec>")) fRaw = "<py>"+fRaw.substring(8);
-		 * 
-		 * QueryInsert q = new QueryInsert(SQL.getTable("factoid"));
-		 * q.add("channel",""); q.add("factoid",fFactoid);
-		 * q.add("author",fAuthor); q.add("rawtext",fRaw); q.add("stamp",0);
-		 * SQL.insert(q); }
-		 * 
-		 * FileLine.write(new File("data","crowdbodd2.txt"),odd2); new
-		 * File("data","crowdbodd.txt").delete(); }
-		 */
 
 		Command.addCommands(this, cmdR = new CmdRemember(), cmdF = new CmdForget(), cmdU = new CmdUnforget(), cmdFCMD = new CmdFactoidCmd(), cmdManage = new CmdManage());
 
@@ -220,18 +138,6 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 
 			public String result(String arg) {
 				return Utils.mungeNick(arg);
-			}
-		};
-		functions.put(func.name(), func);
-
-		func = new Function() {
-			public String name() {
-				return "escape";
-			}
-
-			public String result(String arg) {
-				return arg.replace(",", "\\,").replace("(", "\\(")
-						.replace(")", "\\)").replace("\\", "\\\\");
 			}
 		};
 		functions.put(func.name(), func);
@@ -321,13 +227,66 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 
 			public String result(String[] arg) {
 				if (arg.length < 2 || arg.length > 3)
-					return "[Wrong number of arguments to function " + name()
-							+ ", expected 2 or 3, got " + arg.length + "]";
+					throw new RuntimeException("[Wrong number of arguments to function " + name()
+							+ ", expected 2 or 3, got " + arg.length + "]");
 				if (arg[0].length() > 0) {
 					return arg.length == 2 ? arg[0] : arg[1];
 				} else {
 					return arg.length == 2 ? arg[1] : arg[2];
 				}
+			}
+		};
+		functions.put(func.name(), func);
+		
+		func = new FunctionMultiArg() {
+			public String name() {
+				return "rnd";
+			}
+
+			public String result(String[] arg) {
+				return arg[new Random().nextInt(arg.length)];
+			}
+		};
+		functions.put(func.name(), func);
+		
+		func = new FunctionMultiArg() {
+			public String name() {
+				return "sub";
+			}
+
+			public String result(String[] arg) {
+				int start, end;
+				if (arg.length < 2 || arg.length > 3)
+					throw new RuntimeException("[Wrong number of arguments to function " + name()
+							+ ", expected 2 or 3, got " + arg.length + "]");
+				if (arg.length == 2)
+					end = arg[0].length();
+				else
+					end = Integer.parseInt(arg[2]);
+				start = Integer.parseInt(arg[1]);
+				return arg[0].substring(start, end);
+			}
+		};
+		functions.put(func.name(), func);
+		
+		func = new Function() {
+			public String name() {
+				return "len";
+			}
+
+			public String result(String arg) {
+				return Integer.toString(arg.length());
+			}
+		};
+		functions.put(func.name(), func);
+		
+		func = new Function() {
+			public String name() {
+				return "mid";
+			}
+
+			public String result(String arg) {
+				return Integer.toString(arg.length()/2);
 			}
 		};
 		functions.put(func.name(), func);
@@ -375,7 +334,7 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 	}
 
 	public void onMessage(PircBotX bot, Channel channel, User sender, String msg) {
-		msg = StringTools.trimWhitespace(msg);
+		msg = StringTools.trimWhitespace(msg).toString();
 		if (msg.length() < 2)
 			return;
 
@@ -389,22 +348,50 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 		String ping = null;
 
 		msg = redirectMessage(channel, sender, msg);
-		String[] args = msg.split(" ");
-		if (args.length >= 2 && args[args.length - 2].equals(">")) {
+		StringTokenizer strtok = new StringTokenizer(msg," ");
+		String factoid = strtok.nextToken().toLowerCase();
+		msg = msg.substring(factoid.length());
+		int tokens = strtok.countTokens();
+		int i = 0;
+		StringBuilder sb = new StringBuilder();
+		while (strtok.hasMoreTokens()) {
+			++i;
+			String token = strtok.nextToken();
+			if (token.length() != 1) {
+				sb.append(token).append(' ');
+				continue;
+			}
+			char c = token.charAt(0);
+			if (i == tokens && c == '<')
+			{
+				targetName = sender.getNick();
+				break;
+			} else if (i == tokens - 1)
+			{
+				if (c == '>')
+				{
+					targetName = strtok.nextToken();
+					break;
+				} else if (c == '|')
+				{
+					ping = strtok.nextToken();
+					break;
+				}
+			}
+			sb.append(c).append(' ');
+		}
+		String message = StringTools.trimWhitespace(sb).toString();
+		/*if (args.length >= 2 && args[args.length - 2].equals(">")) {
 			targetName = args[args.length - 1];
 			msg = StringTools.implode(args, 0, args.length - 3, " ");
-			args = msg.split(" ");
 		} else if (args.length >= 1 && args[args.length - 1].equals("<")) {
 			targetName = sender.getNick();
 			msg = StringTools.implode(args, 0, args.length - 2, " ");
-			args = msg.split(" ");
 		} else if (args.length >= 2 && args[args.length - 2].equals("|")) {
 			ping = args[args.length - 1];
 			msg = StringTools.implode(args, 0, args.length - 3, " ");
 			args = msg.split(" ");
-		}
-		
-		String factoid = args[0].toLowerCase();
+		}*/
 
 		if (targetName != null) {
 			if (channel == null)
@@ -426,7 +413,7 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 			Factoid f = getFactoid(cache, channel, factoid, false);
 			if (f == null)
 				return;
-			StringBuilder sb = new StringBuilder();
+			sb = new StringBuilder();
 			if (targetName == null && ping != null)
 				sb.append(ping).append(": ");
 			sb.append(factoid).append(": ");
@@ -439,19 +426,16 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 			Factoid f = getFactoid(cache, channel, factoid, false);
 			if (f == null)
 				return;
-			StringBuilder sb = new StringBuilder();
-			if (targetName == null && ping != null) {
-				sb.append(ping);
-				sb.append(": ");
-			}
+			sb = new StringBuilder();
+			if (targetName == null && ping != null)
+				sb.append(ping).append(": ");
 			sb.append(factoid).append(", last edited by ").append(f.author);
-			if (f != null && !f.forgotten)
-				Shocky.send(bot, msgtype, channel, target, sb.toString());
+			Shocky.send(bot, msgtype, channel, target, sb.toString());
 			return;
 		}
 
 		String[] chain = factoid.split(config.getString("factoid-charchain"));
-		for (int i = 0; i < chain.length; i++) {
+		for (i = 0; i < chain.length; i++) {
 			Object key = chain[i];
 			Factoid f = null;
 			if (cache != null && cache.containsKey(factoidHash, key)) {
@@ -467,29 +451,37 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 				cache.put(factoidHash, key, f);
 		}
 
-		String message = StringTools.implode(args, 1, " ");
-		for (int i = 0; i < chain.length; i++) {
-			msg = chain[i] + ' ' + message;
-			message = runFactoid(cache, bot, channel, sender, msg);
+		try {
+			for (i = 0; i < chain.length; i++)
+				message = runFactoid(cache, bot, channel, sender, chain[i] + ' ' + message);
+		} catch (Exception e) {
+			message = e.getMessage();
 		}
 
 		if (message != null && message.length() > 0) {
-			StringBuilder sb = new StringBuilder(StringTools.formatLines(message));
-			if (targetName == null && ping != null) {
-				sb.insert(0, ": ");
-				sb.insert(0, ping);
-			}
+			sb = new StringBuilder(StringTools.formatLines(message));
+			if (targetName == null && ping != null)
+				sb.insert(0, ": ").insert(0, ping);
 			message = StringTools.limitLength(sb);
 
 			Shocky.send(bot, msgtype, channel, target, message);
 		}
 	}
 
-	public String runFactoid(Cache cache, PircBotX bot, Channel channel, User sender, String message) {
-		message = StringTools.trimWhitespace(message);
+	public String runFactoid(Cache cache, PircBotX bot, Channel channel, User sender, String message) throws Exception {
+		message = StringTools.trimWhitespace(message).toString();
 		Set<String> checkRecursive = new HashSet<String>();
 		while (true) {
-			String factoid = message.split(" ")[0].toLowerCase();
+			int i = message.indexOf(' ');
+			String factoid;
+			String args;
+			if (i > 0) {
+				factoid = message.substring(0, i);
+				args = message.substring(i+1);
+			} else {
+				factoid = message;
+				args = "";
+			}
 			Object key = factoid;
 
 			Factoid f = null;
@@ -506,22 +498,19 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 			String raw = f.rawtext;
 			if (raw.startsWith("<alias>")) {
 				raw = raw.substring(7);
-				message = parseVariables(bot, channel, sender, message, raw);
-				StringBuilder sb = new StringBuilder();
-				parseFunctions(message, sb);
-				message = sb.toString();
+				message = processTokens(bot, channel, sender, args, tokenize(f, raw));
 				if (checkRecursive.contains(message))
 					break;
 				checkRecursive.add(message);
 				continue;
 			} else {
-				return parse(cache, bot, channel, sender, message, f, raw);
+				return parse(cache, bot, channel, sender, args, f, raw);
 			}
 		}
 		return null;
 	}
 
-	public String parse(Cache cache, PircBotX bot, Channel channel, User sender, String message, Factoid f, String raw) {
+	public String parse(Cache cache, PircBotX bot, Channel channel, User sender, String message, Factoid f, String raw) throws Exception {
 		if (raw.startsWith("<noreply>"))
 			return "";
 		String type = null;
@@ -531,14 +520,16 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 			if (closingIndex != -1)
 				type = raw.substring(1, closingIndex);
 		}
-		ScriptModule sModule = Module.getScriptingModule(type);
+		ScriptModule sModule = null;
+		if (type != null)
+			sModule = Module.getScriptingModule(type);
 		if (sModule != null) {
 			if (channel != null && !sModule.isEnabled(channel.getName()))
 				return "";
 			raw = raw.substring(closingIndex + 1);
-			raw = parseVariables(bot, channel, sender, message, raw);
+			raw = processTokens(bot, channel, sender, message, tokenize(f, raw));
 			String parsed = sModule.parse(cache, bot, channel, sender, f, raw, message);
-			return parse(cache, bot, channel, sender, message, f, parsed);
+			return parse(cache, bot, channel, sender, message, null, parsed);
 		} else if (type != null && type.contentEquals("cmd")) {
 			CommandCallback callback = new CommandCallback();
 			raw = raw.substring(closingIndex + 1);
@@ -546,7 +537,7 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 			Command cmd = Command.getCommand(bot, sender, channel, EType.Channel, callback, args[0]);
 			if (cmd != null && !(cmd instanceof CmdFactoid)) {
 				EType etype = (channel == null) ? EType.Notice : EType.Channel;
-				raw = (args.length == 1) ? "" : parseVariables(bot, channel, sender, message, args[1]);
+				raw = (args.length == 1) ? "" : processTokens(bot, channel, sender, message, tokenize(f, args[1]));
 				Parameters params = new Parameters(bot, etype, channel, sender, raw);
 				try {
 					cmd.doCommand(params, callback);
@@ -560,130 +551,198 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 			boolean action = type != null && type.contentEquals("action");
 			if (action)
 				raw = raw.substring(closingIndex + 1);
-			raw = parseVariables(bot, channel, sender, message, raw);
-			StringBuilder output = new StringBuilder();
-			parseFunctions(raw, output);
+			String output = processTokens(bot, channel, sender, message, tokenize(f, raw));
 			if (action) {
-				output.insert(0, "ACTION ");
-				output.insert(0, '\001');
-				output.append('\001');
+				StringBuilder sb = new StringBuilder(output);
+				sb.insert(0, "\001ACTION ").append('\001');
+				output = sb.toString();
 			}
-			return output.toString();
+			return output;
 		}
 	}
 
-	private static final Pattern argPattern = Pattern
-			.compile("%([A-Za-z]+)([0-9]+)?(-)?([0-9]+)?%");
+	private static final Pattern argPattern = Pattern.compile("%([A-Za-z]+)([0-9]+)?(-)?([0-9]+)?%");
 
-	public String parseVariables(PircBotX bot, Channel channel, User sender, String message, String raw) {
-		StringBuilder escapedMsg = new StringBuilder(message);
-		for (int i = 0; i < escapedMsg.length(); i++) {
-			switch (escapedMsg.charAt(i)) {
-			case '\\':
-			case '$':
-				escapedMsg.insert(i++, '\\');
-			}
+	public static String processTokens(PircBotX bot, Channel channel, User sender, String message, Token[] tokens) throws Exception {
+		StringTokenizer strtok = new StringTokenizer(message," ");
+		String[] args = new String[strtok.countTokens()];
+		int i = 0;
+		while (strtok.hasMoreTokens())
+			args[i++] = strtok.nextToken();
+		StringBuilder sb = new StringBuilder();
+		for (i = 0; i < tokens.length; ++i) {
+			CharSequence seq = tokens[i].process(bot, channel, sender, message, args);
+			if (seq != null)
+				sb.append(seq);
 		}
-		message = escapedMsg.toString();
-		String[] args = message.split(" ");
-		int req = 0;
-
-		Random rnd = null;
-		User[] users = null;
-
-		Matcher m = argPattern.matcher(raw);
-		StringBuffer ret = new StringBuffer();
-		while (m.find()) {
-			String tag = m.group(1);
-			String num1str = m.group(2);
-			String num2str = m.group(4);
-
-			int num1 = Integer.MIN_VALUE;
-			int num2 = Integer.MIN_VALUE;
-			if (num1str != null)
-				num1 = Integer.parseInt(num1str) + 1;
-			if (num2str != null)
-				num2 = Integer.parseInt(num2str) + 1;
-
-			boolean range = m.group(3) != null;
-
-			if (tag.contentEquals("arg")) {
-				if (range) {
-					int min = num1 != Integer.MIN_VALUE ? num1 : 1;
-					int max = num2 != Integer.MIN_VALUE ? num2
-							: args.length - 1;
-					req = Math.max(req, Math.max(min, max));
-					if (args.length > req)
-						m.appendReplacement(ret, StringTools
-								.implode(args, min, max, " "));
-				} else if (num1 != Integer.MIN_VALUE) {
-					req = Math.max(req, num1);
-					if (args.length > req)
-						m.appendReplacement(ret, args[num1]);
-				}
-			} else if (tag.contentEquals("inp"))
-				m.appendReplacement(ret, StringTools.implode(args, 1, " "));
-			else if (tag.contentEquals("ioru"))
-				m.appendReplacement(ret, args.length > 1 ? StringTools
-						.implode(args, 1, " ") : sender.getNick());
-			else if (tag.contentEquals("bot"))
-				m.appendReplacement(ret, bot.getName());
-			else if (channel != null && tag.contentEquals("chan"))
-				m.appendReplacement(ret, channel.getName());
-			else if (tag.contentEquals("user"))
-				m.appendReplacement(ret, sender.getNick());
-			else if (channel != null && tag.contentEquals("rndn")) {
-				if (users == null) {
-					rnd = new Random();
-					users = channel.getUsers().toArray(new User[0]);
-				}
-				m.appendReplacement(ret, users[rnd.nextInt(users.length)]
-						.getNick());
-			}
-		}
-		m.appendTail(ret);
-
-		if (args.length <= req)
-			return String.format("This factoid requires at least %d args", req);
-
-		return ret.toString();
+		return sb.toString();
 	}
 
-	public String redirectMessage(Channel channel, User sender, String message) {
-		String[] args = message.split(" ");
-		if (args.length >= 2 && args.length <= 3 && args[1].contentEquals("^") && channel != null) {
-			IRollback module = (IRollback) Module.getModule("rollback");
-			try {
-				if (module != null) {
-					User user = null;
-					if (args.length == 3) {
-						for (User target : channel.getUsers()) {
-							if (target.getNick().equalsIgnoreCase(args[2])) {
-								user = target;
-								break;
+	public static String redirectMessage(Channel channel, User sender, String message) {
+		StringTokenizer strtok = new StringTokenizer(message);
+		int tokens = strtok.countTokens();
+		if (tokens >= 2 && tokens <= 3 && channel != null) {
+			String factoid = strtok.nextToken();
+			String arrow = strtok.nextToken();
+			if (charExists("^☝↑↟↥⇑⇡⇧⇪", arrow)) {
+				IRollback module = (IRollback) Module.getModule("rollback");
+				try {
+					if (module != null) {
+						User user = null;
+						if (strtok.hasMoreTokens()) {
+							String name = strtok.nextToken();
+							for (User target : channel.getUsers()) {
+								if (target.getNick().equalsIgnoreCase(name)) {
+									user = target;
+									break;
+								}
 							}
 						}
+						List<LineMessage> lines = module.getRollbackLines(LineMessage.class, channel.getName(), user != null ? user.getNick() : null, null, message, true, 1, 0);
+						if (lines.size() == 1) {
+							StringBuilder msg = new StringBuilder(factoid);
+							msg.append(' ');
+							msg.append(lines.get(0).text);
+							message = msg.toString();
+						}
 					}
-					List<LineMessage> lines = module.getRollbackLines(LineMessage.class, channel.getName(), user != null ? user.getNick() : null, null, message, true, 1, 0);
-					if (lines.size() == 1) {
-						StringBuilder msg = new StringBuilder(args[0]);
-						msg.append(' ');
-						msg.append(lines.get(0).text);
-						message = msg.toString();
-					}
+				} catch (Exception e) {
+					e.printStackTrace();
 				}
-			} catch (Exception e) {
-				e.printStackTrace();
 			}
 		}
 		return message.substring(1);
 	}
+	
+	public static class TextToken implements Token {
+		public final CharSequence string;
 
-	public void parseFunctions(CharSequence input, StringBuilder output) {
+		public TextToken(CharSequence string) {
+			this.string = string;
+		}
+
+		@Override
+		public CharSequence process(PircBotX bot, Channel channel, User sender, String message, String[] args) throws Exception {
+			return this.string;
+		}
+
+		@Override
+		public String toString() {
+			return this.string.toString();
+		}
+	}
+	
+	public static class ParameterToken implements Token {
+		public final String raw;
+		public final String tag;
+		public final int start;
+		public final int end;
+		public final boolean range;
+
+		public ParameterToken(Matcher m) {
+			this.raw = m.group();
+			this.tag = m.group(1);
+			String num1str = m.group(2);
+			String num2str = m.group(4);
+
+			this.start = (num1str != null) ? (Integer.parseInt(num1str)) : Integer.MIN_VALUE;
+			this.end = (num2str != null) ? (Integer.parseInt(num2str)) : Integer.MAX_VALUE;
+			this.range = m.group(3) != null;
+		}
+
+		@Override
+		public CharSequence process(PircBotX bot, Channel channel, User sender, String message, String[] args) throws Exception {
+			if (tag.contentEquals("arg")) {
+				int req = 0;
+				if (range) {
+					int min = start != Integer.MIN_VALUE ? start : 0;
+					int max = end != Integer.MAX_VALUE ? end : args.length - 1;
+					req = Math.max(req, Math.max(min, max));
+					if (args.length > req)
+						return StringTools.implode(args, min, max, " ");
+				} else if (start != Integer.MIN_VALUE) {
+					req = Math.max(req, start);
+					if (args.length > req)
+						return args[start];
+				}
+				throw new RuntimeException("Not enough args.");
+			} else if (tag.contentEquals("inp"))
+				return StringTools.implode(args, 0, " ");
+			else if (tag.contentEquals("ioru"))
+				return (message == null || message.isEmpty()) ? sender.getNick() : message;
+			else if (tag.contentEquals("bot"))
+				return bot.getName();
+			else if (channel != null && tag.contentEquals("chan"))
+				return channel.getName();
+			else if (tag.contentEquals("user"))
+				return sender.getNick();
+			else if (channel != null && tag.contentEquals("rndn")) {
+				User[] users = channel.getUsers().toArray(new User[0]);
+				return users[new Random().nextInt(users.length)].getNick();
+			} else if (tag.contentEquals("host"))
+				return sender.getHostmask();
+			else if (tag.contentEquals("acc"))
+				return Whois.getWhoisLogin(sender);
+			return raw;
+		}
+		
+		@Override
+		public String toString() {
+			StringBuilder sb = new StringBuilder(tag);
+			if (start != Integer.MIN_VALUE)
+				sb.append(start);
+			if (range)
+				sb.append('-');
+			if (end != Integer.MAX_VALUE)
+				sb.append(end);
+			return sb.toString();
+		}
+	}
+	
+	public static class FunctionToken implements Token {
+		public final Function func;
+		public final Token[][] params;
+
+		public FunctionToken(Function func, Token[][] params) {
+			this.func = func;
+			this.params = params;
+		}
+
+		@Override
+		public CharSequence process(PircBotX bot, Channel channel, User sender, String message, String[] args) throws Exception {
+			if (func instanceof FunctionMultiArg) {
+				FunctionMultiArg multiFunc = (FunctionMultiArg)func;
+				String[] prepared = new String[params.length];
+				for (int i = 0; i < prepared.length; ++i)
+					prepared[i] = processTokens(bot, channel, sender, message, params[i]);
+				return multiFunc.result(prepared);
+			} else {
+				return func.result(processTokens(bot, channel, sender, message, params[0]));
+			}
+		}
+		
+		@Override
+		public String toString() {
+			StringBuilder sb = new StringBuilder(func.name()).append('(');
+			for (int i = 0; i < params.length; ++i) {
+				if (i > 0)
+					sb.append(',');
+				sb.append(params.toString());
+			}
+			sb.append(')');
+			return sb.toString();
+		}
+	}
+
+	public Token[] tokenize(Factoid f, CharSequence input) {
+		if (f != null && f.tokens != null)
+			return f.tokens;
+		List<Token> tokens = new LinkedList<Token>();
 		Matcher m = functionPattern.matcher(input);
 		int pos = 0;
 		while (m.find(pos)) {
-			output.append(input.subSequence(pos, m.start()));
+			if (pos < m.start())
+				tokens.add(new TextToken(input.subSequence(pos, m.start())));
 			String fName = m.group(1);
 			Function func = null;
 			if (functions.containsKey(fName))
@@ -704,23 +763,48 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 						break;
 					}
 				}
-				if (end == Integer.MIN_VALUE) {
-					return;
-				} else {
-					CharSequence inside = input.subSequence(start, end);
-					StringBuilder funcOutput = new StringBuilder();
-					parseFunctions(inside, funcOutput);
-					try {
-						output.append(func.result(funcOutput.toString()));
-					} catch (Exception e) {
-					}
-				}
+				if (end == Integer.MIN_VALUE)
+					throw new RuntimeException("Unclosed function.");
+				Token[] params = tokenize(null, input.subSequence(start, end));
+				if (func instanceof FunctionMultiArg)
+					tokens.add(new FunctionToken(func,splitArgs(params)));
+				else
+					tokens.add(new FunctionToken(func,new Token[][] {params}));
 			} else {
-				output.append(m.group());
+				tokens.add(new TextToken(m.group()));
 				pos = m.end();
 			}
 		}
-		output.append(input.subSequence(pos, input.length()));
+		if (pos < input.length())
+			tokens.add(new TextToken(input.subSequence(pos, input.length())));
+		ListIterator<Token> iter = tokens.listIterator();
+		while (iter.hasNext()) {
+			Token token = iter.next();
+			if (token instanceof TextToken) {
+				TextToken text = (TextToken)token;
+				m = argPattern.matcher(text.string);
+				int start = 0;
+				LinkedList<Token> add = new LinkedList<Token>();
+				while (m.find()) {
+					if (m.start() > start)
+						add.add(new TextToken(text.string.subSequence(start, m.start())));
+					add.add(new ParameterToken(m));
+					start = m.end();
+				}
+				if (add.isEmpty())
+					continue;
+				if (start < text.string.length())
+					add.add(new TextToken(text.string.subSequence(start, text.string.length())));
+				iter.remove();
+				Iterator<Token> addIter = add.iterator();
+				while(addIter.hasNext())
+					iter.add(addIter.next());
+			}
+		}
+		Token[] array = tokens.toArray(new Token[0]);
+		if (f != null && f.tokens == null)
+			f.tokens = array;
+		return array;
 	}
 	
 	private static PreparedStatement prepareStatement(Cache cache, boolean hasChannel, boolean hasForget) throws SQLException {
@@ -889,34 +973,56 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 		return true;
 	}
 
-	public abstract class Function {
+	public static abstract class Function {
 		public abstract String name();
 
 		public abstract String result(String arg) throws Exception;
+
+		@Override
+		public String toString() {
+			return name();
+		}
 	}
 
-	public abstract class FunctionMultiArg extends Function {
+	public static abstract class FunctionMultiArg extends Function {
+		@Override
 		public final String result(String arg) throws Exception {
-			ArrayList<String> spl = new ArrayList<String>(Arrays.asList(arg
-					.split(",")));
-			for (int i = 0; i < spl.size(); i++) {
-				String s = spl.get(i);
-				spl.set(i, s.length() > 1 ? s.substring(0, s.length() - 1)
-						.replace("\\\\", "" + (char) 6)
-						+ s.substring(s.length() - 1) : s);
-			}
-			for (int i = 0; i < spl.size(); i++)
-				if (spl.size() - 1 > i && spl.get(i).endsWith("\\")) {
-					spl.set(i, spl.get(i).substring(0, spl.get(i).length() - 1)
-							+ "," + spl.get(i + 1));
-					spl.remove(i + 1);
-					i--;
-				}
-
-			return result(spl.toArray(new String[spl.size()]));
+			return null;
 		}
 
 		public abstract String result(String[] arg) throws Exception;
+	}
+	
+	public static Token[][] splitArgs(Token[] params) {
+		
+		ArrayList<Token[]> collection = new ArrayList<Token[]>();
+		ArrayList<Token> current = new ArrayList<Token>();
+		for (Token token : params) {
+			if (!(token instanceof TextToken)) {
+				current.add(token);
+				continue;
+			}
+			TextToken text = (TextToken)token;
+			StringBuilder sb = new StringBuilder(text.string);
+			int o = 0;
+			for (int i = 0; i < sb.length();++i) {
+				char c = sb.charAt(i);
+				if (c == '\\') {
+					sb.deleteCharAt(i);
+				} else if (c == ',') {
+					if (i > o)
+						current.add(new TextToken(sb.substring(o, i)));
+					collection.add(current.toArray(new Token[0]));
+					current.clear();
+					o = i+1;
+				}
+			}
+			if (o < sb.length())
+				current.add(new TextToken(sb.substring(o, sb.length())));
+		}
+		collection.add(current.toArray(new Token[0]));
+
+		return collection.toArray(new Token[0][]);
 	}
 
 	public class CmdRemember extends Command {
@@ -1470,6 +1576,10 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 			Class.forName("ModuleFactoid$ForgetFunction");
 			Class.forName("ModuleFactoid$FactoidFunction");
 			Class.forName("ModuleFactoid$FactoidHistory");
+			
+			Class.forName("ModuleFactoid$TextToken");
+			Class.forName("ModuleFactoid$ParameterToken");
+			Class.forName("ModuleFactoid$FunctionToken");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

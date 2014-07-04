@@ -132,7 +132,11 @@ public class ModuleOP extends Module implements Comparator<Pair<String,String>> 
 						for (int i = 0; i < chars.length(); i++) if (chars.charAt(i) == message.charAt(0)) {
 							String factoid = message.substring(1);
 							IFactoid module = (IFactoid)Module.getModule("factoid");
-							factoid = module.runFactoid(null,params.bot,params.channel,params.sender,factoid);
+							try {
+								factoid = module.runFactoid(null,params.bot,params.channel,params.sender,factoid);
+							} catch (Exception e) {
+								e.printStackTrace();
+							}
 							params.bot.kick(params.channel,params.bot.getUser(kick),factoid == null || factoid.isEmpty() ? kick : factoid);
 							return;
 						}

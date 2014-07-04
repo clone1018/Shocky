@@ -47,6 +47,7 @@ public class Shocky extends ListenerAdapter {
 		
 		System.out.println("--- Shocky, the IRC bot, up and running! ---");
 		System.out.println("--- type \"help\" to list all available commands ---");
+		
 		try {
 			MultiChannel.join(Data.channels.toArray(new String[0]));
 		} catch (Exception e) {e.printStackTrace();}
@@ -94,6 +95,7 @@ public class Shocky extends ListenerAdapter {
 		for (PircBotX bot : bots) {
 			bot.quitServer(reason);
 		}
+		WebServer.stop();
 		killMe();
 	}
 	private static void killMe() {
@@ -121,6 +123,7 @@ public class Shocky extends ListenerAdapter {
 	public static void send(PircBotX bot, Command.EType type, Command.EType msgChannel, Command.EType msgPrivate, Command.EType msgNotice, Command.EType msgConsole, Channel channel, User user, String message) {
 		Command.EType t = null;
 		switch (type) {
+			case Action:
 			case Channel: t = msgChannel; break;
 			case Private: t = msgPrivate; break;
 			case Notice: t = msgNotice; break;
@@ -130,6 +133,7 @@ public class Shocky extends ListenerAdapter {
 	}
 	public static void send(PircBotX bot, Command.EType type, Channel channel, User user, String message) {
 		switch (type) {
+			case Action:
 			case Channel: sendChannel(bot,channel,message); break;
 			case Private: sendPrivate(bot,user,message); break;
 			case Notice: sendNotice(bot,user,message); break;

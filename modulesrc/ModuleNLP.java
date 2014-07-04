@@ -106,7 +106,7 @@ public class ModuleNLP extends Module implements ILua {
 		sentenceModel = null;
 		//nameModel = null;
 	}
-	
+
 	public Span[] tokenize(String str) {
 		Tokenizer tokenizer = new TokenizerME(tokenizerModel);
 		return tokenizer.tokenizePos(str);

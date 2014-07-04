@@ -3,8 +3,12 @@ package pl.shockah.shocky.sql;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.LinkedList;
+import java.util.Map;
 
 import org.json.JSONObject;
+import org.pircbotx.Channel;
+import org.pircbotx.PircBotX;
+import org.pircbotx.User;
 
 public final class Factoid {
 	public static Factoid fromJSONObject(JSONObject j) {
@@ -42,6 +46,8 @@ public final class Factoid {
 	public final String name, channel, author, rawtext;
 	public final long stamp;
 	public final boolean locked, forgotten;
+	public Map<String,Object> metadata = null;
+	public Token[] tokens = null;
 
 	private Factoid(long id, String name, String channel, String author, String rawtext, long stamp) {
 		this(id, name, channel, author, rawtext, stamp, false, false);
@@ -61,5 +67,9 @@ public final class Factoid {
 	@Override
 	public String toString() {
 		return rawtext;
+	}
+	
+	public static interface Token {
+		CharSequence process(PircBotX bot, Channel channel, User sender, String message, String[] args) throws Exception;
 	}
 }

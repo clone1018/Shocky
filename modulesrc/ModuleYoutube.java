@@ -2,6 +2,8 @@ import java.io.File;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.StringTokenizer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -28,7 +30,7 @@ public class ModuleYoutube extends Module implements IAcceptURLs {
 	protected Command cmd;
 	private ArrayList<Pattern> patternsAction = new ArrayList<Pattern>(), patternsMessage = new ArrayList<Pattern>();
 	
-	public static String getVideoInfo(String vID) {
+	public static CharSequence getVideoInfo(String vID) {
 		HTTPQuery q = null;
 		
 		try {
@@ -57,7 +59,7 @@ public class ModuleYoutube extends Module implements IAcceptURLs {
 		} catch (Exception e) {e.printStackTrace();}
 		return null;
 	}
-	public static String getVideoSearch(String query, boolean data, boolean url) {
+	public static CharSequence getVideoSearch(String query, boolean data, boolean url) {
 		HTTPQuery q = null;
 		
 		try {
@@ -128,43 +130,55 @@ public class ModuleYoutube extends Module implements IAcceptURLs {
 		return host.contentEquals("youtu.be") || host.endsWith("youtube.com");
 	}
 	@Override
-	public void handleURL(PircBotX bot, Channel channel, User sender, URL u) {
-		if (bot == null || u == null || (channel == null && sender == null))
+	public void handleURL(PircBotX bot, Channel channel, User sender, List<URL> urls) {
+		if (bot == null || urls == null || urls.isEmpty() || (channel == null && sender == null))
 			return;
 		if (channel != null && (!isEnabled(channel.getName()) || Data.forChannel(channel).getBoolean("yt-otherbot")))
 			return;
 		
-		String id = null;
-		String host = u.getHost();
-		
-		if (host.contentEquals("youtu.be")) {
-			if (u.getPath().isEmpty())
-				return;
-			id = u.getPath().substring(1);
-		}
-		else if (host.endsWith("youtube.com")) {
-			StringTokenizer tok1 = new StringTokenizer(u.getQuery(),"&");
-			while (tok1.hasMoreTokens()) {
-				StringTokenizer tok2 = new StringTokenizer(tok1.nextToken(),"=");
-				if (tok2.countTokens()!=2)
+		StringBuilder sb = new StringBuilder();
+		Iterator<URL> iter = urls.iterator();
+		while (iter.hasNext()) {
+			URL u = iter.next();
+			
+			String id = null;
+			String host = u.getHost();
+			if (host.contentEquals("youtu.be")) {
+				if (u.getPath().isEmpty())
 					continue;
-				String key = tok2.nextToken();
-				String value = tok2.nextToken();
-				if (key.contentEquals("v")) {
-					id = value;
-					break;
+				id = u.getPath().substring(1);
+			}
+			else if (host.endsWith("youtube.com")) {
+				StringTokenizer tok1 = new StringTokenizer(u.getQuery(),"&");
+				while (tok1.hasMoreTokens()) {
+					StringTokenizer tok2 = new StringTokenizer(tok1.nextToken(),"=");
+					if (tok2.countTokens()!=2)
+						continue;
+					String key = tok2.nextToken();
+					String value = tok2.nextToken();
+					if (key.contentEquals("v")) {
+						id = value;
+						break;
+					}
 				}
 			}
+		
+			if (id == null)
+				continue;
+			CharSequence result = getVideoInfo(id);
+			if (result == null)
+				continue;
+			if (urls.size() > 1)
+				sb.append(id).append(": ");
+			sb.append(result);
+			if (iter.hasNext())
+				sb.append('\n');
 		}
-		
-		if (id == null)
+		if (sb.length() == 0)
 			return;
-		String result = getVideoInfo(id);
-		if (result == null)
-			return;
-		
+		String result = StringTools.limitLength(StringTools.formatLines(sb));
 		if (channel != null)
-			bot.sendMessage(channel, sender.getNick()+": "+result);
+			bot.sendMessage(channel, result);
 		else if (sender != null)
 			bot.sendMessage(sender, result);
 	}
@@ -195,7 +209,7 @@ public class ModuleYoutube extends Module implements IAcceptURLs {
 			if (m.find()) {
 				String s = m.group(1);
 				if (s.startsWith("http://") || s.startsWith("www.//") || s.startsWith("youtu.be/") || s.startsWith("youtube/")) return;
-				String result = getVideoSearch(s,!Data.forChannel(channel).getBoolean("yt-otherbot"),true);
+				CharSequence result = getVideoSearch(s,!Data.forChannel(channel).getBoolean("yt-otherbot"),true);
 				if (result == null) return;
 				s = Utils.mungeAllNicks(channel,0,result);
 				Shocky.sendChannel(bot,channel,user.getNick()+": "+s);
@@ -220,8 +234,8 @@ public class ModuleYoutube extends Module implements IAcceptURLs {
 				return;
 			}
 			
-			String search = getVideoSearch(params.input,!Data.forChannel(params.channel).getBoolean("yt-otherbot"),true);
-			if (search != null && !search.isEmpty()) {
+			CharSequence search = getVideoSearch(params.input,!Data.forChannel(params.channel).getBoolean("yt-otherbot"),true);
+			if (search != null && search.length() > 0) {
 				search = Utils.mungeAllNicks(params.channel,0,search,params.sender);
 				callback.append(search);
 			} else {
