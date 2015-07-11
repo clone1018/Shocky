@@ -24,9 +24,7 @@ public class ModuleHighFive extends Module implements ILua {
 	public int changeStat(String nick1, String nick2, int change) {
 		nick1 = nick1.toLowerCase();
 		nick2 = nick2.toLowerCase();
-		if (nick1.equals(nick2))
-			return 0;
-		
+
 		if (nick1.compareTo(nick2)>0) {
 			String temp = nick1;
 			nick1 = nick2;
