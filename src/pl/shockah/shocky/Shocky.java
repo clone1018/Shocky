@@ -95,10 +95,10 @@ public class Shocky extends ListenerAdapter {
 		for (PircBotX bot : bots) {
 			bot.quitServer(reason);
 		}
-		WebServer.stop();
 		killMe();
 	}
 	private static void killMe() {
+		WebServer.stop();
 		while (true) {
 			for (PircBotX bot : multiBot.getBots()) if (bot.isConnected()) {
 				try {
@@ -133,7 +133,7 @@ public class Shocky extends ListenerAdapter {
 	}
 	public static void send(PircBotX bot, Command.EType type, Channel channel, User user, String message) {
 		switch (type) {
-			case Action:
+			case Action: message = "\1ACTION" + message + '\1';
 			case Channel: sendChannel(bot,channel,message); break;
 			case Private: sendPrivate(bot,user,message); break;
 			case Notice: sendNotice(bot,user,message); break;
@@ -217,16 +217,19 @@ public class Shocky extends ListenerAdapter {
 		if (Data.isBlacklisted(event.getUser())) return;
 		String message = event.getMessage().trim();
 		if (message.length()<=1) return;
-		if (!Data.forChannel(event.getChannel()).getString("main-cmdchar").contains(message.substring(0, 1))) {
-			URLDispatcher.findURLs(event.getBot(), event.getChannel(), event.getUser(), message);
-			return;
+		String[] args = null;
+		Command cmd = null;
+		CommandCallback callback = null;
+		if (Data.forChannel(event.getChannel()).getString("main-cmdchar").contains(message.substring(0, 1))) {
+			callback = new CommandCallback();
+			callback.targetUser = event.getUser();
+			callback.targetChannel = event.getChannel();
+			args = message.split("\\s+", 2);
+			cmd = Command.getCommand(event.getBot(),event.getUser(),event.getChannel(),Command.EType.Channel,callback,args[0].substring(1));
 		}
-		CommandCallback callback = new CommandCallback();
-		callback.targetUser = event.getUser();
-		callback.targetChannel = event.getChannel();
-		String[] args = message.split("\\s+", 2);
-		Command cmd = Command.getCommand(event.getBot(),event.getUser(),event.getChannel(),Command.EType.Channel,callback,args[0].substring(1));
-		if (cmd != null) {
+		if (cmd == null)
+			URLDispatcher.findURLs(event.getBot(), event.getChannel(), event.getUser(), message);
+		else if (callback != null) {
 			String s = (args.length == 1) ? "" : args[1];
 			Parameters params = new Parameters(event.getBot(),Command.EType.Channel,event.getChannel(),event.getUser(),s);
 			try {
@@ -236,7 +239,7 @@ public class Shocky extends ListenerAdapter {
 				return;
 			}
 		}
-		if (callback.length()>0) {
+		if (callback != null && callback.length()>0) {
 			if (callback.type == EType.Channel) {
 				callback.insert(0,": ");
 				callback.insert(0,event.getUser().getNick());

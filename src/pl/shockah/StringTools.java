@@ -120,10 +120,15 @@ public class StringTools {
     }
     
     public static String formatLines(CharSequence str) {
+    	if (str == null)
+    		return "";
+    	boolean ctcp = str.charAt(0) == '\1' && str.charAt(str.length()-1) == '\1';
+    	if (ctcp)
+    		str = str.subSequence(1, str.length()-1);
     	str = StringTools.trimWhitespace(str);
     	if (str.length() == 0)
     		return "";
-    	StringBuffer sb = new StringBuffer(str.length());
+    	StringBuffer sb = new StringBuffer(str.length()+16);
     	Matcher m = controlCharPattern.matcher(str);
     	while(m.find()) {
     		String newline = m.group(2);
@@ -134,6 +139,8 @@ public class StringTools {
     			m.appendReplacement(sb, ",");
     	}
     	m.appendTail(sb);
+    	if (ctcp)
+    		sb.insert(0, '\1').append('\1');
 		return sb.toString();
     }
     
@@ -141,6 +148,58 @@ public class StringTools {
     	if (str.length() > Data.config.getInt("main-messagelength"))
     		str = str.subSequence(0, Data.config.getInt("main-messagelength"))+"...";
     	return str.toString();
+    }
+    
+    public static String build_translate(CharSequence s) {
+    	StringBuilder sb = new StringBuilder();
+    	for (int i = 0; i < s.length(); ++i)
+    	{
+    		if (sb.length() >= 512)
+    			throw new RuntimeException("sequence is longer than allowed");
+    		char c1 = s.charAt(i);
+    		if (i+2 < s.length() && s.charAt(i+1) == '-') {
+    			i+=2;
+    			char c2 = s.charAt(i);
+    			if (c2 < c1)
+    				throw new RuntimeException("range-endpoints of '"+c1+'-'+c2+"' are in reverse collating sequence order");
+    			if (c1 == c2)
+    			{
+    				sb.append(c1);
+    				continue;
+    			}
+    			if (((int)c2 - (int)c1) >= 512)
+        			throw new RuntimeException("sequence is longer than allowed");
+    			for (char c = c1; c <= c2; ++c)
+    				sb.append(c);
+    		} else {
+    			sb.append(c1);
+    		}
+    	}
+    	return sb.toString();
+    }
+    
+    public static String translate(String search, String replace, CharSequence source) {
+    	if (source == null)
+    		return null;
+    	if (source.length() == 0)
+    		return "";
+    	if (search == null || search.isEmpty())
+    		return source.toString();
+    	StringBuilder sb = new StringBuilder(source.length());
+    	for (int i = 0; i < source.length(); ++i)
+    	{
+    		char c = source.charAt(i);
+    		int index;
+    		if ((index = search.indexOf(c)) == -1)
+    			sb.append(c);
+    		else if (replace == null || replace.isEmpty())
+    			continue;
+    		else if (index >= replace.length())
+    			sb.append(replace.charAt(replace.length()-1));
+    		else
+    			sb.append(replace.charAt(index));
+    	}
+    	return sb.toString();
     }
 	
 	public static String implode(Object[] spl, CharSequence separator) {return implode(spl,0,spl.length-1,separator);}

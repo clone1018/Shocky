@@ -1,13 +1,14 @@
 package org.luaj.vm2.lib;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
 import java.net.URLEncoder;
 import java.util.Iterator;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Varargs;
@@ -59,10 +60,15 @@ public class JSONLib extends VarArgFunction {
 	
 	
 	public static Varargs get(Varargs args) {
+		String url = args.checkjstring(1);
+		String post = args.optjstring(2, null);
 		HTTPQuery q = null;
+		
+		LuaValue[] ret = new LuaValue[3];
+		ret[0] = NIL;
+		ret[1] = MINUSONE;
+		
 		try {
-			String url = args.checkjstring(1);
-			String post = args.optjstring(2, null);
 			Method method = Method.GET;
 			if (post != null) {
 				if (post.contentEquals("HEAD"))
@@ -74,17 +80,22 @@ public class JSONLib extends VarArgFunction {
 			q.connect(true, method == Method.POST);
 			if (method == Method.POST)
 				q.write(post);
-			return varargsOf(new LuaValue[] {
-					valueOf(q.readWhole()),
-					valueOf(q.getConnection().getResponseCode()),
-					valueOf(q.getConnection().getURL().toExternalForm())
-					});
+			ret[0] = valueOf(q.readWhole());
 		} catch (Exception e) {
-			throw new LuaError(e);
+			//throw new LuaError(e);
 		} finally {
-			if (q != null)
+			if (q == null) 
+				ret[2] = valueOf(url);
+			else {
+				HttpURLConnection connection = q.getConnection();
+				try {
+					ret[1] = valueOf(connection.getResponseCode());
+				} catch (IOException e) {}
+				ret[2] = valueOf(connection.getURL().toExternalForm());
 				q.close();
+			}
 		}
+		return varargsOf(ret);
 	}
 
 	public static Varargs json(Varargs args) {

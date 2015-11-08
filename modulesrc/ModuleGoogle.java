@@ -61,7 +61,7 @@ public class ModuleGoogle extends Module implements ILua {
 			JSONObject r = results.getJSONObject(0);
 			String title = StringTools.ircFormatted(r.getString("titleNoFormatting"),true);
 			String url = StringTools.ircFormatted(r.getString("unescapedUrl"),false);
-			String content = StringTools.ircFormatted(r.getString("content"),true);
+			String content = StringTools.ircFormatted(r.getString("content"),false);
 			callback.append(url);
 			callback.append(" -- ");
 			callback.append(title);

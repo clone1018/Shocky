@@ -5,7 +5,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -30,7 +29,7 @@ public class Utils {
 		oddReplace =	"αвcđєfġнίנкlмиoρqяsтυvωxуzαвcđєfġнίנкlмиoρqяsтυvωxуz０１２３４５６７８９";
 	private static final String
 		flipOriginal =	"!().12345679<>?ABCDEFGJKLMPQRTUVWY[]_abcdefghijklmnpqrtuvwy{},'\"┳",
-		flipReplace =	"¡)(˙⇂ᄅƐㄣϛ9Ɫ6><¿∀ℇƆ◖ƎℲפſ丬˥WԀΌᴚ⊥∩ΛMλ][‾ɐqɔpǝɟɓɥıɾʞlɯudbɹʇnʌʍʎ}{',„┻";
+		flipReplace =	"¡)(˙⇂ᄅƐㄣϛ9Ɫ6><¿∀ᗺƆᗡƎℲפᒋ丬˥WԀΌᴚ⊥∩ΛMλ][‾ɐqɔpǝɟɓɥıɾʞlɯudbɹʇnʌʍʎ}{',„┻";
 	
 	public static final List<PasteService> services = new LinkedList<PasteService>();
 	public static final Map<String,HttpContext> urls = new HashMap<String,HttpContext>();
@@ -49,13 +48,9 @@ public class Utils {
 	public static String shortenUrl(String url) {
 		if (WebServer.exists())
 		{
-			InetSocketAddress host = WebServer.address();
-			StringBuilder sb = new StringBuilder("http://");
-			sb.append(host.getHostName());
+			StringBuilder sb = new StringBuilder(WebServer.getURL());
 			if (url.startsWith(sb.toString()))
 				return url;
-			if (host.getPort()!=80)
-				sb.append(':').append(host.getPort());
 			HttpContext context;
 			synchronized (urls) {
 				if (urls.containsKey(url))
@@ -113,11 +108,7 @@ public class Utils {
 			}
 			
 			if (file != null) {
-				InetSocketAddress host = WebServer.address();
-				StringBuilder sb = new StringBuilder("http://");
-				sb.append(host.getHostName());
-				if (host.getPort()!=80)
-					sb.append(':').append(host.getPort());
+				StringBuilder sb = new StringBuilder(WebServer.getURL());
 				HttpContext context = WebServer.addPaste(file);
 				sb.append(context.getPath());
 				return sb.toString();
@@ -137,9 +128,12 @@ public class Utils {
 		if (channel == null)
 			return temp;
 		int total = 0;
+		User bot = channel.getBot().getUserBot();
 		getUsers: for (User user : channel.getUsers()) {
 			for (User dont : dontMunge)
 				if (user.equals(dont)) continue getUsers;
+			if (user.equals(bot))
+				continue;
 			String nick = user.getNick();
 			Pattern pattern = Pattern.compile(String.format("\\b%s\\b", Pattern.quote(nick)),Pattern.CASE_INSENSITIVE);
 			Matcher matcher = pattern.matcher(message);
@@ -201,25 +195,25 @@ public class Utils {
 		return time;
 	}
 	
-	public static long parseInterval(String str) {
-		StringTokenizer strtok = new StringTokenizer(str);
+	public static long parseInterval(CharSequence str) {
 		long result = 0L;
-		try {
-			while (strtok.hasMoreTokens()) {
-				String tok = strtok.nextToken();
-				int cl = tok.length()-1;
-				long num = Long.parseLong(tok.substring(0, cl));
-				switch (tok.charAt(cl)) {
+		int start = 0;
+		for (int i = 0; i < str.length(); ++i) {
+			char c = str.charAt(i);
+			if (Character.isDigit(c))
+				continue;
+			if (i > start) {
+				long num = Long.parseLong(str.subSequence(start, i).toString());
+				switch (c) {
 					case 's':result+=num; break;
-					case 'm':result+=num*(60); break;
-					case 'h':result+=num*(60*60); break;
-					case 'd':result+=num*(24*60*60); break;
-					case 'w':result+=num*(7*24*60*60); break;
+					case 'm':result+=num*(60L); break;
+					case 'h':result+=num*(60L*60L); break;
+					case 'd':result+=num*(24L*60L*60L); break;
+					case 'w':result+=num*(7L*24L*60L*60L); break;
 				}
 			}
-		} catch (NumberFormatException e) {
+			start = i + 1;
 		}
-		System.out.println(result);
 		return result;
 	}
 	
@@ -257,5 +251,43 @@ public class Utils {
 		}
 
 		return sb.toString();
+	}
+	
+	public static String timeAgo(String pt) {
+		if (!pt.startsWith("PT"))
+			return null;
+		int i = 2;
+		int num = 0;
+		long time = 0;
+		while (i < pt.length()) {
+			char c = pt.charAt(i++);
+			if (Character.isDigit(c)) {
+				num *= 10;
+				num += Character.digit(c, 10);
+			} else {
+				switch (c) {
+				case 'D': time += num * (60 * 60 * 24); break;
+				case 'H': time += num * (60 * 60); break;
+				case 'M': time += num * 60; break;
+				case 'S': time += num; break;
+				}
+				num = 0;
+			}
+		}
+		return timeAgo(time);
+	}
+	
+	public static <T> T rndCollection(Collection<T> c, Random rnd) {
+		if (c == null || rnd == null || c.size() == 0)
+			return null;
+		int i = rnd.nextInt(c.size());
+		if (c instanceof RandomAccess && c instanceof List<?>)
+			return ((List<T>)c).get(i);
+		else {
+			for (T val : c)
+				if (i-- == 0)
+					return val;
+			return null;
+		}
 	}
 }

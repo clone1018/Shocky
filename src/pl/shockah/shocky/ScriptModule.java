@@ -10,6 +10,7 @@ import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 
 import pl.shockah.StringTools;
+import pl.shockah.shocky.cmds.AuthorizationException;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Parameters;
@@ -47,7 +48,7 @@ public abstract class ScriptModule extends Module {
 		sb.append(str.substring(x)).append(quote);
 	}
 	
-	public Map<String,Object> getParams(PircBotX bot, Channel channel, User sender, String message) {
+	public Map<String,Object> getParams(PircBotX bot, Channel channel, User sender, String message, Factoid factoid) {
 		User[] users;
 		Map<String,Object> map = new LinkedHashMap<String,Object>();
 		if (channel == null)
@@ -61,6 +62,7 @@ public abstract class ScriptModule extends Module {
 		map.put("host", sender.getHostmask());
 		map.put("login", Whois.getWhoisLogin(sender));
 		map.put("randnick", users[new Random().nextInt(users.length)].getNick());
+		map.put("time", System.currentTimeMillis());
 
 		if (message == null)
 			message = "";
@@ -73,6 +75,8 @@ public abstract class ScriptModule extends Module {
 		map.put("args", message);
 		map.put("arg", args);
 		map.put("ioru", (args.length == 0) ? sender.getNick() : message);
+		if (factoid != null && factoid.registry != null)
+			map.put("map", factoid.registry.getMap());
 		return map;
 	}
 	
@@ -84,7 +88,18 @@ public abstract class ScriptModule extends Module {
 				return;
 			}
 			
-			String output = parse(new Cache(), params.bot, params.channel, params.sender, null, params.input, null);
+			String output;
+			
+			try {
+				output = parse(new Cache(), params.bot, params.channel, params.sender, null, params.input, null);
+			} catch (Throwable e) {
+				while (e.getCause() != null)
+					e = e.getCause();
+				if (e instanceof AuthorizationException && params.sender != null)
+					callback.type = EType.Notice;
+				output = e.getMessage();
+			}
+			
 			if (output != null && !output.isEmpty())
 				callback.append(StringTools.limitLength(StringTools.formatLines(output)));
 		}

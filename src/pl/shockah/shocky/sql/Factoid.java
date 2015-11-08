@@ -10,6 +10,8 @@ import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 
+import pl.shockah.shocky.interfaces.IFactoidRegistry;
+
 public final class Factoid {
 	public static Factoid fromJSONObject(JSONObject j) {
 		try {
@@ -48,6 +50,7 @@ public final class Factoid {
 	public final boolean locked, forgotten;
 	public Map<String,Object> metadata = null;
 	public Token[] tokens = null;
+	public IFactoidRegistry registry = null;
 
 	private Factoid(long id, String name, String channel, String author, String rawtext, long stamp) {
 		this(id, name, channel, author, rawtext, stamp, false, false);

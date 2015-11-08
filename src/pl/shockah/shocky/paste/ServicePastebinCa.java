@@ -1,7 +1,9 @@
 package pl.shockah.shocky.paste;
 
+import java.net.MalformedURLException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+
 import pl.shockah.HTTPQuery;
 
 public class ServicePastebinCa implements PasteService {
@@ -13,7 +15,10 @@ public class ServicePastebinCa implements PasteService {
 	}
 	
 	public String paste(CharSequence data) {
-		HTTPQuery q = HTTPQuery.create("http://pastebin.ca/quiet-paste.php",HTTPQuery.Method.POST);
+		HTTPQuery q;
+		try {
+			q = HTTPQuery.create("http://pastebin.ca/quiet-paste.php",HTTPQuery.Method.POST);
+		} catch (MalformedURLException e1) {return null;}
 		
 		StringBuilder sb = new StringBuilder(data.length()+50);
 		try {

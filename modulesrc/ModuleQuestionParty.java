@@ -1,11 +1,13 @@
 import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringEscapeUtils;
+
 import pl.shockah.HTTPQuery;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.cmds.Command;
@@ -18,7 +20,10 @@ public class ModuleQuestionParty extends Module {
 	public Pattern itemPattern = Pattern.compile("<li>(.+)");
 	
 	public String getQ() {
-		HTTPQuery q = HTTPQuery.create("http://questionparty.com/questions/rand/");
+		HTTPQuery q;
+		try {
+			q = HTTPQuery.create("http://questionparty.com/questions/rand/");
+		} catch (MalformedURLException e1) {return null;}
 		
 		q.connect(true,false);
 		String html = null;

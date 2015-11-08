@@ -30,8 +30,9 @@ import pl.shockah.shocky.lines.LineWithUsers;
 
 public class ModuleRegexReplace extends Module {
 
-	public static final Pattern sedPattern = Pattern.compile("^([sm])/(.*?(?<!\\\\))/(?:(.*?(?<!\\\\))/)?([a-z]*)");
-	public static String[] groupColors = new String[] { Colors.BLUE + ",02",Colors.RED + ",05", Colors.GREEN + ",03", Colors.MAGENTA + ",06",Colors.CYAN + ",10" };
+	public static enum Type {SUB, MATCH, TRANSLATE};
+	public static final Pattern sedPattern = Pattern.compile("^([sm]|tr)/(.*?(?<!\\\\))/(?:(.*?(?<!\\\\))/)?([a-z]*)");
+	public static String[] groupColors = new String[] {"01,14","03,09","10,11","05,04","06,13","07,08","02,12","15,00"};
 
 	@Override
 	public String name() {return "regexreplace";}
@@ -51,7 +52,7 @@ public class ModuleRegexReplace extends Module {
 		if (module == null)
 			return null;
 		int start = 0;
-		List<Regex> list = new LinkedList<Regex>();
+		List<StringProcess> list = new LinkedList<StringProcess>();
 		Matcher m = sedPattern.matcher(s);
 		while(start < s.length()) {
 			while(start < s.length() && Character.isWhitespace(s.charAt(start)))
@@ -60,36 +61,53 @@ public class ModuleRegexReplace extends Module {
 			if (!m.find())
 				break;
 			
+			String stype = m.group(1);
 			String pattern = m.group(2);
 			String replacement = m.group(3);
 			String params = m.group(4);
 			if (pattern.isEmpty())
 				return null;
-			boolean replace = m.group(1).contentEquals("s");
-			if (replace && replacement==null)
+			Type type;
+			if (stype.contentEquals("s"))
+				type = Type.SUB;
+			else if (stype.contentEquals("m"))
+				type = Type.MATCH;
+			else if (stype.contentEquals("tr"))
+				type = Type.TRANSLATE;
+			else continue;
+			if (type != Type.MATCH && replacement==null)
 				return null;
-			if (!replace && channel.getMode().contains("c"))
+			if (type == Type.MATCH && channel.getMode().contains("c"))
 				return null;
 
-			int flags = 0;
-			boolean single = true;
-			
-			for (int i = 0;i < params.length();++i) {
-				switch (params.charAt(i)) {
-				case 'g':single = false;break;
-				case 'd':flags |= Pattern.UNIX_LINES;break;
-				case 'i':flags |= Pattern.CASE_INSENSITIVE;break;
-				case 'm':flags |= Pattern.MULTILINE;break;
-				case 's':flags |= Pattern.DOTALL;break;
-				case 'u':flags |= Pattern.UNICODE_CASE;break;
-				case 'x':flags |= Pattern.COMMENTS;break;
+			if (type == Type.TRANSLATE) {
+				try {
+					list.add(new Translate(StringTools.build_translate(pattern), StringTools.build_translate(replacement)));
+				} catch (RuntimeException e) {
+					return StringTools.deleteWhitespace(e.getMessage());
 				}
 			}
+			else {
+				int flags = 0;
+				boolean single = true;
+			
+				for (int i = 0;i < params.length();++i) {
+					switch (params.charAt(i)) {
+					case 'g':single = false;break;
+					case 'd':flags |= Pattern.UNIX_LINES;break;
+					case 'i':flags |= Pattern.CASE_INSENSITIVE;break;
+					case 'm':flags |= Pattern.MULTILINE;break;
+					case 's':flags |= Pattern.DOTALL;break;
+					case 'u':flags |= Pattern.UNICODE_CASE;break;
+					case 'x':flags |= Pattern.COMMENTS;break;
+					}
+				}
 		
-			try {
-				list.add(new Regex(Pattern.compile(pattern, flags), single, replace ? replacement : null));
-			} catch (PatternSyntaxException e) {
-				return StringTools.deleteWhitespace(e.getMessage());
+				try {
+					list.add(new Regex(Pattern.compile(pattern, flags), single, type, type != Type.MATCH ? replacement : null));
+				} catch (PatternSyntaxException e) {
+					return StringTools.deleteWhitespace(e.getMessage());
+				}
 			}
 			
 			start = m.end()+1;
@@ -113,80 +131,87 @@ public class ModuleRegexReplace extends Module {
 		}
 	}
 	
-	private static class Regex {
-		public final Pattern pattern;
-		public final boolean single;
+	private interface StringProcess {
+		boolean matches(String text);
+		void init(CharSequence input);
+		boolean run(boolean useLine, StringBuffer output);
+	}
+	
+	private static class Translate implements StringProcess {
+		public final String search;
 		public final String replacement;
-		public Regex(Pattern pattern, boolean single, String replacement) {
-			this.pattern = pattern;
-			this.single = single;
+		
+		private CharSequence text;
+		
+		public Translate(String search, String replacement) {
+			this.search = search;
 			this.replacement = replacement;
 		}
-	}
-
-	private static class Run implements Callable<String>, ILinePredicate<LineWithUsers> {
-		private final IRollback module;
-		private final String channel;
-		private final String user;
-		private final String message;
-		private final Iterable<Regex> regex;
 		
-		private Regex current;
-		private Matcher matcher;
-
-		public Run(IRollback module, String channel, String user, String message, Iterable<Regex> regex) {
-			this.module = module;
-			this.channel = channel;
-			this.user = user;
-			this.message = message;
-			this.regex = regex;
-		}
-
 		@Override
-		public boolean accepts(LineWithUsers line) {
-			String text;
-			if (line instanceof LineMessage)
-				text = ((LineMessage) line).text;
-			else if (line instanceof LineAction)
-				text = ((LineAction) line).text;
-			else
-				return false;
-			if (current.replacement == null)
+		public boolean matches(String text) {
+			for (int i = text.length() - 1; i >= 0; --i)
+			{
+				if (search.indexOf(text.charAt(i)) >= 0) {
+					this.text = text;
+					return true;
+				}
+			}
+			this.text = null;
+			return false;
+		}
+		
+		@Override
+		public void init(CharSequence input) {
+			this.text = input;
+		}
+		
+		@Override
+		public boolean run(boolean useLine, StringBuffer output) {
+			this.text = StringTools.translate(search, replacement, text);
+			output.append(text);
+			return false;
+		}
+	}
+	
+	private static class Regex implements StringProcess {
+		public final Pattern pattern;
+		public final boolean single;
+		public final Type type;
+		public final String replacement;
+		
+		private Matcher matcher;
+		
+		public Regex(Pattern pattern, boolean single, Type type, String replacement) {
+			this.pattern = pattern;
+			this.single = single;
+			this.type = type;
+			this.replacement = replacement;
+		}
+		
+		@Override
+		public boolean matches(String text) {
+			if (type == Type.MATCH)
 				text = Colors.removeFormattingAndColors(text);
 			return matcher.reset(text).find();
 		}
-
+		
 		@Override
-		public String call() throws Exception {
-			LineWithUsers line = null;
-			boolean useLine = true;
-			StringBuffer sb = new StringBuffer();
-			Iterator<Regex> iter = regex.iterator();
-			while(iter.hasNext()) {
-				current = iter.next();
-				matcher = current.pattern.matcher(sb);
-				if (useLine) {
-					line = module.getRollbackLine(this, LineWithUsers.class, channel, user, null, message, true, 10, 0);
-					if (line == null)
-						return null;
-					useLine = false;
-				} else {
-					sb = new StringBuffer();
-					if (!matcher.find())
-						return null;
-				}
-				do {
-					matcher.appendReplacement(sb, (current.replacement != null) ? current.replacement : coloredGroups());
-					if (current.single)
-						break;
-				} while (matcher.find());
-				matcher.appendTail(sb);
-			}
-			if (line instanceof LineAction) {
-				sb.insert(0, "\001ACTION ");
-				sb.append('\001');
-			}
-			return StringTools.limitLength(sb);
+		public void init(CharSequence input) {
+			matcher = pattern.matcher(input);
+		}
+		
+		@Override
+		public boolean run(boolean useLine, StringBuffer output) {
+			if (!useLine && !matcher.find())
+				return true;
+			do {
+				matcher.appendReplacement(output, (type == Type.SUB) ? replacement : coloredGroups());
+				if (single)
+					break;
+			} while (matcher.find());
+			matcher.appendTail(output);
+			return false;
 		}
 		
 		private String coloredGroups() {
@@ -211,13 +236,72 @@ public class ModuleRegexReplace extends Module {
 					sb.append(Colors.NORMAL);
 				} else if (!color.isEmpty() && last != color.peek()) {
 					last = color.peek();
-					sb.append(groupColors[last%groupColors.length]);
+					sb.append('\3').append(groupColors[last%groupColors.length]);
 				}
 
 				if (o < capture.length())
 					sb.append(capture.charAt(o));
 			}
 			return sb.toString();
+		}
+	}
+
+	private static class Run implements Callable<String>, ILinePredicate<LineWithUsers> {
+		private final IRollback module;
+		private final String channel;
+		private final String user;
+		private final String message;
+		private final Iterable<StringProcess> regex;
+		
+		private StringProcess current;
+
+		public Run(IRollback module, String channel, String user, String message, Iterable<StringProcess> regex) {
+			this.module = module;
+			this.channel = channel;
+			this.user = user;
+			this.message = message;
+			this.regex = regex;
+		}
+
+		@Override
+		public boolean accepts(LineWithUsers line) {
+			String text;
+			if (line instanceof LineMessage)
+				text = ((LineMessage) line).text;
+			else if (line instanceof LineAction)
+				text = ((LineAction) line).text;
+			else
+				return false;
+			return current.matches(text);
+		}
+
+		@Override
+		public String call() throws Exception {
+			LineWithUsers line = null;
+			boolean useLine = true;
+			StringBuffer sb = new StringBuffer();
+			Iterator<StringProcess> iter = regex.iterator();
+			while(iter.hasNext()) {
+				current = iter.next();
+				current.init(sb);
+				if (useLine) {
+					line = module.getRollbackLine(this, LineWithUsers.class, channel, user, null, message, true, 10, 0);
+					if (line == null)
+						return null;
+					if (current.run(true, sb))
+						return null;
+					useLine = false;
+				} else {
+					sb = new StringBuffer();
+					if (current.run(false, sb))
+						return null;
+				}
+			}
+			if (line instanceof LineAction) {
+				sb.insert(0, "\001ACTION ");
+				sb.append('\001');
+			}
+			return StringTools.limitLength(sb);
 		}
 	}
 }

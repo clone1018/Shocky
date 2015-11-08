@@ -1,4 +1,11 @@
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -6,11 +13,13 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.regex.*;
 
+import org.apache.commons.lang3.SystemUtils;
 import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
+import org.luaj.vm2.Varargs;
 import org.luaj.vm2.lib.LuaState;
-import org.luaj.vm2.lib.OneArgFunction;
+import org.luaj.vm2.lib.VarArgFunction;
 import org.luaj.vm2.lib.ZeroArgFunction;
 import org.pircbotx.*;
 import org.pircbotx.hooks.events.MessageEvent;
@@ -27,6 +36,7 @@ import pl.shockah.shocky.cmds.Command.EType;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.interfaces.IFactoid;
 import pl.shockah.shocky.interfaces.IFactoidData;
+import pl.shockah.shocky.interfaces.IFactoidRegistry;
 import pl.shockah.shocky.interfaces.ILua;
 import pl.shockah.shocky.interfaces.IRollback;
 import pl.shockah.shocky.lines.LineMessage;
@@ -39,7 +49,7 @@ import pl.shockah.shocky.sql.SQL;
 
 public class ModuleFactoid extends Module implements IFactoid, ILua {
 
-	protected Command cmdR, cmdF, cmdU, cmdFCMD, cmdManage;
+	protected Command cmdR, cmdF, cmdU, cmdFCMD, cmdManage, cmdFMap;
 	private final Map<CmdFactoid, String> fcmds = new HashMap<CmdFactoid, String>();
 	private final HashMap<String, Function> functions = new HashMap<String, Function>();
 	private static final Pattern functionPattern = Pattern.compile("(?<!\\\\)\\$([a-zA-Z_][a-zA-Z0-9_]*)\\(.*?\\)");
@@ -50,6 +60,9 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 	private static final String getChannelFactoidHash = "getChannelFactoid";
 	private static final String getFactoidForgetHash = "getFactoidForget";
 	private static final String getChannelFactoidForgetHash = "getChannelFactoidForget";
+	
+	public Map<String,FactoidRegistry> factoidRegistry = new HashMap<String,FactoidRegistry>();
+	public static final File registryDirectory = new File("data", "factoid").getAbsoluteFile();
 
 	public String name() {
 		return "factoid";
@@ -70,12 +83,12 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 		Data.config.setNotExists("python-url", "http://eval.appspot.com/eval");
 		Data.protectedKeys.add("php-url");
 		Data.protectedKeys.add("python-url");
-
+		
 		SQL.raw("CREATE TABLE IF NOT EXISTS "
 				+ SQL.getTable("factoid")
 				+ " (id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,channel varchar(50) DEFAULT NULL,factoid text NOT NULL,author text NOT NULL,rawtext text NOT NULL,stamp int(10) unsigned NOT NULL,locked int(1) unsigned NOT NULL DEFAULT '0',forgotten int(1) unsigned NOT NULL DEFAULT '0',PRIMARY KEY (id),INDEX channel (channel)) ENGINE=InnoDB DEFAULT CHARSET=utf8;");
 
-		Command.addCommands(this, cmdR = new CmdRemember(), cmdF = new CmdForget(), cmdU = new CmdUnforget(), cmdFCMD = new CmdFactoidCmd(), cmdManage = new CmdManage());
+		Command.addCommands(this, cmdR = new CmdRemember(), cmdF = new CmdForget(), cmdU = new CmdUnforget(), cmdFCMD = new CmdFactoidCmd(), cmdManage = new CmdManage(), cmdFMap = new CommandRegistry());
 
 		Command.addCommand(this, "r", cmdR);
 		Command.addCommand(this, "f", cmdF);
@@ -93,6 +106,22 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 			Command.addCommand(this, cmd.command(), cmd);
 			for (int o = 1; o < names.length; o++) {
 				Command.addCommand(this, names[o], cmd);
+			}
+		}
+		
+		registryDirectory.mkdir();
+		for (File f : registryDirectory.listFiles()) {
+			String name = f.getName();
+			int i = name.lastIndexOf('.');
+			if (!name.substring(i).contentEquals(".txt"))
+				continue;
+			name = name.substring(0, i);
+			FactoidRegistry reg = new FactoidRegistry();
+			try {
+				if (reg.load(f))
+					factoidRegistry.put(name, reg);
+			} catch (IOException e) {
+				e.printStackTrace();
 			}
 		}
 
@@ -290,13 +319,41 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 			}
 		};
 		functions.put(func.name(), func);
+		
+		func = new FunctionMultiArg() {
+			public String name() {
+				return "tr";
+			}
+
+			public String result(String[] arg) {
+				if (arg.length != 3)
+					throw new RuntimeException("[Wrong number of arguments to function " + name() + ", expected 3, got " + arg.length + "]");
+				String search = StringTools.build_translate(arg[0]);
+				String replace = StringTools.build_translate(arg[1]);
+				String source = arg[2];
+				return StringTools.translate(search, replace, source);
+			}
+		};
+		
+		functions.put(func.name(), func);
+		
+		func = new Function() {
+			public String name() {
+				return "url";
+			}
+
+			public String result(String arg) throws UnsupportedEncodingException {
+				return URLEncoder.encode(arg, "UTF8");
+			}
+		};
+		functions.put(func.name(), func);
 	}
 
 	public void onDisable() {
 		functions.clear();
 		Command.removeCommands(fcmds.keySet().toArray(new Command[0]));
 		fcmds.clear();
-		Command.removeCommands(cmdR, cmdF, cmdU, cmdFCMD, cmdManage);
+		Command.removeCommands(cmdR, cmdF, cmdU, cmdFCMD, cmdManage, cmdFMap);
 	}
 
 	public void onDataSave(File dir) {
@@ -306,6 +363,12 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 			lines.add(fcmd.getKey().factoid);
 		}
 		FileLine.write(new File(dir, "factoidCmd.cfg"), lines);
+		
+		registryDirectory.mkdir();
+		for (Entry<String,FactoidRegistry> entry : factoidRegistry.entrySet()) {
+			File f = new File(registryDirectory,entry.getKey()+".txt");
+			entry.getValue().save(f);
+		}
 	}
 
 	public void onMessage(MessageEvent<ShockyBot> event) {
@@ -454,13 +517,17 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 		try {
 			for (i = 0; i < chain.length; i++)
 				message = runFactoid(cache, bot, channel, sender, chain[i] + ' ' + message);
-		} catch (Exception e) {
+		} catch (Throwable e) {
+			while (e.getCause() != null)
+				e = e.getCause();
+			if (e instanceof AuthorizationException && sender != null)
+				msgtype = EType.Notice;
 			message = e.getMessage();
 		}
 
 		if (message != null && message.length() > 0) {
 			sb = new StringBuilder(StringTools.formatLines(message));
-			if (targetName == null && ping != null)
+			if (msgtype == EType.Channel && targetName == null && ping != null)
 				sb.insert(0, ": ").insert(0, ping);
 			message = StringTools.limitLength(sb);
 
@@ -490,7 +557,8 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 				if (obj instanceof Factoid)
 					f = (Factoid) obj;
 			}
-			f = getFactoid(cache, channel, factoid, false);
+			if (f == null)
+				f = getFactoid(cache, channel, factoid, false);
 			if (f == null)
 				break;
 			if (cache != null && !cache.containsKey(factoidHash, key))
@@ -511,15 +579,33 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 	}
 
 	public String parse(Cache cache, PircBotX bot, Channel channel, User sender, String message, Factoid f, String raw) throws Exception {
-		if (raw.startsWith("<noreply>"))
+		if (raw == null || raw.length() == 0 || raw.startsWith("<noreply>"))
 			return "";
 		String type = null;
 		int closingIndex = -1;
-		if (raw.startsWith("<")) {
-			closingIndex = raw.indexOf(">");
+		if (raw.charAt(0) == '<') {
+			closingIndex = raw.indexOf('>');
 			if (closingIndex != -1)
 				type = raw.substring(1, closingIndex);
 		}
+		
+		if (type != null) {
+			int commaIndex = type.indexOf(',');
+			if (commaIndex >= 0) {
+				String args = type.substring(commaIndex + 1);
+				type = type.substring(0, commaIndex);
+				int equalIndex = args.indexOf('=');
+				if (equalIndex >= 0) {
+					String key = args.substring(0, equalIndex);
+					String value = args.substring(equalIndex + 1);
+
+					if (key.contentEquals("map")
+							&& factoidRegistry.containsKey(value))
+						f.registry = factoidRegistry.get(value);
+				}
+			}
+		}
+		
 		ScriptModule sModule = null;
 		if (type != null)
 			sModule = Module.getScriptingModule(type);
@@ -539,25 +625,13 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 				EType etype = (channel == null) ? EType.Notice : EType.Channel;
 				raw = (args.length == 1) ? "" : processTokens(bot, channel, sender, message, tokenize(f, args[1]));
 				Parameters params = new Parameters(bot, etype, channel, sender, raw);
-				try {
-					cmd.doCommand(params, callback);
-					if (callback.type == EType.Channel)
-						return callback.toString();
-				} catch (AuthorizationException e) {
-				}
+				cmd.doCommand(params, callback);
+				if (callback.type == EType.Channel)
+					return callback.toString();
 			}
 			return "";
 		} else {
-			boolean action = type != null && type.contentEquals("action");
-			if (action)
-				raw = raw.substring(closingIndex + 1);
-			String output = processTokens(bot, channel, sender, message, tokenize(f, raw));
-			if (action) {
-				StringBuilder sb = new StringBuilder(output);
-				sb.insert(0, "\001ACTION ").append('\001');
-				output = sb.toString();
-			}
-			return output;
+			return processTokens(bot, channel, sender, message, tokenize(f, raw));
 		}
 	}
 
@@ -575,6 +649,8 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 			if (seq != null)
 				sb.append(seq);
 		}
+		if (sb.indexOf("<action>")==0)
+			sb.delete(0, 8).insert(0, "\001ACTION ").append('\001');
 		return sb.toString();
 	}
 
@@ -584,7 +660,7 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 		if (tokens >= 2 && tokens <= 3 && channel != null) {
 			String factoid = strtok.nextToken();
 			String arrow = strtok.nextToken();
-			if (charExists("^☝↑↟↥⇑⇡⇧⇪", arrow)) {
+			if (charExists("^", arrow)) {
 				IRollback module = (IRollback) Module.getModule("rollback");
 				try {
 					if (module != null) {
@@ -753,6 +829,11 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 				int expected = 1;
 				for (int i = start; i < input.length(); i++) {
 					char c = input.charAt(i);
+					if (c == '\\')
+					{
+						++i;
+						continue;
+					}
 					if (c == '(')
 						expected++;
 					else if (c == ')')
@@ -1357,7 +1438,7 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 		}
 	}
 
-	private static class FactoidFunction extends OneArgFunction {
+	private static class FactoidFunction extends VarArgFunction {
 		public final String factoid;
 		private LuaValue factoidHistory = null;
 
@@ -1413,28 +1494,34 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 		public ScriptModule getScriptModule(Factoid f) {
 			String raw = f.rawtext;
 			String type = null;
-			if (raw.startsWith("<")) {
-				int closingIndex = raw.indexOf(">");
+			if (!raw.isEmpty() && raw.charAt(0) == '<') {
+				int closingIndex = raw.indexOf('>');
 				if (closingIndex != -1)
 					type = raw.substring(1, closingIndex);
 			}
-			if (type != null)
+			if (type != null) {
+				int commaIndex = type.indexOf(',');
+				if (commaIndex >= 0)
+					type = type.substring(0, commaIndex);
 				return Module.getScriptingModule(type);
+			}
 			return null;
 		}
 
 		@Override
-		public LuaValue call(LuaValue arg) {
+		public Varargs invoke(Varargs args) {
 			LuaState state = getState();
 			if (state == null)
 				return NIL;
 			IFactoid module = state.getFactoidModule();
 			if (module == null)
 				return NIL;
-			String args = arg.optjstring(null);
 			StringBuilder message = new StringBuilder(factoid);
-			if (args != null)
-				message.append(' ').append(args);
+			for (int i = 1; i <= args.narg(); ++i) {
+				String arg = args.optjstring(i, null);
+				if (arg != null && !arg.isEmpty())
+					message.append(' ').append(arg);
+			}
 			try {
 				String s = module.runFactoid(state.cache, state.bot, state.chan, state.user, message.toString());
 				return s != null ? valueOf(s) : NIL;
@@ -1448,33 +1535,29 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 			String name = key.checkjstring();
 			if (name == null)
 				return NIL;
-			boolean src = name.equals("src");
-			boolean author = false;
-			boolean time = false;
-			boolean data = false;
-			boolean history = false;
-			if (!src)
-				author = name.equals("author");
-			if (!src && !author)
-				time = name.equals("time");
-			if (!src && !author && !time)
-				data = name.equals("data");
-			if (!src && !author && !time && !data)
-				history = name.equals("history");
-			if (src || author || time || data || history) {
+			int op = 0;
+			if (name.equals("src"))
+				op = 1;
+			else if (name.equals("author"))
+				op = 2;
+			else if (name.equals("time"))
+				op = 3;
+			else if (name.equals("data"))
+				op = 4;
+			else if (name.equals("history"))
+				op = 5;
+			if (op > 0) {
 				LuaState state = getState();
 				if (state == null)
 					return NIL;
 				Factoid f = getFactoid(state);
 				if (f == null)
 					return NIL;
-				if (src)
-					return valueOf(f.rawtext);
-				if (author)
-					return valueOf(f.author);
-				if (time)
-					return valueOf(f.stamp);
-				if (data) {
+				switch (op) {
+				case 1: return valueOf(f.rawtext);
+				case 2: return valueOf(f.author);
+				case 3: return valueOf(f.stamp);
+				case 4: 
 					ScriptModule sModule = getScriptModule(f);
 					if (sModule != null && sModule instanceof IFactoidData) {
 						IFactoidData dModule = (IFactoidData) sModule;
@@ -1483,8 +1566,7 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 							return valueOf(s);
 					}
 					return NIL;
-				}
-				if (history) {
+				case 5:
 					if (factoidHistory == null)
 						factoidHistory = FactoidHistory
 								.getHistory(state, factoid);
@@ -1584,5 +1666,198 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 			e.printStackTrace();
 		}
 		env.set("factoid", new FactoidData());
+	}
+	
+	public static class FactoidRegistry implements IFactoidRegistry, Comparator<String> {
+		private Map<String, String> data = null;
+		
+		public FactoidRegistry() {
+		}
+		
+		@Override
+		public int compare(String o1, String o2) {
+			return o1.compareToIgnoreCase(o2);
+		}
+		
+		public void put(String key, String value) {
+			if (data == null)
+				data = new TreeMap<String, String>(this);
+			data.put(key, value);
+		}
+		
+		public void remove(String key) {
+			if (data != null)
+				data.remove(key);
+		}
+		
+		public int size() {
+			if (data == null)
+				return 0;
+			return data.size();
+		}
+		
+		public boolean save(File file) {
+			File temp = null;
+			try {
+				try {
+					temp = File.createTempFile("shocky", ".tmp");
+				} catch (IOException e1) {
+					throw new RuntimeException(e1);
+				}
+				Pattern pattern = Pattern.compile("[\\\t\\\n\\\\]");
+				OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(temp),Helper.utf8);
+				if (data != null) {
+					for (Entry<String, String> entry : data.entrySet()) {
+						Matcher matcher = pattern.matcher(entry.getKey());
+						StringBuffer sb = new StringBuffer();
+						while (matcher.find())
+							matcher.appendReplacement(sb, "\\\\$0");
+						matcher.appendTail(sb);
+						writer.append(sb).append("\t");
+						matcher = pattern.matcher(entry.getValue());
+						sb = new StringBuffer();
+						while (matcher.find())
+							matcher.appendReplacement(sb, "\\\\$0");
+						matcher.appendTail(sb);
+						writer.append(sb).append(SystemUtils.LINE_SEPARATOR);
+					}
+				}
+				writer.close();
+				
+				if (file.exists())
+					file.delete();
+				temp.renameTo(file);
+				return true;
+			} catch (Exception e) {
+				e.printStackTrace();
+				return false;
+			} finally {
+				if (temp != null && temp.exists())
+					temp.delete();
+			}
+		}
+		
+		public boolean load(File file) throws IOException {
+			InputStreamReader reader = null;
+			try {
+				reader = new InputStreamReader(new FileInputStream(file),Helper.utf8);
+				Map<String, String> tmp = new TreeMap<String, String>(this);
+				StringBuilder sb = new StringBuilder();
+				int c;
+				String key = null;
+				while ((c = reader.read()) >= 0) {
+					switch (c) {
+					case '\t':
+						if (key == null) {
+							key = sb.toString();
+							sb = new StringBuilder();
+						}
+						break;
+					case '\n':
+						if (key != null) {
+							tmp.put(key, sb.toString());
+							sb = new StringBuilder();
+							key = null;
+						}
+						break;
+					case '\r':
+						break;
+					case '\\':
+						if ((c = reader.read()) >= 0)
+							sb.append((char)c);
+						break;
+					default:
+						sb.append((char)c);
+						break;
+					}
+				}
+				data = tmp;
+				return true;
+			} finally {
+				if (reader != null)
+					reader.close();
+			}
+		}
+		
+		public Map<String, String> getMap() {
+			return Collections.unmodifiableMap(data);
+		}
+	}
+	
+	public class CommandRegistry extends Command {
+
+		@Override
+		public String command() {return "fmap";}
+
+		@Override
+		public String help(Parameters params) {
+			return "fmap set name key value\nfmap remove name key\n[r:controller] fmap new name\n[r:controller] fmap delete name";
+		}
+
+		@Override
+		public void doCommand(Parameters params, CommandCallback callback) {
+			callback.type = EType.Notice;
+			
+			if (params.hasMoreParams()) {
+				String cmd = params.nextParam();
+				boolean setKey = cmd.contentEquals("set");
+				boolean removeKey = cmd.contentEquals("remove");
+				boolean newName = cmd.contentEquals("new");
+				boolean deleteName = cmd.contentEquals("delete");
+				if (params.hasMoreParams()
+						&& (setKey || removeKey || newName || deleteName)) {
+					String name = params.nextParam();
+					if (newName || deleteName) {
+						params.checkController();
+						if (newName) {
+							if (!factoidRegistry.containsKey(name))
+								factoidRegistry.put(name, new FactoidRegistry());
+							else {
+								callback.append("A map by that name already exists.");
+								return;
+							}
+						} else if (deleteName) {
+							if (factoidRegistry.containsKey(name)) {
+								new File(registryDirectory,name+".txt").delete();
+								factoidRegistry.remove(name);
+							}
+							else {
+								callback.append("A map by that name does not exist.");
+								return;
+							}
+						}
+						callback.append("Done.");
+						return;
+					} else if (params.hasMoreParams() && (setKey || removeKey)) {
+						if (!factoidRegistry.containsKey(name))
+							callback.append("A map by that name does not exist.");
+						else {
+							String key = params.nextParam();
+							if (setKey) {
+								if (!params.hasMoreParams()) {
+									callback.append(help(params));
+									return;
+								}
+								String value = params.getParams(0);
+								if (factoidRegistry.get(name).size() > 500) {
+									callback.append("A maximum of 500 items is allowed.");
+									return;
+								}
+								if (key.length() >= 32 || value.length() >= 256) {
+									callback.append("Key length must be less than 32 characters and value length must be less than 256 characters.");
+									return;
+								}
+								factoidRegistry.get(name).put(key, value);
+							} else if (removeKey)
+								factoidRegistry.get(name).remove(key);
+							callback.append("Done.");
+						}
+						return;
+					}
+				}
+			}
+			
+			callback.append(help(params));
+		}
 	}
 }

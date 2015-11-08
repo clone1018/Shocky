@@ -33,28 +33,33 @@ public abstract class ModuleLoader {
 		protected Module load(ModuleSource<?> source) {
 			Module module = null;
 			try {
-				Class<?> c = null;
+				String moduleName = null;
+				URLClassLoader loader = null;
 				if (source.source instanceof File) {
 					File file = (File)source.source;
-					String moduleName = file.getName(); 
+					moduleName = file.getName(); 
 					if (moduleName.endsWith(".class")) moduleName = new StringBuilder(moduleName).reverse().delete(0,6).reverse().toString(); else return null;
 					if (moduleName.contains("$")) return null;
 					
-					c = new URLClassLoader(new URL[]{file.getParentFile().toURI().toURL()}).loadClass(moduleName);
+					loader = new URLClassLoader(new URL[]{file.getParentFile().toURI().toURL()});
 				} else if (source.source instanceof URL) {
 					URL url = (URL)source.source;
-					String moduleName = url.toString();
+					moduleName = url.toString();
 					StringBuilder sb = new StringBuilder(moduleName).reverse();
 					moduleName = new StringBuilder(sb.substring(0,sb.indexOf("/"))).reverse().toString();
 					String modulePath = new StringBuilder(url.toString()).delete(0,url.toString().length()-moduleName.length()).toString();
 					if (moduleName.endsWith(".class")) moduleName = new StringBuilder(moduleName).reverse().delete(0,6).reverse().toString(); else return null;
 					if (moduleName.contains("$")) return null;
 					
-					c = new URLClassLoader(new URL[]{new URL(modulePath)}).loadClass(moduleName);
+					loader = new URLClassLoader(new URL[]{new URL(modulePath)});
 				}
 				
-				if (c != null && Module.class.isAssignableFrom(c))
-					module = (Module)c.newInstance();
+				if (loader != null && moduleName != null) {
+					Class<?> c = loader.loadClass(moduleName);
+					if (c != null && Module.class.isAssignableFrom(c))
+						module = (Module)c.newInstance();
+					//loader.close();
+				}
 			} catch (Exception e) {e.printStackTrace();}
 			return module;
 		}

@@ -1,6 +1,7 @@
 package pl.shockah.shocky.paste;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -10,7 +11,10 @@ import pl.shockah.HTTPQuery;
 public class ServicePasteKdeOrg implements PasteService {
 	
 	public String paste(CharSequence data) {
-		HTTPQuery q = HTTPQuery.create("http://pastebin.kde.org/api/json/create",HTTPQuery.Method.POST);
+		HTTPQuery q;
+		try {
+			q = HTTPQuery.create("http://pastebin.kde.org/api/json/create",HTTPQuery.Method.POST);
+		} catch (MalformedURLException e1) {return null;}
 		
 		StringBuilder sb = new StringBuilder(data.length()+32);
 		sb.append("language=text&private=true&data=").append(data);

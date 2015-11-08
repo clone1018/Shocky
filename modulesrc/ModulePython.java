@@ -1,9 +1,13 @@
 import java.io.File;
+import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.Map.Entry;
+
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
+
 import pl.shockah.HTTPQuery;
 import pl.shockah.shocky.Cache;
 import pl.shockah.shocky.Data;
@@ -30,11 +34,16 @@ public class ModulePython extends ScriptModule {
 		if (code == null) return "";
 		
 		StringBuilder sb = new StringBuilder();
-		buildInit(sb,getParams(bot, channel, sender, message).entrySet());
+		buildInit(sb,getParams(bot, channel, sender, message, factoid).entrySet());
 		
 		sb.append(code);
 		
-		HTTPQuery q = HTTPQuery.create(Data.forChannel(channel).getString("python-url")+'?'+HTTPQuery.parseArgs("statement",sb.toString()));
+		HTTPQuery q;
+		try {
+			q = HTTPQuery.create(Data.forChannel(channel).getString("python-url")+'?'+HTTPQuery.parseArgs("statement",sb.toString()));
+		} catch (MalformedURLException e) {
+			return "python-url is invalid";
+		}
 		q.connect(true,false);
 		
 		sb = new StringBuilder();
@@ -71,8 +80,30 @@ public class ModulePython extends ScriptModule {
 				appendObject(sb, a[i]);
 			}
 			sb.append(']');
+		}  else if (obj instanceof Map) {
+			Map<?,?> a = (Map<?,?>)obj;
+			sb.append("{");
+			int i = 0;
+			for (Entry<?, ?> entry : a.entrySet()) {
+				if (i++ > 0)
+					sb.append(',');
+				appendObject(sb, entry.getKey());
+				sb.append(':');
+				appendObject(sb, entry.getValue());
+			}
+			sb.append('}');
 		} else if (obj instanceof String) {
-			appendEscape(sb,(String)obj);
+			String s = (String)obj;
+			boolean unicode = false;
+			for (int i = s.length()-1; i >= 0; --i) {
+				if (s.charAt(i) >= 128) {
+					unicode = true;
+					break;
+				}
+			}
+			if (unicode)
+				sb.append('u');
+			appendEscape(sb,s);
 		} else if (obj instanceof Number) {
 			sb.append(obj.toString());
 		}

@@ -1,6 +1,7 @@
 import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
@@ -66,7 +67,10 @@ public class ModuleTwitter extends Module implements IAcceptURLs {
 		String secret = Data.config.getString("twitter-consumersecret");
 		if (key.isEmpty() || secret.isEmpty())
 			return null;
-		HTTPQuery q = HTTPQuery.create("https://api.twitter.com/oauth2/token",HTTPQuery.Method.POST);
+		HTTPQuery q;
+		try {
+			q = HTTPQuery.create("https://api.twitter.com/oauth2/token",HTTPQuery.Method.POST);
+		} catch (MalformedURLException e1) {return null;}
 		try {
 			String credentials = String.format("%s:%s", URLEncoder.encode(key, "UTF-8"),URLEncoder.encode(secret, "UTF-8"));
 			q.connect(true,true);

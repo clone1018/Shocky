@@ -67,12 +67,10 @@ public class SandboxSecurityManager extends SecurityManager
 		
 		disallowed.add(new RuntimePermission("setSecurityManager"));
 		disallowed.add(new RuntimePermission("shutdownHooks"));
-		disallowed.add(new RuntimePermission("accessClassInPackage.sun.reflect"));
-		disallowed.add(new RuntimePermission("accessClassInPackage.sun.misc"));
+		disallowed.add(new RuntimePermission("nashorn.JavaReflection"));
 		
 		disallowed.add(SecurityConstants.GET_CLASSLOADER_PERMISSION);
 		disallowed.add(SecurityConstants.STOP_THREAD_PERMISSION);
-		disallowed.add(SecurityConstants.DO_AS_PRIVILEGED_PERMISSION);
 		
 		disallowed.setReadOnly();
 	}
@@ -82,7 +80,7 @@ public class SandboxSecurityManager extends SecurityManager
 	{
 		if (!(getThreadGroup() instanceof SandboxThreadGroup))
 			return;
-		
+
 		boolean disallow = disallowed.implies(perm);
 		boolean allow = allowed.implies(perm);
 		
@@ -138,10 +136,8 @@ public class SandboxSecurityManager extends SecurityManager
 	@Override
 	public void checkPackageAccess(String pkg) {
 		if (getThreadGroup() instanceof SandboxThreadGroup) {
-			if (
-					pkg.startsWith("java.util.concurrent")||
-					pkg.startsWith("java.lang.reflect")
-				)
+			System.out.printf("checkPackageAccess: %s\n", pkg);
+			if (pkg.startsWith("java.util.concurrent"))
 				throw new SecurityException(pkg+" package is not allowed.");
 		}
 		super.checkPackageAccess(pkg);

@@ -24,7 +24,8 @@ public class ModuleSeen extends Module implements ISeen {
 		Command.removeCommands(cmd);
 	}
 	public void onDataSave(File dir) {
-		config.save(new File(dir,"seen.cfg"));
+		if (config != null)
+			config.save(new File(dir,"seen.cfg"));
 	}
 	
 	public void onMessage(MessageEvent<ShockyBot> event) {

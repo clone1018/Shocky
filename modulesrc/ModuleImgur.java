@@ -94,7 +94,7 @@ public class ModuleImgur extends Module implements IAcceptURLs {
 				sb.append(count).append(" images\n");
 			sb.append(nf.format(j.getLong("views"))).append(" views\n");
 			sb.append(df.format(d)).append('\n');
-			if (j.has("ups") && j.has("downs"))
+			if (!j.isNull("ups") && !j.isNull("downs"))
 				sb.append(nf.format(j.getLong("ups"))).append("U ").
 				append(nf.format(j.getLong("downs"))).append("D\n");
 			if (j.has("reddit_comments")) {

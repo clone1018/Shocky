@@ -1,7 +1,6 @@
 import java.io.File;
 
 import org.pircbotx.Channel;
-import org.pircbotx.PircBotX;
 
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.Shocky;
@@ -20,34 +19,37 @@ public class ModuleSay extends Module {
 		Command.removeCommands(cmdSay,cmdAction);
 	}
 	
-	public void doCommand(Command cmd, Parameters params, CommandCallback callback) {
-		
+	private boolean send(Command.EType type, Parameters params, CommandCallback callback) {
+		if (!params.hasMoreParams())
+			return false;
+		String chan = params.nextParam();
+		String msg = params.input;
+		Channel channel = params.channel;
+		if (!chan.startsWith("#")) {
+			if (params.type != Command.EType.Channel)
+			{
+				callback.append(msg);
+				return true;
+			}
+		}
+		else {
+			channel = Shocky.getChannel(chan);
+			msg = params.getParams(0);
+		}
+		if (channel == null || !channel.isOp(params.sender))
+			return false;
+		Shocky.send(channel.getBot(), type, channel, null, msg);
+		return true;
 	}
 	
 	public class CmdSay extends Command {
 		public String command() {return "say";}
 		public String help(Parameters params) {
-			return "[r:controller] say [channel] {phrase} - makes the bot say {phrase}";
+			return "[r:op] say [channel] {phrase} - makes the bot say {phrase}";
 		}
 		
 		public void doCommand(Parameters params, CommandCallback callback) {
-			params.checkController();
-			
-			if (params.hasMoreParams()) {
-				String c = params.nextParam();
-				if (!c.startsWith("#"))
-					callback.append(params.input);
-				else {
-					Channel channel = Shocky.getChannel(c);
-					if (channel == null)
-						callback.append(params.input);
-					else {
-						PircBotX bot = channel.getBot();
-						Shocky.sendChannel(bot, channel, params.getParams(0));
-					}
-				}
-			}
-			else {
+			if (!send(EType.Channel, params, callback)) {
 				callback.type = EType.Notice;
 				callback.append(help(params));
 			}
@@ -56,28 +58,11 @@ public class ModuleSay extends Module {
 	public class CmdAction extends Command {
 		public String command() {return "action";}
 		public String help(Parameters params) {
-			return "[r:controller] action [channel] {action} - /me {action}";
+			return "[r:op] action [channel] {action} - /me {action}";
 		}
 		
 		public void doCommand(Parameters params, CommandCallback callback) {
-			if (params.type != EType.Channel) return;
-			params.checkController();
-			
-			if (params.hasMoreParams()) {
-				String c = params.nextParam();
-				if (!c.startsWith("#"))
-					Shocky.sendAction(params.bot, params.channel, params.input);
-				else {
-					Channel chan = Shocky.getChannel(c);
-					if (chan == null)
-						Shocky.sendAction(params.bot, params.channel, params.input);
-					else {
-						PircBotX bot = chan.getBot();
-						Shocky.sendAction(bot, chan, params.getParams(0));
-					}
-				}
-			}
-			else {
+			if (!send(EType.Action, params, callback)) {
 				callback.type = EType.Notice;
 				callback.append(help(params));
 			}

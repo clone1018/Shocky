@@ -1,5 +1,6 @@
 import java.io.*;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.concurrent.*;
 
 import org.luaj.vm2.*;
@@ -9,8 +10,6 @@ import org.luaj.vm2.lib.jse.*;
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
-
-import com.sun.script.javascript.RhinoScriptEngine;
 
 import pl.shockah.Delegate;
 import pl.shockah.Helper;
@@ -41,7 +40,7 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 	private final ThreadFactory sandboxFactory = new SandboxThreadFactory(sandboxGroup);
 
 	LuaTable env = null;
-	LuaTable envMeta = null;
+	LuaValue envMeta = null;
 
 	@Override
 	public String name() {
@@ -70,6 +69,8 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 
 	@Override
 	public void onDataSave(File dir) {
+		if (env == null)
+			return;
 		File file = new File(dir, "luastate.bin");
 		LuaValue value = env.get("irc");
 		if (!value.istable())
@@ -104,7 +105,6 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 		BaseLib.FINDER = this;
 		env = new LuaTable();
 		env.load(new JseBaseLib());
-		//env.load(new PCall());
 		env.load(new PackageLib());
 		env.load(new TableLib());
 		env.load(new StringLib());
@@ -118,6 +118,7 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 		env.rawset("print", LuaValue.NIL);
 		env.rawset("pcall", LuaValue.NIL);
 		env.rawset("xpcall", LuaValue.NIL);
+		env.rawset("sleep", new SleepFunction());
 
 		env.rawset("cmd", new CmdData());
 		
@@ -125,6 +126,13 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			if (module instanceof ILua)
 				((ILua)module).setupLua(env);
 		}
+		
+		LuaBoolean.s_metatable = LuaImmutableTable.immutableOf(LuaBoolean.s_metatable);
+		LuaFunction.s_metatable = LuaImmutableTable.immutableOf(LuaFunction.s_metatable);
+		LuaNil.s_metatable = LuaImmutableTable.immutableOf(LuaNil.s_metatable);
+		LuaNumber.s_metatable = LuaImmutableTable.immutableOf(LuaNumber.s_metatable);
+		LuaString.s_metatable = LuaImmutableTable.immutableOf(LuaString.s_metatable);
+		LuaThread.s_metatable = LuaImmutableTable.immutableOf(LuaThread.s_metatable);
 
 		DataInputStream is = null;
 		LuaValue table = new LuaTable();
@@ -132,7 +140,6 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			Class.forName("org.luaj.vm2.lib.LuaState");
 			Class.forName("ModuleLua$CmdFunction");
 			Class.forName("pl.shockah.Delegate$Instance");
-			new RhinoScriptEngine().eval("0");
 			if (!scripts.exists())
 				scripts.mkdirs();
 			if (binary.exists()) {
@@ -156,6 +163,7 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 
 		envMeta = new LuaTable();
 		envMeta.rawset(LuaValue.INDEX, env);
+		envMeta = LuaImmutableTable.immutableOf(envMeta);
 	}
 
 	@Override
@@ -298,12 +306,19 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			for (int i = 0; i < a.length; ++i)
 				t.rawset(i+1, valueOf(a[i]));
 			return t;
+		} else if (obj instanceof Map) {
+			LuaTable t = new LuaTable();
+			for (Entry<?,?> entry : ((Map<?,?>)obj).entrySet())
+				t.rawset(valueOf(entry.getKey()), valueOf(entry.getValue()));
+			return t;
 		} else if (obj instanceof String) {
 			return LuaValue.valueOf((String)obj);
 		} else if (obj instanceof Double) {
 			return LuaValue.valueOf((Double)obj);
 		} else if (obj instanceof Integer) {
 			return LuaValue.valueOf((Integer)obj);
+		} else if (obj instanceof Long) {
+			return LuaValue.valueOf((Long)obj);
 		} else if (obj instanceof Boolean) {
 			return LuaValue.valueOf((Boolean)obj);
 		} else if (obj instanceof LuaValue) {
@@ -323,7 +338,7 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 
 		LuaTable subTable = new LuaTable();
 		subTable.setmetatable(envMeta);
-		Map<String,Object> params = getParams(bot, channel, sender, message);
+		Map<String,Object> params = getParams(bot, channel, sender, message, factoid);
 		params.put("channel", ChannelData.getChannelData(state, channel));
 		for (Map.Entry<String,Object> pair : params.entrySet())
 			subTable.rawset(pair.getKey(),valueOf(pair.getValue()));
@@ -427,9 +442,9 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 				 * sb.append(v); sb.append('('); sb.append(v.typename());
 				 * sb.append(')'); sb.append('\n'); } return sb.toString();
 				 */
-			} catch (LuaError ex) {
+			/*} catch (LuaError ex) {
 				ex.printStackTrace(System.out);
-				return ex.getMessage();
+				return ex.getMessage();*/
 			} finally {
 				LuaState.clearState();
 				printer.dispose();
@@ -532,14 +547,14 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			String args = arg.optjstring("");
 			Parameters params = new Parameters(state.bot, EType.Channel, state.chan, state.user, args);
 			CommandCallback callback = new CommandCallback();
-			try {
+			//try {
 				cmd.doCommand(params, callback);
 				if (callback.type != EType.Channel)
 					return NIL;
 				return valueOf(callback.output.toString());
-			} catch (Exception e) {
+			/*} catch (Exception e) {
 				throw new LuaError(e);
-			}
+			}*/
 		}
 	}
 
@@ -626,6 +641,17 @@ public class ModuleLua extends ScriptModule implements ResourceFinder {
 			Boolean ret = method.invoke(user);
 			if (ret != null)
 				return valueOf(ret.booleanValue());
+			return NIL;
+		}
+	}
+	
+	private static class SleepFunction extends OneArgFunction {
+		@Override
+		public LuaValue call(LuaValue arg) {
+			try {
+				Thread.sleep(arg.checkint()*1000);
+			} catch (InterruptedException e) {
+			}
 			return NIL;
 		}
 	}

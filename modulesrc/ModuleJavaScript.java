@@ -1,6 +1,7 @@
 import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Random;
@@ -17,13 +18,16 @@ import javax.script.CompiledScript;
 import javax.script.ScriptContext;
 import javax.script.ScriptException;
 
+import jdk.nashorn.api.scripting.NashornScriptEngine;
+import jdk.nashorn.api.scripting.NashornScriptEngineFactory;
+import jdk.nashorn.api.scripting.ScriptObjectMirror;
+import jdk.nashorn.internal.objects.Global;
+import jdk.nashorn.internal.runtime.Context;
+
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 
-import com.sun.script.javascript.RhinoScriptEngine;
-
-import pl.shockah.Reflection;
 import pl.shockah.shocky.Cache;
 import pl.shockah.shocky.ScriptModule;
 import pl.shockah.shocky.Utils;
@@ -32,42 +36,47 @@ import pl.shockah.shocky.cmds.Parameters;
 import pl.shockah.shocky.sql.Factoid;
 import pl.shockah.shocky.threads.SandboxThreadFactory;
 import pl.shockah.shocky.threads.SandboxThreadGroup;
-import sun.org.mozilla.javascript.internal.ClassShutter;
-import sun.org.mozilla.javascript.internal.Context;
-import sun.org.mozilla.javascript.internal.ContextFactory;
-import sun.org.mozilla.javascript.internal.NativeJavaObject;
-import sun.org.mozilla.javascript.internal.Scriptable;
-import sun.org.mozilla.javascript.internal.WrapFactory;
 
 public class ModuleJavaScript extends ScriptModule {
 	protected Command cmd;
 	private final SandboxThreadGroup sandboxGroup = new SandboxThreadGroup("javascript");
 	private final ThreadFactory sandboxFactory = new SandboxThreadFactory(sandboxGroup);
+	private NashornScriptEngineFactory engineFactory;
 
 	public String name() {return "javascript";}
 	public String identifier() {return "js";}
 	public void onEnable(File dir) {
 		Command.addCommands(this, cmd = new CmdJavascript());
 		Command.addCommand(this, "js",cmd);
-		Reflection.setPrivateValue(ContextFactory.class, "hasCustomGlobal", null, false);
-		ContextFactory.initGlobal(new SandboxContextFactory());
 		try {
+			engineFactory = new NashornScriptEngineFactory();
 			Class.forName("ModuleJavaScript$Sandbox");
-			Class.forName("ModuleJavaScript$SandboxNativeJavaObject");
-			eval(new RhinoScriptEngine(), "0");
 		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
 		}
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd);
+		engineFactory = null;
 	}
 
 	public synchronized String parse(Cache cache, final PircBotX bot, Channel channel, User sender, Factoid factoid, String code, String message) {
-		if (code == null) return "";
+		if (engineFactory == null || code == null) return "";
 		
-		RhinoScriptEngine engine = new RhinoScriptEngine();
-		Map<String,Object> params = getParams(bot, channel, sender, message);
+		NashornScriptEngine engine = (NashornScriptEngine)engineFactory.getScriptEngine(new String[] {"-strict", "--no-java", "--no-syntax-extensions"});
+		
+		Global global = null;
+		try {
+			Field f = ScriptObjectMirror.class.getDeclaredField("sobj");
+			f.setAccessible(true);
+			global = (Global) f.get(engine.getBindings(100));
+		} catch (IllegalArgumentException | IllegalAccessException | NoSuchFieldException | SecurityException e) {
+			e.printStackTrace();
+		}
+		
+		Context.setGlobal(global);
+		
+		Map<String,Object> params = getParams(bot, channel, sender, message, factoid);
 		
 		Set<User> users;
 		if (channel == null)
@@ -82,7 +91,7 @@ public class ModuleJavaScript extends ScriptModule {
 		return eval(engine, code);
 	}
 	
-	public String eval(RhinoScriptEngine engine, String code) {
+	public String eval(NashornScriptEngine engine, String code) {
 		CompiledScript cs;
 		try {
 			cs = engine.compile(code);
@@ -138,10 +147,6 @@ public class ModuleJavaScript extends ScriptModule {
 			return userArray[rnd.nextInt(userArray.length)].getNick();
 		}
 		
-		public String format(String format, Object... args) {
-			return String.format(format, args);
-		}
-		
 		public String munge(String in) {
 			return Utils.mungeNick(in);
 		}
@@ -190,43 +195,6 @@ public class ModuleJavaScript extends ScriptModule {
 					return ex.getMessage();
 				}
 				return null;
-		}
-	}
-	
-	public static class SandboxContextFactory extends ContextFactory implements ClassShutter {
-		protected Context makeContext() {
-			Context c = super.makeContext();
-			c.setClassShutter(this);
-			c.setWrapFactory(new SandboxWrapFactory());
-			return c;
-		}
-
-		@Override
-		public boolean visibleToScripts(String s) {
-			return s.startsWith("adapter");
-		}
-	}
-	
-	public static class SandboxNativeJavaObject extends NativeJavaObject {
-		private static final long serialVersionUID = -3702781847096599291L;
-
-		public SandboxNativeJavaObject(Scriptable scope, Object javaObject, @SuppressWarnings("rawtypes") Class staticType) {
-			super(scope, javaObject, staticType);
-		}
-	 
-		@Override
-		public Object get(String name, Scriptable start) {
-			if (name.equals("getClass") || name.equals("class"))
-				return NOT_FOUND;
-
-			return super.get(name, start);
-		}
-	}
-	
-	public static class SandboxWrapFactory extends WrapFactory {
-		@Override
-		public Scriptable wrapAsJavaObject(Context cx, Scriptable scope, Object javaObject, @SuppressWarnings("rawtypes") Class staticType) {
-			return new SandboxNativeJavaObject(scope, javaObject, staticType);
 		}
 	}
 }

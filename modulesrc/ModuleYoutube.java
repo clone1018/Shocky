@@ -1,20 +1,23 @@
 import java.io.File;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.StringTokenizer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.pircbotx.Channel;
-import org.pircbotx.Colors;
 import org.pircbotx.PircBotX;
 import org.pircbotx.ShockyBot;
 import org.pircbotx.User;
 import org.pircbotx.hooks.events.ActionEvent;
 import org.pircbotx.hooks.events.MessageEvent;
+
 import pl.shockah.HTTPQuery;
 import pl.shockah.StringTools;
 import pl.shockah.shocky.Data;
@@ -30,66 +33,81 @@ public class ModuleYoutube extends Module implements IAcceptURLs {
 	protected Command cmd;
 	private ArrayList<Pattern> patternsAction = new ArrayList<Pattern>(), patternsMessage = new ArrayList<Pattern>();
 	
-	public static CharSequence getVideoInfo(String vID) {
+	public static CharSequence getVideoInfo(User user, String vID) {
 		HTTPQuery q = null;
-		
+		String key = Data.config.getString("youtube-key");
+		if (key.isEmpty())
+			return null;
 		try {
-			q = HTTPQuery.create("http://gdata.youtube.com/feeds/api/videos/"+URLEncoder.encode(vID,"UTF8")+"?v=2&alt=jsonc");
+			StringBuilder sb = new StringBuilder("https://www.googleapis.com/youtube/v3/videos?part=snippet%2Cstatistics%2CcontentDetails&key=");
+			sb.append(URLEncoder.encode(key,"UTF8")).append("&id=").append(URLEncoder.encode(vID,"UTF8")).append("&quotaUser=").append(URLEncoder.encode(user.getHostmask(),"UTF8"));
+			sb.append("&fields=items(snippet(channelTitle%2Ctitle)%2CcontentDetails%2Fduration%2Cstatistics(likeCount%2CdislikeCount%2CviewCount))");
+			q = HTTPQuery.create(sb.toString());
 			q.connect(true,false);
 			
-			JSONObject jItem = new JSONObject(q.readWhole()).getJSONObject("data");
+			JSONObject jItem = new JSONObject(q.readWhole());
 			q.close();
 			
-			String vUploader = jItem.getString("uploader");
-			String vTitle = StringTools.unicodeParse(jItem.getString("title"));
-			int vDuration = jItem.getInt("duration");
-			double vRating = jItem.has("rating") ? jItem.getDouble("rating") : -1;
-			int vViewCount = jItem.getInt("viewCount");
+			if (jItem.has("error"))
+				return "Error: "+jItem.getJSONObject("error").getString("message");
 			
-			StringBuilder sb = new StringBuilder();
+			JSONArray items = jItem.optJSONArray("items");
+			if (items == null || items.length() == 0)
+				return null;
+			JSONObject item = items.getJSONObject(0);
+			JSONObject snippet = item.getJSONObject("snippet");
+			JSONObject statistics = item.getJSONObject("statistics");
+			JSONObject contentDetails = item.getJSONObject("contentDetails");
+			
+			String vUploader = StringTools.unicodeParse(snippet.getString("channelTitle"));
+			String vTitle = StringTools.unicodeParse(snippet.getString("title"));
+			String vDuration = Utils.timeAgo(contentDetails.getString("duration"));
+			double likes = statistics.getInt("likeCount");
+			double dislikes = statistics.getInt("dislikeCount");
+			long views = statistics.getLong("viewCount");
+			
+			sb = new StringBuilder();
 			sb.append(vTitle);
-			sb.append(" | length ").append(Utils.timeAgo(vDuration));
-			if (vRating != -1)
-				sb.append(" | rated ").append(String.format("%.2f",vRating).replace(',','.')).append("/5.00");
-			sb.append(" | ").append(vViewCount).append(" view");
-			if (vViewCount != 1)
+			sb.append(" | length ").append(vDuration);
+			if (likes > 0)
+				sb.append(" | rated ").append(String.format("%.0f%%", likes * 100D / (likes + dislikes)));
+			sb.append(" | ").append(NumberFormat.getNumberInstance().format(views)).append(" view");
+			if (views != 1)
 				sb.append('s');
 			sb.append(" | by ").append(vUploader);
 			return sb.toString();
 		} catch (Exception e) {e.printStackTrace();}
 		return null;
 	}
-	public static CharSequence getVideoSearch(String query, boolean data, boolean url) {
+	public static CharSequence getVideoSearch(User user, String query, boolean data, boolean url) {
 		HTTPQuery q = null;
-		
+		String key = Data.config.getString("youtube-key");
+		if (key.isEmpty())
+			return null;
 		try {
-			q = HTTPQuery.create("http://gdata.youtube.com/feeds/api/videos?max-results=1&v=2&alt=jsonc&q="+URLEncoder.encode(query,"UTF8"));
+			StringBuilder sb = new StringBuilder("https://www.googleapis.com/youtube/v3/search?safeSearch=none&part=snippet&type=video&maxResults=1&fields=items%2Fid%2FvideoId&key=");
+			sb.append(URLEncoder.encode(key,"UTF8")).append("&q=").append(URLEncoder.encode(query,"UTF8")).append("&quotaUser=").append(URLEncoder.encode(user.getHostmask(),"UTF8"));
+			q = HTTPQuery.create(sb.toString());
 			q.connect(true,false);
 			
-			JSONObject jItem = new JSONObject(q.readWhole()).getJSONObject("data");
+			JSONObject jItem = new JSONObject(q.readWhole());
 			q.close();
 			
-			if (jItem.getInt("totalItems")==0)
+			if (jItem.has("error"))
+				return "Error: "+jItem.getJSONObject("error").getString("message");
+			
+			JSONArray items = jItem.optJSONArray("items");
+			if (items == null || items.length() == 0)
 				return null;
-			jItem = jItem.getJSONArray("items").getJSONObject(0);
 			
-			String vID = jItem.getString("id");
-			String vUploader = jItem.getString("uploader");
-			String vTitle = jItem.getString("title");
-			int vDuration = jItem.getInt("duration");
-			double vRating = jItem.has("rating") ? jItem.getDouble("rating") : -1;
-			int vViewCount = jItem.getInt("viewCount");
-			
-			StringBuilder sb = new StringBuilder();
+			sb = new StringBuilder();
+			JSONObject item = items.getJSONObject(0);
+			String vID = item.getJSONObject("id").getString("videoId");
 			if (data) {
-				sb.append(Colors.BOLD).append(vTitle).append(Colors.NORMAL);
-				sb.append(" | length ").append(Colors.BOLD).append(Utils.timeAgo(vDuration)).append(Colors.NORMAL);
-				if (vRating != -1)
-					sb.append(" | rated ").append(Colors.BOLD).append(String.format("%.2f",vRating).replace(',','.')).append("/5.00").append(Colors.NORMAL);
-				sb.append(" | ").append(Colors.BOLD).append(vViewCount).append(Colors.NORMAL).append(" view");
-				if (vViewCount != 1)
-					sb.append('s');
-				sb.append(" | by ").append(Colors.BOLD).append(vUploader).append(Colors.NORMAL);
+				CharSequence info = getVideoInfo(user, vID);
+				if (info == null)
+					return null;
+				sb.append(info);
 				if (url)
 					sb.append(" | ");
 			}
@@ -105,6 +123,8 @@ public class ModuleYoutube extends Module implements IAcceptURLs {
 	public boolean isListener() {return true;}
 	public void onEnable(File dir) {
 		Data.config.setNotExists("yt-otherbot",false);
+		Data.config.setNotExists("youtube-key","");
+		Data.protectedKeys.add("youtube-key");
 		
 		Command.addCommands(this, cmd = new CmdYoutube());
 		Command.addCommand(this, "yt", cmd);
@@ -165,7 +185,7 @@ public class ModuleYoutube extends Module implements IAcceptURLs {
 		
 			if (id == null)
 				continue;
-			CharSequence result = getVideoInfo(id);
+			CharSequence result = getVideoInfo(sender, id);
 			if (result == null)
 				continue;
 			if (urls.size() > 1)
@@ -209,7 +229,7 @@ public class ModuleYoutube extends Module implements IAcceptURLs {
 			if (m.find()) {
 				String s = m.group(1);
 				if (s.startsWith("http://") || s.startsWith("www.//") || s.startsWith("youtu.be/") || s.startsWith("youtube/")) return;
-				CharSequence result = getVideoSearch(s,!Data.forChannel(channel).getBoolean("yt-otherbot"),true);
+				CharSequence result = getVideoSearch(user,s,!Data.forChannel(channel).getBoolean("yt-otherbot"),true);
 				if (result == null) return;
 				s = Utils.mungeAllNicks(channel,0,result);
 				Shocky.sendChannel(bot,channel,user.getNick()+": "+s);
@@ -234,7 +254,7 @@ public class ModuleYoutube extends Module implements IAcceptURLs {
 				return;
 			}
 			
-			CharSequence search = getVideoSearch(params.input,!Data.forChannel(params.channel).getBoolean("yt-otherbot"),true);
+			CharSequence search = getVideoSearch(params.sender,params.input,!Data.forChannel(params.channel).getBoolean("yt-otherbot"),true);
 			if (search != null && search.length() > 0) {
 				search = Utils.mungeAllNicks(params.channel,0,search,params.sender);
 				callback.append(search);

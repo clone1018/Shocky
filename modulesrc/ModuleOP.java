@@ -6,7 +6,9 @@ import java.util.List;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.pircbotx.User;
+
 import pl.shockah.Config;
+import pl.shockah.StringTools;
 import pl.shockah.shocky.Data;
 import pl.shockah.shocky.Module;
 import pl.shockah.shocky.cmds.Command;
@@ -120,7 +122,7 @@ public class ModuleOP extends Module implements Comparator<Pair<String,String>> 
 			} else {
 				String kick = params.nextParam();
 				if (params.tokenCount == 1) {
-					params.bot.kick(params.channel,params.bot.getUser(kick),kick);
+					params.bot.kick(params.channel,params.bot.getUser(kick),StringTools.deleteWhitespace(kick));
 				} else if (params.tokenCount >= 2) {
 					String message = params.getParams(0);
 					Config cfg = Data.forChannel(params.channel);
@@ -137,11 +139,11 @@ public class ModuleOP extends Module implements Comparator<Pair<String,String>> 
 							} catch (Exception e) {
 								e.printStackTrace();
 							}
-							params.bot.kick(params.channel,params.bot.getUser(kick),factoid == null || factoid.isEmpty() ? kick : factoid);
+							params.bot.kick(params.channel,params.bot.getUser(kick),StringTools.deleteWhitespace(factoid == null || factoid.isEmpty() ? kick : factoid));
 							return;
 						}
 					}
-					params.bot.kick(params.channel,params.bot.getUser(kick),message);
+					params.bot.kick(params.channel,params.bot.getUser(kick),StringTools.deleteWhitespace(message));
 				}
 			}
 		}
@@ -179,9 +181,9 @@ public class ModuleOP extends Module implements Comparator<Pair<String,String>> 
 				callback.append(help(params));
 				return;
 			}
-			setModes(params,prepSingleMode(params,"+b",true));
-			params.resetParams();
 			cmdKick.doCommand(params, callback);
+			params.resetParams();
+			setModes(params,prepSingleMode(params,"+b",true));
 		}
 	}
 	public class CmdQuiet extends Command {

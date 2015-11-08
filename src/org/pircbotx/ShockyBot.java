@@ -86,4 +86,34 @@ public class ShockyBot extends PircBotX {
 			}
 		}
 	}
+	
+	private static final String[] restrictedCmds = new String[] {
+		"FLAGS", "INVITE", "OP", "RECOVER", "REGISTER", "SET", "UNBAN",
+		"AKICK", "BAN", "CLEAR", "COUNT", "DEOP", "DEVOICE",
+		"DF", "DROP", "GETKEY", "HELP", "INFO", "KICK", "KICKBAN",
+		"NAMEGEN", "QUIET", "ROLL", "STATUS", "TAXONOMY",
+		"TEMPLATE", "TOPIC", "TOPICAPPEND", "TOPICPREPEND",
+		"UNQUIET", "VOICE", "WHY", "WOD",
+		"ACT", "ASSIGN", "BOTLIST", "SAY", "UNASSIGN"
+	};
+	
+	private static boolean isRestricted(String message) {
+		if (message == null || message.isEmpty())
+			return true;
+		if (message.charAt(0) != '!')
+			return false;
+		for (int i = 0; i < restrictedCmds.length; ++i) {
+			String s = restrictedCmds[i];
+			int endIndex = 1+s.length();
+			if (message.length() >= endIndex && message.substring(1, endIndex).equalsIgnoreCase(s))
+				return true;
+		}
+		return false;
+	}
+
+	@Override
+	public void sendMessage(String target, String message) {
+		if (!isRestricted(message))
+			super.sendMessage(target, message);
+	}
 }

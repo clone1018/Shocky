@@ -4,7 +4,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.net.MalformedURLException;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -13,6 +15,7 @@ import org.json.JSONObject;
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
+
 import pl.shockah.HTTPQuery;
 import pl.shockah.Helper;
 import pl.shockah.shocky.Cache;
@@ -68,7 +71,7 @@ public class ModulePHP extends ScriptModule implements IFactoidData {
 		if (code == null) return "";
 		
 		StringBuilder sb = new StringBuilder();
-		buildInit(sb,getParams(bot, channel, sender, message).entrySet());
+		buildInit(sb,getParams(bot, channel, sender, message, factoid).entrySet());
 		String data = getData(factoid);
 		if (data != null) {
 			sb.append("$_STATE=json_decode(");
@@ -78,7 +81,12 @@ public class ModulePHP extends ScriptModule implements IFactoidData {
 		
 		sb.append(code);
 		
-		HTTPQuery q = HTTPQuery.create(Data.forChannel(channel).getString("php-url"),HTTPQuery.Method.POST);
+		HTTPQuery q;
+		try {
+			q = HTTPQuery.create(Data.forChannel(channel).getString("php-url"),HTTPQuery.Method.POST);
+		} catch (MalformedURLException e1) {
+			return "php-url is invalid";
+		}
 		q.connect(true,true);
 		q.write(HTTPQuery.parseArgs("code",sb.toString()));
 		
@@ -124,6 +132,17 @@ public class ModulePHP extends ScriptModule implements IFactoidData {
 				if (i > 0)
 					sb.append(',');
 				appendObject(sb, a[i]);
+			}
+			sb.append(')');
+		} else if (obj instanceof Map) {
+			sb.append("array(");
+			int i = 0;
+			for (Entry<?,?> entry : ((Map<?,?>)obj).entrySet()) {
+				if (i++ > 0)
+					sb.append(',');
+				appendObject(sb, entry.getKey());
+				sb.append("=>");
+				appendObject(sb, entry.getValue());
 			}
 			sb.append(')');
 		} else if (obj instanceof String) {

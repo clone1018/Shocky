@@ -5,6 +5,7 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -16,6 +17,7 @@ import java.util.regex.Pattern;
 
 import pl.shockah.StringTools;
 import pl.shockah.shocky.Module;
+import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.CommandCallback;
 import pl.shockah.shocky.cmds.Parameters;
@@ -79,7 +81,7 @@ public class ModuleDFWords extends Module {
 		try {
 			FileChannel fc = stream.getChannel();
 			MappedByteBuffer bb = fc.map(FileChannel.MapMode.READ_ONLY, 0, fc.size());
-			content = Charset.defaultCharset().decode(bb).toString();
+			content = Charset.forName("cp437").decode(bb).toString();
 		} finally {
 			stream.close();
 		}
@@ -251,7 +253,7 @@ public class ModuleDFWords extends Module {
 			this.name = name;
 		}
 
-		public Part[] getParts(short flags) {
+		public Set<Part> getParts(short flags) {
 			HashSet<Part> set = new HashSet<Part>();
 			for (Part p : all) {
 				if ((p.getFlags() & flags) != 0)
@@ -259,14 +261,11 @@ public class ModuleDFWords extends Module {
 			}
 			if (set.isEmpty())
 				return null;
-			return set.toArray(new Part[0]);
+			return set;
 		}
 
 		public Part getPart(Random rnd, short flags) {
-			Part[] parts = getParts(flags);
-			if (parts == null)
-				return null;
-			return parts[rnd.nextInt(parts.length)];
+			return Utils.rndCollection(getParts(flags), rnd);
 		}
 
 		public String getString(Random rnd, short flags, Map<Word,String> tranmap) {
@@ -279,33 +278,20 @@ public class ModuleDFWords extends Module {
 		}
 	}
 
-	public Word getFromSymbol(Random rnd, String name) {
-		if (!symbols.containsKey(name))
+	public Word get(Random rnd, short flags, String symbol) {
+		if (symbol != null && !symbols.containsKey(symbol))
 			return null;
-		List<Word> list = symbols.get(name);
-		return list.get(rnd.nextInt(list.size()));
-	}
-
-	public Word getFromSymbol(Random rnd, String name, short flags) {
-		if (!symbols.containsKey(name))
-			return null;
-		List<Word> list = new ArrayList<Word>();
-		for (Word w : symbols.get(name)) {
-			Part[] parts = w.getParts(flags);
-			if (parts != null && parts.length > 0)
-				list.add(w);
-		}
-		if (list.isEmpty())
-			return null;
-		return list.get(rnd.nextInt(list.size()));
-	}
-
-	public Word get(Random rnd, short flags) {
-		List<Word> list = new ArrayList<Word>();
-		for (Word w : words.values()) {
-			Part[] parts = w.getParts(flags);
-			if (parts != null && parts.length > 0)
-				list.add(w);
+		Collection<Word> iter = symbol != null ? symbols.get(symbol) : words.values();
+		List<Word> list;
+		if (flags == 0)
+			list = new ArrayList<Word>(iter);
+		else {
+			list = new ArrayList<Word>();
+			for (Word w : iter) {
+				Set<Part> parts = w.getParts(flags);
+				if (parts != null && !parts.isEmpty())
+					list.add(w);
+			}
 		}
 		if (list.isEmpty())
 			return null;
@@ -365,18 +351,11 @@ public class ModuleDFWords extends Module {
 						break;
 					case 'n':
 						flags |= NOUN;
-						Word w = null;
 						String symbol = null;
 						if (parts.length==2)
 							symbol = parts[1];
-						if (symbol != null)
-							w = getFromSymbol(rnd, symbol, flags);
-						else
-							w = get(rnd, flags);
-						if (w != null)
-							m.appendReplacement(sb,w.getString(rnd, flags,tranmap));
-						else
-							m.appendReplacement(sb,"");
+						Word w = get(rnd, flags, symbol);
+						m.appendReplacement(sb,w != null ? w.getString(rnd, flags,tranmap) : "");
 						matched = true;
 						break;
 					case 'c':
@@ -384,8 +363,6 @@ public class ModuleDFWords extends Module {
 						short flags1 = (short) ((flags | FRONT) & ~PLUR);
 						short flags2 = (short) (flags | REAR);
 						
-						Word w1 = null;
-						Word w2 = null;
 						String symbol1 = null;
 						String symbol2 = null;
 						if (parts.length==2) {
@@ -394,14 +371,8 @@ public class ModuleDFWords extends Module {
 							symbol1 = parts[1];
 							symbol2 = parts[2];
 						} 
-						if (symbol1 != null)
-							w1 = getFromSymbol(rnd, symbol1, flags1);
-						else
-							w1 = get(rnd, flags1);
-						if (symbol2 != null)
-							w2 = getFromSymbol(rnd, symbol2, flags2);
-						else
-							w2 = get(rnd, flags2);
+						Word w1 = get(rnd, flags1, symbol1);
+						Word w2 = get(rnd, flags2, symbol2);
 						if (w1 != null && w2 != null)
 							m.appendReplacement(sb,w1.getString(rnd, flags1,tranmap)+ '-'+ w2.getString(rnd,flags2,tranmap));
 						else
@@ -413,10 +384,7 @@ public class ModuleDFWords extends Module {
 						symbol = null;
 						if (parts.length==2)
 							symbol = parts[1];
-						if (symbol != null)
-							w = getFromSymbol(rnd, symbol, flags);
-						else
-							w = get(rnd, flags);
+						w = get(rnd, flags, symbol);
 						if (w != null) {
 							if (tranmap != null && tranmap.containsKey(w)) {
 								m.appendReplacement(sb, tranmap.get(w));
@@ -441,10 +409,7 @@ public class ModuleDFWords extends Module {
 						symbol = null;
 						if (parts.length==2)
 							symbol = parts[1];
-						if (symbol != null)
-							w = getFromSymbol(rnd, symbol, flags);
-						else
-							w = get(rnd, flags);
+						w = get(rnd, flags, symbol);
 						if (w != null)
 							m.appendReplacement(sb,w.getString(rnd, flags,tranmap));
 						else
@@ -483,18 +448,12 @@ public class ModuleDFWords extends Module {
 		public static final short THE_NOUN_PLUR = THE | NOUN | PLUR;
 		public static final short OF_NOUN_SING = OF | NOUN | SING;
 		public static final short OF_NOUN_PLUR = OF | NOUN | PLUR;
-		public static final short THE_COMPOUND_NOUN_SING = THE | COMPOUND
-				| NOUN | SING;
-		public static final short THE_COMPOUND_NOUN_PLUR = THE | COMPOUND
-				| NOUN | PLUR;
-		public static final short FRONT_COMPOUND_NOUN_SING = FRONT | COMPOUND
-				| NOUN | SING;
-		public static final short FRONT_COMPOUND_NOUN_PLUR = FRONT | COMPOUND
-				| NOUN | PLUR;
-		public static final short REAR_COMPOUND_NOUN_SING = REAR | COMPOUND
-				| NOUN | SING;
-		public static final short REAR_COMPOUND_NOUN_PLUR = REAR | COMPOUND
-				| NOUN | PLUR;
+		public static final short THE_COMPOUND_NOUN_SING = THE | COMPOUND | NOUN | SING;
+		public static final short THE_COMPOUND_NOUN_PLUR = THE | COMPOUND | NOUN | PLUR;
+		public static final short FRONT_COMPOUND_NOUN_SING = FRONT | COMPOUND | NOUN | SING;
+		public static final short FRONT_COMPOUND_NOUN_PLUR = FRONT | COMPOUND | NOUN | PLUR;
+		public static final short REAR_COMPOUND_NOUN_SING = REAR | COMPOUND | NOUN | SING;
+		public static final short REAR_COMPOUND_NOUN_PLUR = REAR | COMPOUND | NOUN | PLUR;
 
 		public final String singular;
 		public final String plural;
@@ -573,8 +532,7 @@ public class ModuleDFWords extends Module {
 	}
 
 	public static class Prefix implements Part {
-		public static final short FRONT_COMPOUND_PREFIX = FRONT | COMPOUND
-				| PREFIX;
+		public static final short FRONT_COMPOUND_PREFIX = FRONT | COMPOUND | PREFIX;
 		public static final short THE_COMPOUND_PREFIX = THE | COMPOUND | PREFIX;
 
 		public final String word;

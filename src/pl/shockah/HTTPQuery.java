@@ -21,18 +21,13 @@ public class HTTPQuery {
 	protected HttpURLConnection c;
 	protected Charset charset = Helper.utf8;
 	
-	public static HTTPQuery create(String addr) {
+	public static HTTPQuery create(String addr) throws MalformedURLException {
 		return create(addr, Method.GET);
 	}
 	
-	public static HTTPQuery create(String addr, Method method) {
-		try {
-			URL url = new URL(addr);
-			return new HTTPQuery(url,method);
-		} catch (MalformedURLException e) {
-			e.printStackTrace();
-			return null;
-		}
+	public static HTTPQuery create(String addr, Method method) throws MalformedURLException {
+		URL url = new URL(addr);
+		return new HTTPQuery(url,method);
 	}
 	
 	public HTTPQuery(URL url) {

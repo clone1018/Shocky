@@ -171,16 +171,21 @@ public class ModuleRSS extends Module {
 		@Override
 		public void run() {
 			HTTPQuery q = new HTTPQuery(url);
-			q.connect(true,false);
-			q.setUserAgentFirefox();
 			
 			Document xBase;
 			try {
+				q.connect(true,false);
+				q.setUserAgentFirefox();
+				
 				DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 				DocumentBuilder builder = factory.newDocumentBuilder();
 				xBase = builder.parse(q.getConnection().getInputStream());
 			} catch (Exception e1) {
 				e1.printStackTrace();
+				this.cancel();
+				synchronized (feeds) {
+					feeds.remove(this);
+				}
 				return;
 			} finally {
 				q.close();
@@ -412,11 +417,15 @@ public class ModuleRSS extends Module {
 	public void newEntries(Feed feed, Iterable<FeedEntry> entries) throws InterruptedException {
 		for (String s : feed.channels) {
 			Channel channel = Shocky.getChannel(s);
-			if (channel == null) return;
+			if (channel == null)
+				continue;
 			PircBotX bot = channel.getBot();
+			int i = 0;
 			for (FeedEntry entry : entries) {
 				Shocky.sendChannel(bot,channel,Utils.mungeAllNicks(channel,0,"RSS: "+entry));
 				Thread.sleep(2000);
+				if (++i > 5)
+					break;
 			}
 		}
 	}
