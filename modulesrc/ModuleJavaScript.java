@@ -1,11 +1,10 @@
 import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
-import java.util.Collections;
 import java.util.Map;
-import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -21,18 +20,25 @@ import javax.script.ScriptException;
 import jdk.nashorn.api.scripting.NashornScriptEngine;
 import jdk.nashorn.api.scripting.NashornScriptEngineFactory;
 import jdk.nashorn.api.scripting.ScriptObjectMirror;
+import jdk.nashorn.internal.lookup.Lookup;
 import jdk.nashorn.internal.objects.Global;
-import jdk.nashorn.internal.runtime.Context;
+import jdk.nashorn.internal.runtime.JSType;
+import jdk.nashorn.internal.runtime.Property;
+import jdk.nashorn.internal.runtime.ScriptFunction;
+import jdk.nashorn.internal.runtime.ScriptObject;
 
 import org.pircbotx.Channel;
 import org.pircbotx.PircBotX;
 import org.pircbotx.User;
 
+import pl.shockah.Reflection;
 import pl.shockah.shocky.Cache;
 import pl.shockah.shocky.ScriptModule;
 import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.Parameters;
+import pl.shockah.shocky.js.ShockyScriptFunction;
+import pl.shockah.shocky.js.ShockyScriptFunction.ShockyProperty;
 import pl.shockah.shocky.sql.Factoid;
 import pl.shockah.shocky.threads.SandboxThreadFactory;
 import pl.shockah.shocky.threads.SandboxThreadGroup;
@@ -42,22 +48,43 @@ public class ModuleJavaScript extends ScriptModule {
 	private final SandboxThreadGroup sandboxGroup = new SandboxThreadGroup("javascript");
 	private final ThreadFactory sandboxFactory = new SandboxThreadFactory(sandboxGroup);
 	private NashornScriptEngineFactory engineFactory;
-
+	
+	private final static Field globalField = Reflection.getPrivateField(ScriptObjectMirror.class, "sobj");
+	private final MethodHandle MUNGE = Lookup.MH.findStatic(MethodHandles.lookup(), ModuleJavaScript.class, "munge", Lookup.MH.type(String.class, Object.class, Object.class));
+	private final MethodHandle ODD = Lookup.MH.findStatic(MethodHandles.lookup(), ModuleJavaScript.class, "odd", Lookup.MH.type(String.class, Object.class, Object.class));
+	private final MethodHandle FLIP = Lookup.MH.findStatic(MethodHandles.lookup(), ModuleJavaScript.class, "flip", Lookup.MH.type(String.class, Object.class, Object.class));
+	
 	public String name() {return "javascript";}
 	public String identifier() {return "js";}
 	public void onEnable(File dir) {
 		Command.addCommands(this, cmd = new CmdJavascript());
 		Command.addCommand(this, "js",cmd);
-		try {
-			engineFactory = new NashornScriptEngineFactory();
-			Class.forName("ModuleJavaScript$Sandbox");
-		} catch (ClassNotFoundException e) {
-			e.printStackTrace();
-		}
+		engineFactory = new NashornScriptEngineFactory();
 	}
 	public void onDisable() {
 		Command.removeCommands(cmd);
 		engineFactory = null;
+	}
+	
+	public static String munge(Object self, Object s) {
+		Object obj = self;
+		if (JSType.nullOrUndefined(obj))
+			obj = s;
+		return Utils.mungeNick(JSType.toString(obj));
+	}
+	
+	public static String odd(Object self, Object s) {
+		Object obj = self;
+		if (JSType.nullOrUndefined(obj))
+			obj = s;
+		return Utils.odd(JSType.toString(obj));
+	}
+	
+	public static String flip(Object self, Object s) {
+		Object obj = self;
+		if (JSType.nullOrUndefined(obj))
+			obj = s;
+		return Utils.flip(JSType.toString(obj));
 	}
 
 	public synchronized String parse(Cache cache, final PircBotX bot, Channel channel, User sender, Factoid factoid, String code, String message) {
@@ -67,24 +94,23 @@ public class ModuleJavaScript extends ScriptModule {
 		
 		Global global = null;
 		try {
-			Field f = ScriptObjectMirror.class.getDeclaredField("sobj");
-			f.setAccessible(true);
-			global = (Global) f.get(engine.getBindings(100));
-		} catch (IllegalArgumentException | IllegalAccessException | NoSuchFieldException | SecurityException e) {
+			global = (Global) globalField.get(engine.getBindings(100));
+		} catch (IllegalArgumentException | IllegalAccessException | SecurityException e) {
 			e.printStackTrace();
 		}
 		
-		Context.setGlobal(global);
+		int flags = Property.NOT_WRITABLE | Property.NOT_ENUMERABLE | Property.NOT_CONFIGURABLE;
+		ShockyProperty mungeProperty = new ShockyScriptFunction.ShockyProperty("munge", flags, false, new ShockyScriptFunction("munge", MUNGE, global, null, 0));
+		ShockyProperty oddProperty = new ShockyScriptFunction.ShockyProperty("odd", flags, false, new ShockyScriptFunction("odd", ODD, global, null, 0));
+		ShockyProperty flipProperty = new ShockyScriptFunction.ShockyProperty("flip", flags, false, new ShockyScriptFunction("flip", FLIP, global, null, 0));
+		
+		ScriptFunction string = (ScriptFunction)global.string;
+		ScriptObject obj = (ScriptObject)string.getPrototype();
+		obj.addOwnProperty(mungeProperty.getProperty());
+		obj.addOwnProperty(oddProperty.getProperty());
+		obj.addOwnProperty(flipProperty.getProperty());
 		
 		Map<String,Object> params = getParams(bot, channel, sender, message, factoid);
-		
-		Set<User> users;
-		if (channel == null)
-			users = Collections.emptySet();
-		else
-			users = channel.getUsers();
-		params.put("bot", new Sandbox(users));
-		
 		for (Map.Entry<String,Object> pair : params.entrySet())
 			engine.put(pair.getKey(),pair.getValue());
 		
@@ -127,44 +153,6 @@ public class ModuleJavaScript extends ScriptModule {
 		public String command() {return "javascript";}
 		public String help(Parameters params) {
 			return "javascript/js\njavascript {code} - runs JavaScript code";
-		}
-	}
-	
-	public class Sandbox {
-		private final Random rnd = new Random();
-		private final Set<User> users;
-		private User[] userArray;
-		
-		public Sandbox(Set<User> users) {
-			this.users = users;
-		}
-		
-		public String randnick() {
-			if (users.isEmpty())
-				return null;
-			if (userArray == null)
-				userArray = users.toArray(new User[users.size()]);
-			return userArray[rnd.nextInt(userArray.length)].getNick();
-		}
-		
-		public String munge(String in) {
-			return Utils.mungeNick(in);
-		}
-		
-		public String odd(String in) {
-			return Utils.odd(in);
-		}
-		
-		public String flip(String in) {
-			return Utils.flip(in);
-		}
-		
-		public String reverse(String in) {
-			return new StringBuilder(in).reverse().toString();
-		}
-		
-		public String toString() {
-			return "Yes it is a bot";
 		}
 	}
 	

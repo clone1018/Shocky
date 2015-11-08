@@ -136,7 +136,6 @@ public class SandboxSecurityManager extends SecurityManager
 	@Override
 	public void checkPackageAccess(String pkg) {
 		if (getThreadGroup() instanceof SandboxThreadGroup) {
-			System.out.printf("checkPackageAccess: %s\n", pkg);
 			if (pkg.startsWith("java.util.concurrent"))
 				throw new SecurityException(pkg+" package is not allowed.");
 		}
