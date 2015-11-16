@@ -7,10 +7,12 @@ import java.util.ArrayList;
 public class Helper {
 	public static final Charset utf8 = Charset.forName("UTF-8");
 	
+	@SafeVarargs
 	public static <T> boolean equalsOR(T instance, T... compareWith) {
 		for (T t : compareWith) if (instance.equals(t)) return true;
 		return false;
 	}
+	@SafeVarargs
 	public static <T> boolean equalsAND(T instance, T... compareWith) {
 		for (T t : compareWith) if (!instance.equals(t)) return false;
 		return true;

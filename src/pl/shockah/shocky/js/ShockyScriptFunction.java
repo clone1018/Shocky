@@ -64,6 +64,10 @@ public class ShockyScriptFunction extends ScriptFunction {
 		return (mh == null) ? null : new ShockyScriptFunction(name, mh, global, null, flags);
 	}
 	
+	public ShockyProperty makeProperty(int flags, boolean writable) {
+		return new ShockyProperty(this.getName(), flags, writable, this);
+	}
+	
 	public static class ShockyProperty {
 		private static final MethodHandle GET = Lookup.MH.findVirtual(MethodHandles.lookup(), ShockyProperty.class, "get", Lookup.MH.type(Object.class, Object.class));
 		private static final MethodHandle SET = Lookup.MH.findVirtual(MethodHandles.lookup(), ShockyProperty.class, "set", Lookup.MH.type(Void.TYPE, Object.class, Object.class));

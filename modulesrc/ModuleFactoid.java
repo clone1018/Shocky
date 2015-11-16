@@ -1561,7 +1561,7 @@ public class ModuleFactoid extends Module implements IFactoid, ILua {
 					ScriptModule sModule = getScriptModule(f);
 					if (sModule != null && sModule instanceof IFactoidData) {
 						IFactoidData dModule = (IFactoidData) sModule;
-						String s = dModule.getData(f);
+						String s = dModule.getData(f, false);
 						if (s != null)
 							return valueOf(s);
 					}

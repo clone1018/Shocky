@@ -38,7 +38,6 @@ import pl.shockah.shocky.Utils;
 import pl.shockah.shocky.cmds.Command;
 import pl.shockah.shocky.cmds.Parameters;
 import pl.shockah.shocky.js.ShockyScriptFunction;
-import pl.shockah.shocky.js.ShockyScriptFunction.ShockyProperty;
 import pl.shockah.shocky.sql.Factoid;
 import pl.shockah.shocky.threads.SandboxThreadFactory;
 import pl.shockah.shocky.threads.SandboxThreadGroup;
@@ -49,10 +48,11 @@ public class ModuleJavaScript extends ScriptModule {
 	private final ThreadFactory sandboxFactory = new SandboxThreadFactory(sandboxGroup);
 	private NashornScriptEngineFactory engineFactory;
 	
-	private final static Field globalField = Reflection.getPrivateField(ScriptObjectMirror.class, "sobj");
-	private final MethodHandle MUNGE = Lookup.MH.findStatic(MethodHandles.lookup(), ModuleJavaScript.class, "munge", Lookup.MH.type(String.class, Object.class, Object.class));
-	private final MethodHandle ODD = Lookup.MH.findStatic(MethodHandles.lookup(), ModuleJavaScript.class, "odd", Lookup.MH.type(String.class, Object.class, Object.class));
-	private final MethodHandle FLIP = Lookup.MH.findStatic(MethodHandles.lookup(), ModuleJavaScript.class, "flip", Lookup.MH.type(String.class, Object.class, Object.class));
+	private final Field globalField = Reflection.getPrivateField(ScriptObjectMirror.class, "sobj");
+	private final StringWrapper MUNGE = new StringWrapper(Lookup.MH.findStatic(MethodHandles.lookup(), Utils.class, "mungeNick", Lookup.MH.type(String.class, CharSequence.class)));
+	private final StringWrapper ODD = new StringWrapper(Lookup.MH.findStatic(MethodHandles.lookup(), Utils.class, "odd", Lookup.MH.type(String.class, CharSequence.class)));
+	private final StringWrapper FLIP = new StringWrapper(Lookup.MH.findStatic(MethodHandles.lookup(), Utils.class, "flip", Lookup.MH.type(String.class, CharSequence.class)));
+	private final StringWrapper PASTE = new StringWrapper(Lookup.MH.findStatic(MethodHandles.lookup(), Utils.class, "paste", Lookup.MH.type(String.class, CharSequence.class)));
 	
 	public String name() {return "javascript";}
 	public String identifier() {return "js";}
@@ -64,27 +64,6 @@ public class ModuleJavaScript extends ScriptModule {
 	public void onDisable() {
 		Command.removeCommands(cmd);
 		engineFactory = null;
-	}
-	
-	public static String munge(Object self, Object s) {
-		Object obj = self;
-		if (JSType.nullOrUndefined(obj))
-			obj = s;
-		return Utils.mungeNick(JSType.toString(obj));
-	}
-	
-	public static String odd(Object self, Object s) {
-		Object obj = self;
-		if (JSType.nullOrUndefined(obj))
-			obj = s;
-		return Utils.odd(JSType.toString(obj));
-	}
-	
-	public static String flip(Object self, Object s) {
-		Object obj = self;
-		if (JSType.nullOrUndefined(obj))
-			obj = s;
-		return Utils.flip(JSType.toString(obj));
 	}
 
 	public synchronized String parse(Cache cache, final PircBotX bot, Channel channel, User sender, Factoid factoid, String code, String message) {
@@ -99,16 +78,13 @@ public class ModuleJavaScript extends ScriptModule {
 			e.printStackTrace();
 		}
 		
-		int flags = Property.NOT_WRITABLE | Property.NOT_ENUMERABLE | Property.NOT_CONFIGURABLE;
-		ShockyProperty mungeProperty = new ShockyScriptFunction.ShockyProperty("munge", flags, false, new ShockyScriptFunction("munge", MUNGE, global, null, 0));
-		ShockyProperty oddProperty = new ShockyScriptFunction.ShockyProperty("odd", flags, false, new ShockyScriptFunction("odd", ODD, global, null, 0));
-		ShockyProperty flipProperty = new ShockyScriptFunction.ShockyProperty("flip", flags, false, new ShockyScriptFunction("flip", FLIP, global, null, 0));
-		
 		ScriptFunction string = (ScriptFunction)global.string;
 		ScriptObject obj = (ScriptObject)string.getPrototype();
-		obj.addOwnProperty(mungeProperty.getProperty());
-		obj.addOwnProperty(oddProperty.getProperty());
-		obj.addOwnProperty(flipProperty.getProperty());
+		
+		obj.addOwnProperty(MUNGE.makeProperty("munge", global));
+		obj.addOwnProperty(ODD.makeProperty("odd", global));
+		obj.addOwnProperty(FLIP.makeProperty("flip", global));
+		obj.addOwnProperty(PASTE.makeProperty("paste", global));
 		
 		Map<String,Object> params = getParams(bot, channel, sender, message, factoid);
 		for (Map.Entry<String,Object> pair : params.entrySet())
@@ -183,6 +159,24 @@ public class ModuleJavaScript extends ScriptModule {
 					return ex.getMessage();
 				}
 				return null;
+		}
+	}
+	
+	public static class StringWrapper {
+		private static final MethodHandle run = Lookup.MH.findVirtual(MethodHandles.lookup(), StringWrapper.class, "run", Lookup.MH.type(Object.class, Object.class, Object.class));
+		private final MethodHandle handle = run.bindTo(this);
+		private MethodHandle method;
+		
+		public StringWrapper(MethodHandle method) {
+			this.method = method;
+		}
+
+		public Object run(Object self, Object s) throws Throwable {
+			return method.invoke(JSType.toString(JSType.nullOrUndefined(self) ? s : self));
+		}
+		
+		public Property makeProperty(String name, Global global) {
+			return new ShockyScriptFunction(name, handle, global, null, 0).makeProperty(Property.NOT_WRITABLE | Property.NOT_ENUMERABLE | Property.NOT_CONFIGURABLE, false).getProperty();
 		}
 	}
 }

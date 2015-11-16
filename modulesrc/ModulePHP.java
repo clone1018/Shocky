@@ -5,8 +5,10 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.MalformedURLException;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.Semaphore;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -28,6 +30,7 @@ import pl.shockah.shocky.sql.Factoid;
 
 public class ModulePHP extends ScriptModule implements IFactoidData {
 	public static final File savedData = new File("data", "php").getAbsoluteFile();
+	public Map<Long,Semaphore> locks = new HashMap<Long,Semaphore>();
 	
 	protected Command cmd;
 	
@@ -70,45 +73,48 @@ public class ModulePHP extends ScriptModule implements IFactoidData {
 	public String parse(Cache cache, PircBotX bot, Channel channel, User sender, Factoid factoid, String code, String message) {
 		if (code == null) return "";
 		
-		StringBuilder sb = new StringBuilder();
-		buildInit(sb,getParams(bot, channel, sender, message, factoid).entrySet());
-		String data = getData(factoid);
-		if (data != null) {
-			sb.append("$_STATE=json_decode(");
-			appendEscape(sb,data);
-			sb.append(");");
-		}
-		
-		sb.append(code);
-		
 		HTTPQuery q;
 		try {
 			q = HTTPQuery.create(Data.forChannel(channel).getString("php-url"),HTTPQuery.Method.POST);
 		} catch (MalformedURLException e1) {
 			return "php-url is invalid";
 		}
-		q.connect(true,true);
-		q.write(HTTPQuery.parseArgs("code",sb.toString()));
 		
 		String ret = null;
 		try {
+			StringBuilder sb = new StringBuilder();
+			buildInit(sb,getParams(bot, channel, sender, message, factoid).entrySet());
+			String data = getData(factoid, true);
+			if (data != null) {
+				sb.append("$_STATE=json_decode(");
+				appendEscape(sb,data);
+				sb.append(");");
+			}
+		
+			sb.append(code);
+			q.connect(true,true);
+			q.write(HTTPQuery.parseArgs("code",sb.toString()));
 			ret = q.readWhole();
 			q.close();
+			
 			JSONObject json = new JSONObject(ret);
-			//json = json.getJSONObject("output");
 			JSONObject error = json.optJSONObject("error");
 			if (error != null)
 				return error.getString("message");
+			
 			String safe_errors = json.optString("safe_errors", null);
 			if (safe_errors != null)
 				return safe_errors;
+			
 			String newdata = json.optString("data", null);
 			if (factoid != null && newdata != null && (data == null || !newdata.contentEquals(data)))
-				setData(factoid,newdata);
+				setData(factoid, newdata);
 			return json.optString("output");
 		} catch (JSONException e) {
 		} catch (Exception e) {
 			e.printStackTrace();
+		} finally {
+			release(factoid);
 		}
 		
 		return (ret != null)?ret.trim():null;
@@ -153,6 +159,8 @@ public class ModulePHP extends ScriptModule implements IFactoidData {
 	}
 	
 	public String readFile(File file) {
+		if (file == null)
+			return null;
 		try {
 			FileInputStream fs = new FileInputStream(file);
 			InputStreamReader sr = new InputStreamReader(fs, Helper.utf8);
@@ -167,13 +175,15 @@ public class ModulePHP extends ScriptModule implements IFactoidData {
 	}
 	
 	public boolean writeFile(File file, CharSequence str) {
+		if (file == null)
+			return false;
 		try {
+			if (str == null || str.length() == 0)
+				return file.delete();
 			FileOutputStream fs = new FileOutputStream(file);
 			OutputStreamWriter sr = new OutputStreamWriter(fs, Helper.utf8);
 			sr.append(str);
-			//sr.flush();
 			sr.close();
-			//fs.close();
 			return true;
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -188,26 +198,53 @@ public class ModulePHP extends ScriptModule implements IFactoidData {
 	}
 	
 	@Override
-	public String getData(Factoid f) {
+	public String getData(Factoid f, boolean acquire) {
 		File saveFile = getFactoidSave(f);
-		if (saveFile != null && saveFile.exists() && saveFile.canRead())
+		if (saveFile != null && saveFile.exists() && saveFile.canRead()) {
+			if (acquire) {
+				Semaphore lock;
+				synchronized(locks) {
+					if (!locks.containsKey(f.id))
+						locks.put(f.id, new Semaphore(1));
+					lock = locks.get(f.id);
+				}
+				try {
+					lock.acquire();
+				} catch (InterruptedException e) {
+					return null;
+				}
+			}
 			return readFile(saveFile);
+		}
 		return null;
 	}
 	@Override
 	public boolean setData(Factoid f, CharSequence data) {
 		if (f == null)
 			return false;
-		if (data != null && data.length() < (1024 * 10)) {
-			File saveFile = getFactoidSave(f);
-			try {
+		try {
+			if (data != null && data.length() < (1024 * 10)) {
+				File saveFile = getFactoidSave(f);
 				if (saveFile.exists() || saveFile.createNewFile())
 					return writeFile(saveFile,data);
-			} catch (IOException e) {
-				e.printStackTrace();
 			}
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 		return false;
+	}
+	
+	public void release(Factoid f) {
+		if (f == null)
+			return;
+		synchronized(locks) {
+			if (locks.containsKey(f.id)) {
+				Semaphore lock = locks.get(f.id);
+				lock.release();
+				if (!lock.hasQueuedThreads())
+					locks.remove(f.id);
+			}
+		}
 	}
 	
 	public class CmdPHP extends ScriptCommand {
