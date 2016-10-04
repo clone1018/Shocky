@@ -51,7 +51,7 @@ public class ModuleSeen extends Module implements ISeen {
 			String username = params.nextParam();
 			String low = username.toLowerCase();
 			if (low.equals(params.bot.getNick().toLowerCase())) callback.append("Are your glasses not strong enough?");
-			else if (low.equals(params.sender.getNick().toLowerCase())) callback.append("Schizophrenia, eh?");
+			else if (low.equals(params.sender.getNick().toLowerCase())) callback.append("Dissociative identity disorder, eh?");
 			else {
 				if (config.exists("t_"+low)) {
 					callback.append(username).
